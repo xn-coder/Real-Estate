@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <SidebarMenuButton
                     isActive={pathname === item.href}
                     tooltip={item.label}
-                    className="group-data-[collapsible=icon]:justify-center"
+                    className="group-data-[collapsible=icon]:justify-center p-2"
                   >
                     <item.icon />
                     <span>{item.label}</span>
@@ -77,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
            <SidebarMenu>
              <SidebarMenuItem>
                 <Link href="#">
-                  <SidebarMenuButton tooltip="Settings" className="group-data-[collapsible=icon]:justify-center">
+                  <SidebarMenuButton tooltip="Settings" className="group-data-[collapsible=icon]:justify-center p-2">
                     <Settings />
                     <span>Settings</span>
                   </SidebarMenuButton>
