@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <SidebarMenu>
+           <SidebarMenu>
              <SidebarMenuItem>
                 <Link href="#">
                   <SidebarMenuButton tooltip="Settings" className="group-data-[collapsible=icon]:justify-center">
