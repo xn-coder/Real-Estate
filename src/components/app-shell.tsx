@@ -10,9 +10,6 @@ import {
   SidebarHeader,
   SidebarFooter,
   SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar"
@@ -26,47 +23,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  LayoutDashboard,
-  Users,
-  Home,
-  Briefcase,
-  Calendar,
-  Settings,
-  Megaphone,
-  Rocket,
-  Handshake,
-  UserSquare,
-  UserCheck,
-  Globe,
-  LifeBuoy,
-  BookOpen,
-  PanelTop,
-  Wallet,
-  Trophy,
-} from "lucide-react"
+import { Settings } from "lucide-react"
 import Image from "next/image"
-
-const navItems = [
-  { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/properties", icon: Home, label: "Properties" },
-  { href: "/marketing-kits", icon: Megaphone, label: "Marketing Kits" },
-  { href: "/onboarding", icon: Rocket, label: "Onboarding" },
-  { href: "/manage-partner", icon: Handshake, label: "Manage Partner" },
-  { href: "/manage-seller", icon: UserSquare, label: "Manage Seller" },
-  { href: "/manage-lead", icon: Users, label: "Manage Lead" },
-  { href: "/manage-deals", icon: Briefcase, label: "Manage Deals" },
-  { href: "/manage-customer", icon: UserCheck, label: "Manage Customer" },
-  { href: "/manage-visitor", icon: Globe, label: "Manage Visitor" },
-  { href: "/manage-support", icon: LifeBuoy, label: "Manage Support" },
-  { href: "/resource-center", icon: BookOpen, label: "Resource Center" },
-  { href: "/website-panel", icon: PanelTop, label: "Website Panel" },
-  { href: "/wallet-billing", icon: Wallet, label: "Wallet & Billing" },
-  { href: "/leaderboard", icon: Trophy, label: "Leaderboard" },
-]
+import { AppShellNav } from "./app-shell-nav"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  const isMobile = useIsMobile()
+  
+  if (isMobile === undefined) {
+    return null;
+  }
 
   return (
     <SidebarProvider>
@@ -82,34 +49,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarMenu>
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <Link href={item.href} className="block">
-                  <SidebarMenuButton
-                    isActive={pathname.startsWith(item.href)}
-                    tooltip={item.label}
-                    className="group-data-[collapsible=icon]:justify-center p-2"
-                  >
-                    <item.icon />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
+          <AppShellNav />
         </SidebarContent>
         <SidebarFooter>
-           <SidebarMenu>
-             <SidebarMenuItem>
-                <Link href="#" className="block">
-                  <SidebarMenuButton tooltip="Settings" className="group-data-[collapsible=icon]:justify-center p-2">
-                    <Settings />
-                    <span className="group-data-[collapsible=icon]:hidden">Settings</span>
-                  </SidebarMenuButton>
-                </Link>
-              </SidebarMenuItem>
-          </SidebarMenu>
+           <Link href="#" className="block">
+              <Button variant="ghost" className="w-full group-data-[collapsible=icon]:justify-center p-2">
+                <Settings />
+                <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+              </Button>
+            </Link>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
