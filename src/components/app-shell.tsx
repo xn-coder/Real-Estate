@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, LifeBuoy, Bell, Search } from "lucide-react"
+import { Settings, LogOut, LifeBuoy, Bell, Search, User, MessageSquare, BookUser, Contact } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -86,8 +86,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
-                      <LifeBuoy className="mr-2 h-4 w-4" />
-                      <span>Support</span>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Edit Profile</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem>
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      <span>Send Message</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem>
+                      <BookUser className="mr-2 h-4 w-4" />
+                      <span>Contact Book</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                      <Link href="/">
