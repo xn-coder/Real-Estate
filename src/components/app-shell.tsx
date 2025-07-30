@@ -77,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Image src="/logo-name.png" alt="DealFlow" width={120} height={40} />
             </div>
              <div className="hidden group-data-[collapsible=icon]:block">
-              <Image src="/logo.png" alt="DealFlow" width={32} height={32} />
+              <Image src="/logo.png" alt="DealFlow" width={40} height={40} />
             </div>
           </div>
         </SidebarHeader>
