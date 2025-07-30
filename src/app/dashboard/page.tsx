@@ -1,3 +1,4 @@
+
 'use client'
 
 import {
@@ -124,7 +125,7 @@ export default function Dashboard() {
             <CardTitle>Upcoming Appointments</CardTitle>
             <CardDescription>
               You have {appointments.length} upcoming appointments.
-            </Description>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
