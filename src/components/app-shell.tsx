@@ -24,22 +24,19 @@ import {
 import { Settings, LogOut, LifeBuoy, Bell, Search, User, MessageSquare, BookUser, Contact } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
-import { useIsMobile } from "@/hooks/use-mobile"
 import Link from "next/link"
 import { Input } from "./ui/input"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const isMobile = useIsMobile()
-  const [isClient, setIsClient] = React.useState(false)
+    const [isClient, setIsClient] = React.useState(false)
 
-  React.useEffect(() => {
-    setIsClient(true)
-  }, [])
+    React.useEffect(() => {
+        setIsClient(true)
+    }, [])
 
-  if (!isClient) {
-    return null
-  }
-
+    if (!isClient) {
+        return null
+    }
   return (
     <SidebarProvider defaultOpen={false}>
       <Sidebar collapsible="icon">
