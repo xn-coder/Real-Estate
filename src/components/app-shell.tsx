@@ -2,8 +2,6 @@
 "use client"
 
 import * as React from "react"
-import { usePathname } from "next/navigation"
-import Link from "next/link"
 import {
   Sidebar,
   SidebarProvider,
@@ -23,10 +21,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings } from "lucide-react"
+import { Settings, LogOut } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
+import Link from "next/link"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
@@ -38,22 +37,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <div className="flex items-center p-2 justify-center h-14">
-            <div className="group-data-[collapsible=icon]:hidden">
-              <Image src="/logo-name.png" alt="DealFlow" width={120} height={40} />
+        <SidebarHeader className="p-0">
+          <div className="flex items-center justify-center h-16">
+            <div className="group-data-[collapsible=icon]:hidden flex items-center gap-2">
+              <Image src="/logo.png" alt="DealFlow" width={32} height={32} />
+              <span className="font-bold text-lg font-headline">DealFlow</span>
             </div>
              <div className="hidden group-data-[collapsible=icon]:block">
               <Image src="/logo.png" alt="DealFlow" width={40} height={40} />
             </div>
           </div>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarContent className="p-2">
           <AppShellNav />
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="p-2">
            <Link href="#" className="block">
-              <Button variant="ghost" className="w-full group-data-[collapsible=icon]:justify-center p-2">
+              <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center p-2">
                 <Settings />
                 <span className="group-data-[collapsible=icon]:hidden">Settings</span>
               </Button>
@@ -61,13 +61,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex items-center justify-between p-2 border-b h-14">
+        <header className="flex items-center justify-between p-2 pr-4 border-b h-16">
             <SidebarTrigger />
             <div className="flex items-center gap-4">
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                       <Avatar className="h-8 w-8">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                       <Avatar className="h-10 w-10">
                         <AvatarImage src="https://placehold.co/100x100.png" alt="User" data-ai-hint="user avatar" />
                         <AvatarFallback>A</AvatarFallback>
                       </Avatar>
@@ -76,20 +76,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <DropdownMenuContent className="w-56" align="end">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>Profile</DropdownMenuItem>
-                    <DropdownMenuItem>Billing</DropdownMenuItem>
-                    <DropdownMenuItem>Settings</DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <LifeBuoy className="mr-2 h-4 w-4" />
+                      <span>Support</span>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                      <Link href="/">
                         <DropdownMenuItem>
-                            Log out
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Log out</span>
                         </DropdownMenuItem>
                       </Link>
                   </DropdownMenuContent>
                 </DropdownMenu>
             </div>
         </header>
-        {children}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
         </SidebarInset>
     </SidebarProvider>
   )

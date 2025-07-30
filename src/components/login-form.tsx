@@ -16,9 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card"
 import Link from "next/link"
-import { Separator } from "./ui/separator"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -54,58 +52,52 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold font-headline">Welcome Back!</CardTitle>
-        <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="admin@gmail.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
+    <div className="grid gap-4">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="admin@gmail.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center">
                   <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full">Sign In</Button>
-          </form>
-        </Form>
-      </CardContent>
-      <CardFooter className="flex-col items-center gap-4">
-        <div className="text-sm text-muted-foreground">
-          Don&apos;t have an account?
-        </div>
-        <div className="flex items-center gap-4">
-          <Button variant="link" asChild>
-            <Link href="#">Register as Seller</Link>
-          </Button>
-          <Separator orientation="vertical" className="h-4"/>
-          <Button variant="link" asChild>
-            <Link href="#">Register as Partner</Link>
-          </Button>
-        </div>
-      </CardFooter>
-    </Card>
+                  <Link
+                    href="#"
+                    className="ml-auto inline-block text-sm underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
+                <FormControl>
+                  <Input type="password" placeholder="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full">Sign In</Button>
+        </form>
+      </Form>
+      <div className="mt-4 text-center text-sm">
+        Don&apos;t have an account?{' '}
+        <Link href="#" className="underline">
+          Sign up
+        </Link>
+      </div>
+    </div>
   )
 }

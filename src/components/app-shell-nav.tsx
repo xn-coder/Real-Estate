@@ -11,15 +11,13 @@ import {
 } from '@/components/ui/sidebar'
 import {
   LayoutDashboard,
-  Users,
   Home,
-  Briefcase,
-  Calendar,
-  Settings,
   Megaphone,
   Rocket,
   Handshake,
   UserSquare,
+  Users,
+  Briefcase,
   UserCheck,
   Globe,
   LifeBuoy,
@@ -57,7 +55,7 @@ export function AppShellNav() {
             <SidebarMenuButton
               isActive={pathname.startsWith(item.href)}
               tooltip={item.label}
-              className="group-data-[collapsible=icon]:justify-center p-2"
+              className="justify-start group-data-[collapsible=icon]:justify-center p-2"
             >
               <item.icon />
               <span className="group-data-[collapsible=icon]:hidden">
