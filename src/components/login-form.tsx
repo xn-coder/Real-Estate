@@ -1,6 +1,7 @@
 
 'use client'
 
+import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -18,6 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Separator } from "./ui/separator"
+import { Loader2 } from "lucide-react"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -31,6 +33,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const { toast } = useToast()
   const router = useRouter()
+  const [isLoading, setIsLoading] = React.useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,15 +44,24 @@ export function LoginForm() {
   })
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (values.email === "admin@gmail.com" && values.password === "password") {
-      router.push("/dashboard")
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid email or password.",
-      })
-    }
+    setIsLoading(true)
+    // Simulate API call
+    setTimeout(() => {
+      if (values.email === "admin@gmail.com" && values.password === "password") {
+        toast({
+            title: "Login Successful",
+            description: "Welcome back! Redirecting you to the dashboard.",
+        })
+        router.push("/dashboard")
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Invalid email or password.",
+        })
+      }
+      setIsLoading(false)
+    }, 1000)
   }
 
   return (
@@ -69,7 +81,7 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="admin@estateflow.com" {...field} />
+                  <Input placeholder="admin@estateflow.com" {...field} disabled={isLoading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -82,13 +94,16 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input type="password" {...field} />
+                  <Input type="password" {...field} disabled={isLoading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full mt-4">Sign In</Button>
+          <Button type="submit" className="w-full mt-4" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading ? 'Signing In...' : 'Sign In'}
+          </Button>
         </form>
       </Form>
       <div className="mt-6 text-center text-sm">
