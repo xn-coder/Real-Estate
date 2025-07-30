@@ -52,12 +52,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <AppShellNav />
         </SidebarContent>
         <SidebarFooter className="p-2">
-           <Link href="#" className="block">
-              <Button variant="ghost" className="w-full justify-start group-data-[collapsible=icon]:justify-center p-2">
-                <Settings />
-                <span className="group-data-[collapsible=icon]:hidden">Settings</span>
-              </Button>
-            </Link>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
