@@ -71,10 +71,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
                       <LifeBuoy className="mr-2 h-4 w-4" />
                       <span>Support</span>
                     </DropdownMenuItem>
