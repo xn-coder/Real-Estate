@@ -30,9 +30,14 @@ import { Input } from "./ui/input"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
-  
-  if (isMobile === undefined) {
-    return null;
+  const [isClient, setIsClient] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) {
+    return null
   }
 
   return (
