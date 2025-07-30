@@ -21,11 +21,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, LifeBuoy } from "lucide-react"
+import { Settings, LogOut, LifeBuoy, Bell, Search } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import { useIsMobile } from "@/hooks/use-mobile"
 import Link from "next/link"
+import { Input } from "./ui/input"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
@@ -56,8 +57,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <header className="flex items-center justify-between p-2 pr-4 border-b h-16">
+          <div className="flex items-center gap-4">
             <SidebarTrigger />
+            <div className="relative hidden md:block">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search..."
+                className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+              />
+            </div>
+          </div>
             <div className="flex items-center gap-4">
+               <Button variant="ghost" size="icon">
+                <Bell className="h-5 w-5" />
+                <span className="sr-only">Toggle notifications</span>
+              </Button>
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
