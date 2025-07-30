@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Separator } from "./ui/separator"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -34,7 +35,7 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "admin@gmail.com",
+      email: "admin@estateflow.com",
       password: "password",
     },
   })
@@ -52,7 +53,13 @@ export function LoginForm() {
   }
 
   return (
-    <div className="grid gap-4">
+    <div>
+        <div className="text-center mb-6">
+            <h1 className="text-3xl font-bold font-headline">Welcome Back!</h1>
+            <p className="text-muted-foreground">
+              Enter your credentials to access your dashboard.
+            </p>
+        </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
           <FormField
@@ -62,7 +69,7 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="admin@gmail.com" {...field} />
+                  <Input placeholder="admin@estateflow.com" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -73,30 +80,28 @@ export function LoginForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <div className="flex items-center">
-                  <FormLabel>Password</FormLabel>
-                  <Link
-                    href="#"
-                    className="ml-auto inline-block text-sm underline"
-                  >
-                    Forgot your password?
-                  </Link>
-                </div>
+                <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="password" {...field} />
+                  <Input type="password" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full">Sign In</Button>
+          <Button type="submit" className="w-full mt-4">Sign In</Button>
         </form>
       </Form>
-      <div className="mt-4 text-center text-sm">
-        Don&apos;t have an account?{' '}
-        <Link href="#" className="underline">
-          Sign up
-        </Link>
+      <div className="mt-6 text-center text-sm">
+        Don&apos;t have an account?
+        <div className="flex items-center justify-center gap-4 mt-2">
+            <Link href="#" className="font-semibold text-primary hover:underline">
+              Register as Seller
+            </Link>
+            <Separator orientation="vertical" className="h-4" />
+            <Link href="#" className="font-semibold text-primary hover:underline">
+              Register as Partner
+            </Link>
+        </div>
       </div>
     </div>
   )
