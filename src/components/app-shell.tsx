@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -32,8 +33,8 @@ import {
   Briefcase,
   Calendar,
   Settings,
-  Mountain,
 } from "lucide-react"
+import Image from "next/image"
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -50,9 +51,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-          <div className="flex items-center gap-2 p-2 justify-center">
-            <Mountain className="size-6 text-primary" />
-            <h1 className="text-xl font-bold font-headline text-primary group-data-[collapsible=icon]:hidden">DealFlow</h1>
+          <div className="flex items-center p-2 justify-center h-14">
+            <div className="group-data-[collapsible=icon]:hidden">
+              <Image src="/logo-name.png" alt="DealFlow" width={120} height={40} />
+            </div>
+             <div className="hidden group-data-[collapsible=icon]:block">
+              <Image src="/logo.png" alt="DealFlow" width={32} height={32} />
+            </div>
           </div>
         </SidebarHeader>
         <SidebarContent>

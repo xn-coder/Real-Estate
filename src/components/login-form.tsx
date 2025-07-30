@@ -16,7 +16,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card"
+import Link from "next/link"
+import { Separator } from "./ui/separator"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -34,8 +36,8 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
-      password: "",
+      email: "admin@gmail.com",
+      password: "password",
     },
   })
 
@@ -53,13 +55,13 @@ export function LoginForm() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold font-headline text-center">Welcome Back</CardTitle>
-        <CardDescription className="text-center">Enter your credentials to access your account</CardDescription>
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-bold font-headline">Welcome Back!</CardTitle>
+        <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="email"
@@ -86,10 +88,24 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">Login</Button>
+            <Button type="submit" className="w-full">Sign In</Button>
           </form>
         </Form>
       </CardContent>
+      <CardFooter className="flex-col items-center gap-4">
+        <div className="text-sm text-muted-foreground">
+          Don&apos;t have an account?
+        </div>
+        <div className="flex items-center gap-4">
+          <Button variant="link" asChild>
+            <Link href="#">Register as Seller</Link>
+          </Button>
+          <Separator orientation="vertical" className="h-4"/>
+          <Button variant="link" asChild>
+            <Link href="#">Register as Partner</Link>
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   )
 }
