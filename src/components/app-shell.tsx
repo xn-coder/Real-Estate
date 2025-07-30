@@ -48,11 +48,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center gap-2 p-2">
             <Mountain className="size-6 text-primary" />
-            <h1 className="text-xl font-bold font-headline text-primary">DealFlow</h1>
+            <h1 className="text-xl font-bold font-headline text-primary group-data-[collapsible=icon]:hidden">DealFlow</h1>
           </div>
         </SidebarHeader>
         <SidebarContent>
