@@ -70,27 +70,25 @@ export function LoginForm() {
               description: "Invalid email or password.",
             })
         }
-        setIsLoading(false)
-        return
-      }
-      
-      const userDoc = querySnapshot.docs[0]
-      const user = userDoc.data()
-      
-      const isPasswordValid = await bcrypt.compare(values.password, user.password)
-      
-      if (isPasswordValid) {
-        toast({
-            title: "Login Successful",
-            description: "Welcome back! Redirecting you to the dashboard.",
-        })
-        router.push("/dashboard")
       } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "Invalid email or password.",
-        })
+        const userDoc = querySnapshot.docs[0]
+        const user = userDoc.data()
+        
+        const isPasswordValid = await bcrypt.compare(values.password, user.password)
+        
+        if (isPasswordValid) {
+          toast({
+              title: "Login Successful",
+              description: "Welcome back! Redirecting you to the dashboard.",
+          })
+          router.push("/dashboard")
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: "Invalid email or password.",
+          })
+        }
       }
     } catch (error) {
        toast({

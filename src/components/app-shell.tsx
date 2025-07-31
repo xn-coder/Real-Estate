@@ -30,7 +30,7 @@ import { Input } from "./ui/input"
 const user = {
     name: "Admin User",
     email: "admin@estateflow.com",
-    avatar: ""
+    avatar: "https://placehold.co/100x100.png"
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex items-center justify-between p-2 pr-4 border-b h-16 bg-background">
+        <header className="flex items-center justify-between p-2 pr-4 border-b h-16">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <div className="relative hidden md:block">
