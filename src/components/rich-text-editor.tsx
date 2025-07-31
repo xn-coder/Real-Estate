@@ -2,95 +2,45 @@
 'use client'
 
 import * as React from 'react';
-import { Bold, Italic, Underline, Strikethrough, Highlighter, List, ListOrdered } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import ReactQuill from 'react-quill';
 import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  className?: string;
 }
 
-export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
-  const editorRef = React.useRef<HTMLDivElement>(null);
+const modules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+    [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+    ['link'],
+    ['clean']
+  ],
+};
 
-  const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
-    onChange(event.currentTarget.innerHTML);
-  };
-  
-  const execCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
-  
-  const commands = [
-    { command: 'bold', icon: Bold },
-    { command: 'italic', icon: Italic },
-    { command: 'underline', icon: Underline },
-    { command: 'strikeThrough', icon: Strikethrough },
-    { command: 'insertUnorderedList', icon: List },
-    { command: 'insertOrderedList', icon: ListOrdered },
-  ];
+const formats = [
+  'header',
+  'bold', 'italic', 'underline', 'strike', 'blockquote',
+  'list', 'bullet', 'indent',
+  'link'
+];
 
+export function RichTextEditor({ value, onChange, placeholder, className }: RichTextEditorProps) {
   return (
-    <div className="rounded-md border border-input">
-      <div className="p-2 border-b">
-        <div className="flex flex-wrap items-center gap-1">
-          {commands.map(({ command, icon: Icon }) => (
-            <Button
-              key={command}
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                execCommand(command);
-              }}
-            >
-              <Icon className="h-4 w-4" />
-            </Button>
-          ))}
-           <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-               onMouseDown={(e) => {
-                e.preventDefault();
-                execCommand('hiliteColor', 'yellow');
-              }}
-            >
-              <Highlighter className="h-4 w-4" />
-            </Button>
-        </div>
-      </div>
-      <div
-        ref={editorRef}
-        contentEditable
-        onInput={handleInput}
-        className={cn(
-            "min-h-[200px] w-full rounded-b-md bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            !value && 'text-muted-foreground'
-        )}
-        dangerouslySetInnerHTML={{ __html: value }}
-        data-placeholder={placeholder}
-        style={{
-            whiteSpace: 'pre-wrap',
-            wordWrap: 'break-word',
-            ...( !value && {
-              '--placeholder-text': `'${placeholder}'`
-            } as React.CSSProperties),
-        }}
+    <div className={cn("bg-background rounded-md border border-input", className)}>
+      <ReactQuill 
+        theme="snow" 
+        value={value} 
+        onChange={onChange}
+        placeholder={placeholder}
+        modules={modules}
+        formats={formats}
+        className="[&_.ql-container]:border-0 [&_.ql-toolbar]:border-x-0 [&_.ql-toolbar]:border-t-0"
       />
-       <style jsx>{`
-        [contentEditable][data-placeholder]:empty:before {
-          content: var(--placeholder-text);
-          color: hsl(var(--muted-foreground));
-          pointer-events: none;
-        }
-      `}</style>
     </div>
   );
 }
