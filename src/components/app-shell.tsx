@@ -27,6 +27,12 @@ import { AppShellNav } from "./app-shell-nav"
 import Link from "next/link"
 import { Input } from "./ui/input"
 
+const user = {
+    name: "Admin User",
+    email: "admin@estateflow.com",
+    avatar: "https://placehold.co/100x100.png"
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
     const [isClient, setIsClient] = React.useState(false)
 
@@ -79,8 +85,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                        <Avatar className="h-10 w-10">
-                        <AvatarImage src="https://placehold.co/100x100.png" alt="User" data-ai-hint="user avatar" />
-                        <AvatarFallback>A</AvatarFallback>
+                        <AvatarImage src={user.avatar} alt={user.name} data-ai-hint="user avatar" />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
