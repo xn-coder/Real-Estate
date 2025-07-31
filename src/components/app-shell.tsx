@@ -30,7 +30,7 @@ import { Input } from "./ui/input"
 const user = {
     name: "Admin User",
     email: "admin@estateflow.com",
-    avatar: "https://placehold.co/100x100.png"
+    avatar: ""
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
