@@ -5,6 +5,7 @@ import './globals.css';
 import { AppShell } from '@/components/app-shell';
 import { Toaster } from "@/components/ui/toaster"
 import { usePathname } from 'next/navigation';
+import { UserProvider } from '@/hooks/use-user';
 
 export default function RootLayout({
   children,
@@ -25,16 +26,18 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <div className="flex min-h-screen flex-col">
-            {isLoginPage ? (
-            children
-            ) : (
-            <AppShell>
-                {children}
-            </AppShell>
-            )}
-            <Toaster />
-        </div>
+        <UserProvider>
+            <div className="flex min-h-screen flex-col">
+                {isLoginPage ? (
+                children
+                ) : (
+                <AppShell>
+                    {children}
+                </AppShell>
+                )}
+                <Toaster />
+            </div>
+        </UserProvider>
       </body>
     </html>
   );

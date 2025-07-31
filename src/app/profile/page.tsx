@@ -16,13 +16,14 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, User, Pencil } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import bcrypt from "bcryptjs"
+import { useUser } from "@/hooks/use-user"
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -32,7 +33,7 @@ const profileFormSchema = z.object({
   profileImage: z.string().url().optional().or(z.literal('')),
 })
 
-type UserProfile = z.infer<typeof profileFormSchema>;
+type UserProfileForm = z.infer<typeof profileFormSchema>;
 
 const passwordFormSchema = z.object({
   currentPassword: z.string().min(1, { message: "Current password is required." }),
@@ -48,16 +49,14 @@ type PasswordForm = z.infer<typeof passwordFormSchema>;
 
 export default function ProfilePage() {
   const { toast } = useToast()
+  const { user, isLoading: isUserLoading, fetchUser } = useUser();
   const [isUpdating, setIsUpdating] = React.useState(false)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [user, setUser] = React.useState<UserProfile & { id?: string; role?: string } | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
-  const [userId, setUserId] = React.useState<string | null>(null);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
   const [isPasswordUpdating, setIsPasswordUpdating] = React.useState(false)
 
-  const profileForm = useForm<UserProfile>({
+  const profileForm = useForm<UserProfileForm>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       firstName: "",
@@ -78,47 +77,17 @@ export default function ProfilePage() {
   });
   
   React.useEffect(() => {
-    const id = localStorage.getItem('userId');
-    setUserId(id);
-  }, []);
-
-  const fetchUser = React.useCallback(async () => {
-    if (!userId) {
-      setIsLoading(false);
-      return;
+    if (user) {
+      const profileData = {
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        profileImage: user.profileImage || '',
+      };
+      profileForm.reset(profileData);
     }
-    setIsLoading(true);
-    try {
-      const userDocRef = doc(db, "users", userId);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as UserProfile & { id?: string; role?: string };
-        const profileData = {
-          ...userData,
-          id: userDoc.id,
-          firstName: userData.firstName || '',
-          lastName: userData.lastName || '',
-          email: userData.email || '',
-          phone: userData.phone || '',
-          profileImage: userData.profileImage || '',
-        };
-        setUser(profileData);
-        profileForm.reset(profileData);
-      } else {
-        toast({ variant: "destructive", title: "User not found" });
-      }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Failed to fetch user data" });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, profileForm, toast]);
-
-  React.useEffect(() => {
-    if (userId) {
-      fetchUser();
-    }
-  }, [userId, fetchUser]);
+  }, [user, profileForm]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -133,11 +102,11 @@ export default function ProfilePage() {
   };
 
 
-  async function onProfileSubmit(values: UserProfile) {
-    if (!userId) return;
+  async function onProfileSubmit(values: UserProfileForm) {
+    if (!user?.id) return;
     setIsUpdating(true)
     try {
-      const userDocRef = doc(db, "users", userId)
+      const userDocRef = doc(db, "users", user.id)
       await updateDoc(userDocRef, {
         name: `${values.firstName} ${values.lastName}`,
         firstName: values.firstName,
@@ -164,10 +133,10 @@ export default function ProfilePage() {
   }
 
   async function onPasswordResetSubmit(values: PasswordForm) {
-    if (!userId) return
+    if (!user?.id) return
     setIsPasswordUpdating(true)
     try {
-      const userDocRef = doc(db, "users", userId)
+      const userDocRef = doc(db, "users", user.id)
       const userDoc = await getDoc(userDocRef)
 
       if (!userDoc.exists()) {
@@ -175,8 +144,8 @@ export default function ProfilePage() {
         return
       }
       
-      const user = userDoc.data()
-      const isPasswordValid = await bcrypt.compare(values.currentPassword, user.password)
+      const userData = userDoc.data()
+      const isPasswordValid = await bcrypt.compare(values.currentPassword, userData.password)
 
       if (!isPasswordValid) {
         passwordForm.setError("currentPassword", { type: "manual", message: "Incorrect current password." })
@@ -209,7 +178,7 @@ export default function ProfilePage() {
     }
   }
 
-  if (isLoading) {
+  if (isUserLoading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <Loader2 className="mr-2 h-8 w-8 animate-spin" />
