@@ -64,9 +64,10 @@ export function LoginForm() {
           console.log("Admin user not found, creating one...")
           const salt = await bcrypt.genSalt(10)
           const hashedPassword = await bcrypt.hash("password", salt)
-          const adminUserDocRef = doc(db, "users", "admin");
+          const adminId = generateUserId("SEL")
+          const adminUserDocRef = doc(db, "users", adminId);
           await setDoc(adminUserDocRef, { 
-            id: 'admin',
+            id: adminId,
             name: 'Admin User',
             firstName: 'Admin',
             lastName: 'User',

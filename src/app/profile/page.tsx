@@ -141,12 +141,6 @@ export default function ProfilePage() {
     }
   }
 
-  const getRoleDisplayName = (role?: string) => {
-      if (!role) return "User";
-      return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) + " Account";
-  }
-
-
   if (isLoading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -170,7 +164,7 @@ export default function ProfilePage() {
                             </Avatar>
                             <div>
                                 <CardTitle className="text-2xl">{user?.firstName} {user?.lastName}</CardTitle>
-                                {user?.id && <CardDescription>ID: {user.id}</CardDescription>}
+                                {user?.id && <CardDescription>{user.id}</CardDescription>}
                             </div>
                         </div>
                         <DialogTrigger asChild>
