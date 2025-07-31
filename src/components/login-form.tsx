@@ -21,7 +21,7 @@ import Link from "next/link"
 import { Separator } from "./ui/separator"
 import { Loader2 } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, addDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, addDoc, doc, setDoc } from "firebase/firestore"
 import bcrypt from "bcryptjs"
 
 const formSchema = z.object({
@@ -63,7 +63,12 @@ export function LoginForm() {
           console.log("Admin user not found, creating one...")
           const salt = await bcrypt.genSalt(10)
           const hashedPassword = await bcrypt.hash("password", salt)
-          await addDoc(usersRef, { email: adminEmail, password: hashedPassword })
+          const adminUserDocRef = doc(db, "users", "admin");
+          await setDoc(adminUserDocRef, { 
+            email: adminEmail, 
+            password: hashedPassword,
+            role: 'admin' 
+          })
           console.log("Admin user created successfully.")
         }
       } catch (error) {
