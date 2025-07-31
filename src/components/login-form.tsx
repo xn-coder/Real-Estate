@@ -41,10 +41,38 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "admin@estateflow.com",
+      email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "",
       password: "password",
     },
   })
+
+  React.useEffect(() => {
+    const setupAdmin = async () => {
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL
+      if (!adminEmail) {
+        console.warn("Admin email is not configured in environment variables.")
+        return
+      }
+
+      try {
+        const usersRef = collection(db, "users")
+        const q = query(usersRef, where("email", "==", adminEmail))
+        const querySnapshot = await getDocs(q)
+
+        if (querySnapshot.empty) {
+          console.log("Admin user not found, creating one...")
+          const salt = await bcrypt.genSalt(10)
+          const hashedPassword = await bcrypt.hash("password", salt)
+          await addDoc(usersRef, { email: adminEmail, password: hashedPassword })
+          console.log("Admin user created successfully.")
+        }
+      } catch (error) {
+        console.error("Error setting up admin user:", error)
+      }
+    }
+
+    setupAdmin()
+  }, [])
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
@@ -54,22 +82,11 @@ export function LoginForm() {
       const querySnapshot = await getDocs(q)
       
       if (querySnapshot.empty) {
-        if (values.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash("password", salt);
-            await addDoc(usersRef, { email: values.email, password: hashedPassword });
-            toast({
-                title: "Admin Account Created",
-                description: "Your admin account has been created with the default password.",
-            })
-            router.push("/dashboard")
-        } else {
-            toast({
-              variant: "destructive",
-              title: "Login Failed",
-              description: "Invalid email or password.",
-            })
-        }
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Invalid email or password.",
+        })
       } else {
         const userDoc = querySnapshot.docs[0]
         const user = userDoc.data()
