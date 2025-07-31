@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { RichTextEditor } from "@/components/rich-text-editor"
 import dynamic from 'next/dynamic';
 
 const DynamicRichTextEditor = dynamic(
