@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>
                       <User className="mr-2 h-4 w-4" />
-                      <span>Edit Profile</span>
+                      <span>My Profile</span>
                     </DropdownMenuItem>
                      <DropdownMenuItem>
                       <MessageSquare className="mr-2 h-4 w-4" />
