@@ -188,14 +188,9 @@ export default function ProfilePage() {
                         <KeyRound className="h-6 w-6 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="flow-root">
-                            <div className="float-left text-sm font-medium">Password</div>
-                            <div className="float-right text-sm text-muted-foreground">••••••••••••••</div>
-                        </div>
-                        <Separator className="my-4" />
-                        <div className="flow-root">
-                            <div className="float-left text-sm font-medium">Addon Key</div>
-                            <div className="float-right text-sm font-semibold text-primary">Active</div>
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm font-medium">Password</div>
+                            <Button variant="outline">Reset Password</Button>
                         </div>
                     </CardContent>
                 </Card>
