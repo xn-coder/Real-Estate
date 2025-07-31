@@ -22,10 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bold, Italic, Underline, Strikethrough, Highlighter, List, ListOrdered, Heading2, Pilcrow } from "lucide-react"
+import { RichTextEditor } from "@/components/rich-text-editor"
 
 const messageFormSchema = z.object({
   messageType: z.enum(["announcement", "to_partner", "to_seller"], {
@@ -174,28 +173,13 @@ export default function SendMessagePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Details</FormLabel>
-                    <div className="rounded-md border border-input">
-                         <div className="p-2 border-b">
-                            <div className="flex flex-wrap items-center gap-1">
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><Bold className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><Italic className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><Underline className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><Strikethrough className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><Highlighter className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><List className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><ListOrdered className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><Heading2 className="h-4 w-4" /></Button>
-                                <Button type="button" variant="outline" size="icon" className="h-8 w-8"><Pilcrow className="h-4 w-4" /></Button>
-                            </div>
-                        </div>
-                        <FormControl>
-                            <Textarea
-                                placeholder="Compose your message..."
-                                className="min-h-[200px] border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                                {...field}
-                            />
-                        </FormControl>
-                    </div>
+                     <FormControl>
+                        <RichTextEditor
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Compose your message..."
+                        />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
