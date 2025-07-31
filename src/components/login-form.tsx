@@ -67,7 +67,9 @@ export function LoginForm() {
           const adminUserDocRef = doc(db, "users", "admin");
           await setDoc(adminUserDocRef, { 
             id: 'admin',
+            name: 'Admin User',
             email: adminEmail, 
+            phone: '123-456-7890',
             password: hashedPassword,
             role: 'admin' 
           })

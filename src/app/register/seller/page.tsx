@@ -20,16 +20,18 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, query, where, getDocs, doc, setDoc } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, setDoc } from "firebase/firestore"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import Image from "next/image"
 
 const formSchema = z.object({
-  name: z.string().min(1, { message: "Name is required." }),
+  firstName: z.string().min(1, { message: "First name is required." }),
+  lastName: z.string().min(1, { message: "Last name is required." }),
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
+  phone: z.string().min(10, { message: "Please enter a valid phone number." }),
   password: z.string().min(6, {
     message: "Password must be at least 6 characters.",
   }),
@@ -43,8 +45,10 @@ export default function SellerRegistrationPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
+      phone: "",
       password: "",
     },
   })
@@ -62,6 +66,7 @@ export default function SellerRegistrationPage() {
           title: "Registration Failed",
           description: "An account with this email already exists.",
         })
+        setIsLoading(false)
         return;
       }
 
@@ -71,8 +76,9 @@ export default function SellerRegistrationPage() {
 
       await setDoc(doc(db, "users", userId), {
         id: userId,
-        name: values.name,
+        name: `${values.firstName} ${values.lastName}`,
         email: values.email,
+        phone: values.phone,
         password: hashedPassword,
         role: 'seller',
       })
@@ -115,19 +121,34 @@ export default function SellerRegistrationPage() {
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl>
+                        <Input placeholder="John" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Doe" {...field} disabled={isLoading} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
             <FormField
               control={form.control}
               name="email"
@@ -136,6 +157,19 @@ export default function SellerRegistrationPage() {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input placeholder="you@example.com" {...field} disabled={isLoading} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone Number</FormLabel>
+                  <FormControl>
+                    <Input placeholder="(123) 456-7890" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

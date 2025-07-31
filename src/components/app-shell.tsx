@@ -92,10 +92,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <DropdownMenuContent className="w-56" align="end">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>My Profile</span>
-                    </DropdownMenuItem>
+                    <Link href="/profile">
+                        <DropdownMenuItem>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>My Profile</span>
+                        </DropdownMenuItem>
+                    </Link>
                      <DropdownMenuItem>
                       <MessageSquare className="mr-2 h-4 w-4" />
                       <span>Send Message</span>
