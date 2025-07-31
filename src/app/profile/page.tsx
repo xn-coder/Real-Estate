@@ -34,9 +34,10 @@ type UserProfile = z.infer<typeof formSchema>;
 
 export default function ProfilePage() {
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(true)
   const [user, setUser] = React.useState<UserProfile | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [userId, setUserId] = React.useState<string | null>(null);
 
   const form = useForm<UserProfile>({
     resolver: zodResolver(formSchema),
@@ -49,25 +50,28 @@ export default function ProfilePage() {
     },
   })
   
-  // Hardcoding user ID as 'admin' for now. In a real app, you'd get this from the session.
-  const userId = 'admin';
+  React.useEffect(() => {
+    const id = localStorage.getItem('userId');
+    setUserId(id);
+  }, []);
 
   React.useEffect(() => {
     async function fetchUser() {
-      if (!userId) return;
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      };
       setIsLoading(true)
       try {
         const userDocRef = doc(db, "users", userId)
         const userDoc = await getDoc(userDocRef)
         if (userDoc.exists()) {
-          const userData = userDoc.data() as Omit<UserProfile, 'email'> & {name: string, email: string}
+          const userData = userDoc.data() as UserProfile;
           
           const profileData = {
-            firstName: userData.name.split(' ')[0] || '',
-            lastName: userData.name.split(' ')[1] || '',
-            email: userData.email,
-            phone: userData.phone || '',
-            profileImage: userData.profileImage || '',
+            ...userData,
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
           };
 
           setUser(profileData)
@@ -81,7 +85,9 @@ export default function ProfilePage() {
         setIsLoading(false)
       }
     }
-    fetchUser()
+    if (userId) {
+      fetchUser()
+    }
   }, [userId, form, toast])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +111,8 @@ export default function ProfilePage() {
       const userDocRef = doc(db, "users", userId)
       await updateDoc(userDocRef, {
         name: `${values.firstName} ${values.lastName}`,
+        firstName: values.firstName,
+        lastName: values.lastName,
         phone: values.phone,
         profileImage: values.profileImage,
       })

@@ -68,6 +68,8 @@ export function LoginForm() {
           await setDoc(adminUserDocRef, { 
             id: 'admin',
             name: 'Admin User',
+            firstName: 'Admin',
+            lastName: 'User',
             email: adminEmail, 
             phone: '123-456-7890',
             password: hashedPassword,
@@ -103,6 +105,7 @@ export function LoginForm() {
         const isPasswordValid = await bcrypt.compare(values.password, user.password)
         
         if (isPasswordValid) {
+          localStorage.setItem('userId', userDoc.id);
           toast({
               title: "Login Successful",
               description: "Welcome back! Redirecting you to the dashboard.",
