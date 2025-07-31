@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { RichTextEditor } from "@/components/rich-text-editor"
+import { Textarea } from "@/components/ui/textarea"
 
 
 const messageFormSchema = z.object({
@@ -175,10 +175,10 @@ export default function SendMessagePage() {
                   <FormItem>
                     <FormLabel>Details</FormLabel>
                      <FormControl>
-                        <RichTextEditor
-                            value={field.value}
-                            onChange={field.onChange}
+                        <Textarea
                             placeholder="Compose your message..."
+                            className="min-h-[200px]"
+                            {...field}
                         />
                     </FormControl>
                     <FormMessage />
