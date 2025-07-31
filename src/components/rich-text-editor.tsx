@@ -2,8 +2,10 @@
 'use client'
 
 import * as React from 'react';
-import ReactQuill from 'react-quill';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
 interface RichTextEditorProps {
   value: string;

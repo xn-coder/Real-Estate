@@ -24,12 +24,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import dynamic from 'next/dynamic';
-
-const DynamicRichTextEditor = dynamic(
-  () => import('@/components/rich-text-editor').then((mod) => mod.RichTextEditor),
-  { ssr: false }
-);
+import { RichTextEditor } from "@/components/rich-text-editor"
 
 
 const messageFormSchema = z.object({
@@ -180,7 +175,7 @@ export default function SendMessagePage() {
                   <FormItem>
                     <FormLabel>Details</FormLabel>
                      <FormControl>
-                        <DynamicRichTextEditor
+                        <RichTextEditor
                             value={field.value}
                             onChange={field.onChange}
                             placeholder="Compose your message..."
