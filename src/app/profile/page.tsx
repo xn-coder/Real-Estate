@@ -170,7 +170,6 @@ export default function ProfilePage() {
                             </Avatar>
                             <div>
                                 <CardTitle className="text-2xl">{user?.firstName} {user?.lastName}</CardTitle>
-                                <CardDescription>{getRoleDisplayName(user?.role)}</CardDescription>
                                 {user?.id && <CardDescription>ID: {user.id}</CardDescription>}
                             </div>
                         </div>
