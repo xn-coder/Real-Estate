@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, Contact } from "lucide-react"
+import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import Link from "next/link"
@@ -111,10 +111,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <BookUser className="mr-2 h-4 w-4" />
                       <span>Contact Book</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
+                    <Link href="/settings">
+                        <DropdownMenuItem>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                        </DropdownMenuItem>
+                    </Link>
                     <DropdownMenuSeparator />
                      <Link href="/">
                         <DropdownMenuItem>
