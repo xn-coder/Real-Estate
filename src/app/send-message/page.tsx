@@ -61,6 +61,7 @@ export default function SendMessagePage() {
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
     defaultValues: {
+      messageType: "announcement",
       subject: "",
       details: "",
     },
@@ -74,7 +75,11 @@ export default function SendMessagePage() {
       title: "Message Sent!",
       description: "Your message has been successfully sent.",
     })
-    form.reset()
+    form.reset({
+      messageType: "announcement",
+      subject: "",
+      details: "",
+    })
   }
 
   return (
