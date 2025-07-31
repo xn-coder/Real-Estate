@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen={false}>
       <Sidebar collapsible="icon">
         <SidebarHeader className="p-0">
-          <div className="flex items-center justify-center h-16 px-4">
+          <div className="flex items-center justify-center h-16">
             <div className="group-data-[collapsible=icon]:hidden">
                <Image src="/logo-name.png" alt="DealFlow" width={120} height={30} />
             </div>
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex items-center justify-between p-2 pr-4 border-b h-16">
+        <header className="sticky top-0 z-10 flex items-center justify-between p-2 pr-4 border-b h-16 bg-background">
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <div className="relative hidden md:block">
