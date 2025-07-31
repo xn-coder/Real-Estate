@@ -177,30 +177,6 @@ export default function ProfilePage() {
                             </Button>
                         </DialogTrigger>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                         <Separator />
-                         <div className="grid gap-2 text-sm">
-                             <div className="grid grid-cols-2">
-                                <div className="font-semibold">First Name</div>
-                                <div>{user?.firstName}</div>
-                            </div>
-                             <Separator />
-                             <div className="grid grid-cols-2">
-                                <div className="font-semibold">Last Name</div>
-                                <div>{user?.lastName}</div>
-                            </div>
-                             <Separator />
-                             <div className="grid grid-cols-2">
-                                <div className="font-semibold">Email</div>
-                                <div className="truncate">{user?.email}</div>
-                            </div>
-                             <Separator />
-                             <div className="grid grid-cols-2">
-                                <div className="font-semibold">Phone</div>
-                                <div>{user?.phone}</div>
-                            </div>
-                         </div>
-                    </CardContent>
                 </Card>
 
                  <Card>
