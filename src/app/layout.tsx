@@ -2,7 +2,6 @@
 'use client'
 
 import './globals.css';
-import 'react-quill/dist/quill.snow.css';
 import { AppShell } from '@/components/app-shell';
 import { Toaster } from "@/components/ui/toaster"
 import { usePathname } from 'next/navigation';
