@@ -23,6 +23,7 @@ import { Loader2 } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, addDoc, doc, setDoc } from "firebase/firestore"
 import bcrypt from "bcryptjs"
+import { generateUserId } from "@/lib/utils"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -65,6 +66,7 @@ export function LoginForm() {
           const hashedPassword = await bcrypt.hash("password", salt)
           const adminUserDocRef = doc(db, "users", "admin");
           await setDoc(adminUserDocRef, { 
+            id: 'admin',
             email: adminEmail, 
             password: hashedPassword,
             role: 'admin' 
@@ -168,11 +170,11 @@ export function LoginForm() {
       <div className="mt-6 text-center text-sm">
         Don&apos;t have an account?
         <div className="flex items-center justify-center gap-4 mt-2">
-            <Link href="#" className="font-semibold text-primary hover:underline">
+            <Link href="/register/seller" className="font-semibold text-primary hover:underline">
               Register as Seller
             </Link>
             <Separator orientation="vertical" className="h-4" />
-            <Link href="#" className="font-semibold text-primary hover:underline">
+            <Link href="/register/partner" className="font-semibold text-primary hover:underline">
               Register as Partner
             </Link>
         </div>
