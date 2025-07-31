@@ -20,6 +20,9 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Separator } from "./ui/separator"
 import { Loader2 } from "lucide-react"
+import { db } from "@/lib/firebase"
+import { collection, getDocs, query, where } from "firebase/firestore"
+import bcrypt from "bcryptjs"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -43,11 +46,29 @@ export function LoginForm() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      if (values.email === "admin@gmail.com" && values.password === "password") {
+    try {
+      const usersRef = collection(db, "users")
+      const q = query(usersRef, where("email", "==", values.email))
+      const querySnapshot = await getDocs(q)
+      
+      if (querySnapshot.empty) {
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Invalid email or password.",
+        })
+        setIsLoading(false)
+        return
+      }
+      
+      const userDoc = querySnapshot.docs[0]
+      const user = userDoc.data()
+      
+      const isPasswordValid = await bcrypt.compare(values.password, user.password)
+      
+      if (isPasswordValid) {
         toast({
             title: "Login Successful",
             description: "Welcome back! Redirecting you to the dashboard.",
@@ -60,8 +81,15 @@ export function LoginForm() {
           description: "Invalid email or password.",
         })
       }
-      setIsLoading(false)
-    }, 1000)
+    } catch (error) {
+       toast({
+          variant: "destructive",
+          title: "Login Error",
+          description: "An unexpected error occurred. Please try again.",
+        })
+    } finally {
+        setIsLoading(false)
+    }
   }
 
   return (
