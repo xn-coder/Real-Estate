@@ -39,7 +39,7 @@ export default function ProfilePage() {
   const { toast } = useToast()
   const [isUpdating, setIsUpdating] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(true)
-  const [user, setUser] = React.useState<UserProfile & { role?: string } | null>(null)
+  const [user, setUser] = React.useState<UserProfile & { id?: string; role?: string } | null>(null)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [userId, setUserId] = React.useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -70,9 +70,10 @@ export default function ProfilePage() {
       const userDocRef = doc(db, "users", userId);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
-        const userData = userDoc.data() as UserProfile & { role?: string };
+        const userData = userDoc.data() as UserProfile & { id?: string; role?: string };
         const profileData = {
           ...userData,
+          id: userDoc.id,
           firstName: userData.firstName || '',
           lastName: userData.lastName || '',
         };
@@ -137,6 +138,12 @@ export default function ProfilePage() {
     }
   }
 
+  const getRoleDisplayName = (role?: string) => {
+      if (!role) return "User";
+      return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) + " Account";
+  }
+
+
   if (isLoading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -150,7 +157,7 @@ export default function ProfilePage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <div className="space-y-4">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
+                    <CardHeader className="flex flex-row items-start justify-between">
                         <div className="flex items-center gap-4">
                             <Avatar className="h-16 w-16">
                                 <AvatarImage src={user?.profileImage} alt="Profile" />
@@ -160,7 +167,8 @@ export default function ProfilePage() {
                             </Avatar>
                             <div>
                                 <CardTitle className="text-2xl">{user?.firstName} {user?.lastName}</CardTitle>
-                                <CardDescription className="capitalize">{user?.role} Account</CardDescription>
+                                <CardDescription>{getRoleDisplayName(user?.role)}</CardDescription>
+                                {user?.id && <CardDescription>ID: {user.id}</CardDescription>}
                             </div>
                         </div>
                         <DialogTrigger asChild>
