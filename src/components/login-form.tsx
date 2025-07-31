@@ -21,7 +21,7 @@ import Link from "next/link"
 import { Separator } from "./ui/separator"
 import { Loader2 } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where } from "firebase/firestore"
+import { collection, getDocs, query, where, addDoc } from "firebase/firestore"
 import bcrypt from "bcryptjs"
 
 const formSchema = z.object({
@@ -54,11 +54,22 @@ export function LoginForm() {
       const querySnapshot = await getDocs(q)
       
       if (querySnapshot.empty) {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "Invalid email or password.",
-        })
+        if (values.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash("password", salt);
+            await addDoc(usersRef, { email: values.email, password: hashedPassword });
+            toast({
+                title: "Admin Account Created",
+                description: "Your admin account has been created with the default password.",
+            })
+            router.push("/dashboard")
+        } else {
+            toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: "Invalid email or password.",
+            })
+        }
         setIsLoading(false)
         return
       }
