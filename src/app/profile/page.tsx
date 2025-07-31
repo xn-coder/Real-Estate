@@ -76,6 +76,9 @@ export default function ProfilePage() {
           id: userDoc.id,
           firstName: userData.firstName || '',
           lastName: userData.lastName || '',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          profileImage: userData.profileImage || '',
         };
         setUser(profileData);
         form.reset(profileData);
