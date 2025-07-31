@@ -47,13 +47,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen={false}>
       <Sidebar collapsible="icon">
         <SidebarHeader className="p-0">
-          <div className="flex items-center justify-center h-16">
-            <div className="group-data-[collapsible=icon]:hidden flex items-center gap-2">
-              <Image src="/logo.png" alt="DealFlow" width={32} height={32} />
-              <span className="font-bold text-lg font-headline">DealFlow</span>
+          <div className="flex items-center justify-center h-16 px-4">
+            <div className="group-data-[collapsible=icon]:hidden">
+               <Image src="/logo-name.png" alt="DealFlow" width={120} height={30} />
             </div>
              <div className="hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-              <Image src="/logo.png" alt="DealFlow" width={40} height={40} />
+              <Image src="/logo.png" alt="DealFlow" width={32} height={32} />
             </div>
           </div>
         </SidebarHeader>
