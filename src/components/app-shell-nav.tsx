@@ -25,6 +25,8 @@ import {
   PanelTop,
   Wallet,
   Trophy,
+  User,
+  Settings,
 } from 'lucide-react'
 
 const navItems = [
@@ -43,6 +45,8 @@ const navItems = [
   { href: '/website-panel', icon: PanelTop, label: 'Website Panel' },
   { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
   { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+  { href: '/profile', icon: User, label: 'My Profile' },
+  { href: '/settings', icon: Settings, label: 'Settings' },
 ]
 
 export function AppShellNav() {
