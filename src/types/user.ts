@@ -30,4 +30,6 @@ export type User = {
   paymentStatus?: 'paid' | 'pending' | 'pending_approval' | 'not_required' | 'failed';
   paymentProof?: string;
   paymentTransactionId?: string;
+  deactivationReason?: string;
+  reactivationReason?: string;
 }

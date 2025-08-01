@@ -61,9 +61,9 @@ export default function ManagePartnerPage() {
     try {
       const usersCollection = collection(db, "users")
       const partnerRolesKeys = Object.keys(partnerRoles);
-      const q = query(usersCollection, where("role", "in", partnerRolesKeys))
+      const q = query(usersCollection, where("role", "in", partnerRolesKeys), where("status", "==", "active"))
       const partnerSnapshot = await getDocs(q)
-      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), status: doc.data().status || 'active' } as PartnerUser))
+      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setPartners(partnerList)
     } catch (error) {
       console.error("Error fetching partners:", error)
@@ -133,6 +133,12 @@ export default function ManagePartnerPage() {
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
+            ) : partners.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                    No active partners found.
+                    </TableCell>
+                </TableRow>
             ) : partners.map((partner) => (
               <TableRow key={partner.id}>
                 <TableCell className="font-medium">{partner.name}</TableCell>
