@@ -50,7 +50,7 @@ const partnerRoles = {
 type PartnerRole = keyof typeof partnerRoles;
 
 const addPartnerFormStep1Schema = z.object({
-  profileImage: z.string().optional(),
+  profileImage: z.any().optional(),
   fullName: z.string().min(1, "Full name is required."),
   dob: z.date({ required_error: "Date of birth is required." }),
   gender: z.enum(["male", "female", "other"], { required_error: "Please select a gender." }),
@@ -66,7 +66,7 @@ const addPartnerFormStep1Schema = z.object({
 });
 
 const addPartnerFormStep2Schema = z.object({
-    businessLogo: z.string().optional(),
+    businessLogo: z.any().optional(),
     businessType: z.string().min(1, "Business type is required."),
     role: z.enum(Object.keys(partnerRoles) as [PartnerRole, ...PartnerRole[]], {
         required_error: "Please select a partner category.",
@@ -194,10 +194,18 @@ export default function AddPartnerPage() {
       const [firstName, ...lastNameParts] = values.fullName.split(' ');
       const lastName = lastNameParts.join(' ');
 
-      const aadharFileUrl = await fileToDataUrl(values.aadharFile);
-      const panFileUrl = await fileToDataUrl(values.panFile);
-      const profileImageUrl = values.profileImage ? await fileToDataUrl(values.profileImage as any) : '';
-      const businessLogoUrl = values.businessLogo ? await fileToDataUrl(values.businessLogo as any) : '';
+      const aadharFileUrl = values.aadharFile ? await fileToDataUrl(values.aadharFile) : '';
+      const panFileUrl = values.panFile ? await fileToDataUrl(values.panFile) : '';
+
+      let profileImageUrl = '';
+      if (values.profileImage) {
+        profileImageUrl = typeof values.profileImage === 'string' ? values.profileImage : await fileToDataUrl(values.profileImage);
+      }
+
+      let businessLogoUrl = '';
+      if (values.businessLogo) {
+        businessLogoUrl = typeof values.businessLogo === 'string' ? values.businessLogo : await fileToDataUrl(values.businessLogo);
+      }
 
       await setDoc(doc(db, "users", userId), {
         id: userId,
@@ -275,6 +283,8 @@ export default function AddPartnerPage() {
 
   const selectedRole = form.watch("role");
   const registrationFee = selectedRole && fees ? fees[selectedRole] : 0;
+  const profileImagePreview = form.watch("profileImage");
+  const businessLogoPreview = form.watch("businessLogo");
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -308,7 +318,7 @@ export default function AddPartnerPage() {
                                         <FormLabel>Profile Image</FormLabel>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="h-20 w-20">
-                                                <AvatarImage src={field.value} />
+                                                <AvatarImage src={profileImagePreview} />
                                                 <AvatarFallback><User/></AvatarFallback>
                                             </Avatar>
                                             <FormControl>
@@ -387,7 +397,7 @@ export default function AddPartnerPage() {
                                         <FormLabel>Business Logo</FormLabel>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="h-20 w-20">
-                                                <AvatarImage src={field.value} />
+                                                <AvatarImage src={businessLogoPreview} />
                                                 <AvatarFallback>Logo</AvatarFallback>
                                             </Avatar>
                                             <FormControl>
@@ -505,3 +515,5 @@ export default function AddPartnerPage() {
     </div>
   )
 }
+
+    
