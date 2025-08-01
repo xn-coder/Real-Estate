@@ -7,8 +7,8 @@ export async function POST(req: NextRequest) {
     try {
         const { amount, merchantTransactionId, merchantUserId, redirectUrl } = await req.json();
 
-        const merchantId = process.env.PHONEPE_MERCHANT_ID;
-        const saltKey = process.env.PHONEPE_SECRET_KEY;
+        const merchantId = process.env.PHONEPE_CLIENT_ID;
+        const saltKey = process.env.PHONEPE_CLIENT_SECRET;
         const saltIndex = 1;
 
         const payload = {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
             amount: amount * 100, // Amount in paisa
             redirectUrl: redirectUrl,
             redirectMode: 'POST',
-            callbackUrl: redirectUrl,
+            callbackUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
             mobileNumber: '9999999999', // A dummy number, as it's required
             paymentInstrument: {
                 type: 'PAY_PAGE',

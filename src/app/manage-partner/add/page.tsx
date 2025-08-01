@@ -243,7 +243,7 @@ export default function AddPartnerPage() {
         aadharFile: aadharFileUrl,
         panNumber: values.panNumber,
         panFile: panFileUrl,
-        paymentStatus: 'paid',
+        paymentStatus: 'pending',
       };
 
       localStorage.setItem(`partner_draft_${userId}`, JSON.stringify(partnerData));
@@ -254,7 +254,7 @@ export default function AddPartnerPage() {
       if (isPaymentEnabled && registrationFee > 0) {
         await handlePayment(registrationFee, userId);
       } else {
-         await setDoc(doc(db, "users", userId), partnerData);
+         await setDoc(doc(db, "users", userId), {...partnerData, paymentStatus: 'not_required' });
          localStorage.removeItem(`partner_draft_${userId}`);
          toast({
           title: "Partner Created",
@@ -278,11 +278,12 @@ export default function AddPartnerPage() {
   const handlePayment = async (amount: number, userId: string) => {
     setPaymentStatus("processing");
     try {
+      const transactionId = `TX_${userId}_${Date.now()}`;
       const response = await axios.post('/api/payment/initiate', {
         amount,
-        merchantTransactionId: `TX_${userId}_${Date.now()}`,
+        merchantTransactionId: transactionId,
         merchantUserId: userId,
-        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback?merchantTransactionId=TX_${userId}_${Date.now()}`,
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/manage-partner?payment_status=success&transaction_id=${transactionId}`,
       });
 
       if (response.data.success) {

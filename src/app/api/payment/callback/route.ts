@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import crypto from 'crypto';
 
@@ -12,33 +12,27 @@ export async function POST(req: NextRequest) {
         const transactionId = formData.get('transactionId');
         const providerReferenceId = formData.get('providerReferenceId');
         
-        const merchantTransactionId = req.nextUrl.searchParams.get('merchantTransactionId');
-        const userId = merchantTransactionId?.split('_')[1];
+        const originalTransactionId = (transactionId as string).split('_').slice(0,3).join('_');
+        const userId = originalTransactionId?.split('_')[1];
 
         if (code === 'PAYMENT_SUCCESS' && userId) {
-            const partnerDataString = localStorage.getItem(`partner_draft_${userId}`);
+            const userDocRef = doc(db, "users", userId);
             
-            if (partnerDataString) {
-                const partnerData = JSON.parse(partnerDataString);
-                
-                await setDoc(doc(db, "users", userId), {
-                    ...partnerData,
-                    paymentDetails: {
-                        transactionId,
-                        providerReferenceId,
-                        status: 'SUCCESS'
-                    }
-                });
+            await updateDoc(userDocRef, {
+                paymentStatus: 'paid',
+                paymentDetails: {
+                    transactionId,
+                    providerReferenceId,
+                    status: 'SUCCESS'
+                }
+            });
 
-                localStorage.removeItem(`partner_draft_${userId}`);
-                
-                // Redirect to a success page
-                return NextResponse.redirect(new URL('/manage-partner?payment=success', req.url));
-            } else {
-                 return NextResponse.redirect(new URL('/manage-partner?payment=failed&reason=nodata', req.url));
-            }
+            localStorage.removeItem(`partner_draft_${userId}`);
+            
+            return NextResponse.redirect(new URL(`/manage-partner?payment=success&tid=${transactionId}`, req.url));
+
         } else {
-            return NextResponse.redirect(new URL('/manage-partner/add?payment=failed', req.url));
+            return NextResponse.redirect(new URL(`/manage-partner/add?payment=failed&reason=payment_failed`, req.url));
         }
 
     } catch (error) {

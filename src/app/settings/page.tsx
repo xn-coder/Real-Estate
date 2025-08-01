@@ -249,7 +249,7 @@ export default function SettingsPage() {
         amount: values.amount,
         merchantTransactionId: `TX_TEST_${Date.now()}`,
         merchantUserId: 'MUID_TEST_USER',
-        redirectUrl: `${window.location.origin}/settings`,
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/settings`,
       });
 
       if (response.data.success) {
@@ -577,5 +577,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-
-    
