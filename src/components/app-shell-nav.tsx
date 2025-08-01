@@ -40,7 +40,6 @@ const navItems = [
   { href: '/schedule', icon: Calendar, label: 'Schedule' },
   { href: '/marketing-kit', icon: MarketingIcon, label: 'Marketing Kits' },
   { href: '/send-message', icon: Send, label: 'Send Message' },
-  { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
   { href: '/onboarding', icon: UserPlus, label: 'Onboarding' },
   { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
   { href: '/manage-lead', icon: UserRound, label: 'Manage Lead' },
