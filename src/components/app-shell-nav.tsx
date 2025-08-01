@@ -11,13 +11,12 @@ import {
 } from '@/components/ui/sidebar'
 import {
   LayoutDashboard,
-  Home,
-  Users,
-  Briefcase,
+  Building,
   UserPlus,
   Handshake,
   UserSquare,
   UserRound,
+  Briefcase,
   Smile,
   UserCheck,
   LifeBuoy,
@@ -26,17 +25,14 @@ import {
   Wallet,
   Trophy,
   Megaphone as MarketingIcon,
-  Calendar,
-  Settings,
-  Send,
-  Building
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/properties', icon: Building, label: 'Properties' },
   { href: '/marketing-kit', icon: MarketingIcon, label: 'Marketing Kits' },
-  { href: '/send-message', icon: Send, label: 'Send Message' },
   { href: '/onboarding', icon: UserPlus, label: 'Onboarding' },
+  { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
   { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
   { href: '/manage-lead', icon: UserRound, label: 'Manage Lead' },
   { href: '/manage-deals', icon: Briefcase, label: 'Manage Deals' },
