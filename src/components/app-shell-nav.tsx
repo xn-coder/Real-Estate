@@ -12,23 +12,11 @@ import {
 import {
   LayoutDashboard,
   Home,
-  Megaphone,
-  Rocket,
-  Handshake,
-  UserSquare,
   Users,
   Briefcase,
-  UserCheck,
-  Globe,
-  LifeBuoy,
-  BookOpen,
-  PanelTop,
-  Wallet,
-  Trophy,
   Calendar,
   Settings,
   User,
-  FileText,
   Mail,
   Megaphone as MarketingIcon,
 } from 'lucide-react'
@@ -40,6 +28,9 @@ const navItems = [
   { href: '/deals', icon: Briefcase, label: 'Deals' },
   { href: '/schedule', icon: Calendar, label: 'Schedule' },
   { href: '/marketing-kit', icon: MarketingIcon, label: 'Marketing Kits' },
+  { href: '/send-message', icon: Mail, label: 'Send Message' },
+  { href: '/profile', icon: User, label: 'My Profile' },
+  { href: '/settings', icon: Settings, label: 'Settings' },
 ]
 
 export function AppShellNav() {
