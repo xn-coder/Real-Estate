@@ -6,6 +6,7 @@ export type User = {
   lastName?: string
   email: string
   phone: string
+  whatsappNumber?: string;
   role: string
   status?: 'active' | 'inactive';
   profileImage?: string;
