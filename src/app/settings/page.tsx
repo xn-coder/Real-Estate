@@ -28,6 +28,8 @@ import type { User } from "@/types/user"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
+import axios from "axios"
+import { useRouter } from "next/navigation"
 
 const permissions = [
   { id: "manageLeads", label: "Manage Leads" },
@@ -78,6 +80,7 @@ type PaymentTestForm = z.infer<typeof paymentTestSchema>
 
 export default function SettingsPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [users, setUsers] = React.useState<User[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -240,22 +243,33 @@ export default function SettingsPage() {
   }
 
   async function onPaymentTestSubmit(values: PaymentTestForm) {
-    setIsTestingPayment(true)
+    setIsTestingPayment(true);
     try {
-        // Simulate API call to PhonePe
-        await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await axios.post('/api/payment/initiate', {
+        amount: values.amount,
+        merchantTransactionId: `TX_TEST_${Date.now()}`,
+        merchantUserId: 'MUID_TEST_USER',
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/settings`, // Redirect back to settings
+      });
+
+      if (response.data.success) {
+        router.push(response.data.data.instrumentResponse.redirectInfo.url);
+      } else {
         toast({
-            title: "Payment Test Successful",
-            description: `A test payment of $${values.amount} was processed successfully.`,
+          variant: "destructive",
+          title: "Payment Test Failed",
+          description: response.data.message || "Could not connect to payment gateway.",
         });
+      }
     } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Payment Test Failed",
-            description: "An unexpected error occurred during the test.",
-        });
+      console.error("Payment test API error:", error);
+      toast({
+        variant: "destructive",
+        title: "Payment Test Error",
+        description: "An unexpected error occurred during the test.",
+      });
     } finally {
-        setIsTestingPayment(false)
+      setIsTestingPayment(false);
     }
   }
 
@@ -270,7 +284,7 @@ export default function SettingsPage() {
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
                 <CardTitle>Payment Gateway Testing</CardTitle>
-                <CardDescription>Use this section to test the simulated payment gateway.</CardDescription>
+                <CardDescription>Use this section to test the PhonePe payment gateway.</CardDescription>
             </div>
             <Landmark className="h-6 w-6 text-muted-foreground" />
         </CardHeader>
@@ -563,5 +577,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-
-    

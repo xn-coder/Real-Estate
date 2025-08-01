@@ -38,6 +38,7 @@ import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import axios from 'axios';
 
 const partnerRoles = {
   'affiliate': 'Affiliate Partner',
@@ -88,10 +89,11 @@ const addPartnerFormStep4Schema = z.object({});
 
 const stepSchemas = [addPartnerFormStep1Schema, addPartnerFormStep2Schema, addPartnerFormStep3Schema, addPartnerFormStep4Schema];
 
-const combinedSchema = addPartnerFormStep1Schema
+const baseCombinedSchema = addPartnerFormStep1Schema
   .merge(addPartnerFormStep2Schema)
-  .merge(addPartnerFormStep3Schema)
-  .refine(data => data.password === data.confirmPassword, {
+  .merge(addPartnerFormStep3Schema);
+
+const combinedSchema = baseCombinedSchema.refine(data => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
     path: ["confirmPassword"],
   });
@@ -155,13 +157,21 @@ export default function AddPartnerPage() {
 
 
   React.useEffect(() => {
-    fetchFees()
-  }, [fetchFees])
+    const values = form.getValues();
+    if (paymentStatus === "success" && values) {
+        handleFinalSubmit(values);
+    }
+  }, [paymentStatus, form])
 
   const handleNextStep = async () => {
     const isValid = await form.trigger();
     if (isValid) {
-      setCurrentStep(prev => prev + 1);
+      if (currentStep === 4) {
+        // This case is for when payment is disabled
+        handleFinalSubmit(form.getValues());
+      } else {
+         setCurrentStep(prev => prev + 1);
+      }
     }
   }
 
@@ -206,8 +216,8 @@ export default function AddPartnerPage() {
       if (values.businessLogo) {
         businessLogoUrl = typeof values.businessLogo === 'string' ? values.businessLogo : await fileToDataUrl(values.businessLogo);
       }
-
-      await setDoc(doc(db, "users", userId), {
+      
+      const partnerData = {
         id: userId,
         name: values.fullName,
         firstName: firstName,
@@ -233,13 +243,26 @@ export default function AddPartnerPage() {
         aadharFile: aadharFileUrl,
         panNumber: values.panNumber,
         panFile: panFileUrl,
-      })
+        paymentStatus: 'paid',
+      };
 
-      toast({
-        title: "Partner Created",
-        description: "New partner account has been created successfully.",
-      })
-      router.push("/manage-partner")
+      localStorage.setItem(`partner_draft_${userId}`, JSON.stringify(partnerData));
+      
+      const selectedRole = form.watch("role");
+      const registrationFee = selectedRole && fees ? fees[selectedRole] : 0;
+
+      if (isPaymentEnabled && registrationFee > 0) {
+        await handlePayment(registrationFee, userId);
+      } else {
+         await setDoc(doc(db, "users", userId), partnerData);
+         localStorage.removeItem(`partner_draft_${userId}`);
+         toast({
+          title: "Partner Created",
+          description: "New partner account has been created successfully.",
+        });
+        router.push("/manage-partner");
+      }
+
     } catch (error) {
       console.error("Error creating partner:", error)
       toast({
@@ -250,41 +273,57 @@ export default function AddPartnerPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }, [toast, router]);
-  
+  }, [toast, router, fees, isPaymentEnabled, form]);
 
-  React.useEffect(() => {
-    if (paymentStatus === "success") {
-        const values = form.getValues();
-        handleFinalSubmit(values);
-    }
-  }, [paymentStatus, form, handleFinalSubmit])
-
-
-  const handlePayment = async () => {
+  const handlePayment = async (amount: number, userId: string) => {
     setPaymentStatus("processing");
-    // Simulate API call to PhonePe
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    // In a real app, you would handle success/failure from the gateway
-    toast({
-        title: "Payment Successful",
-        description: "Your payment was processed successfully. Creating account...",
-    });
-    setPaymentStatus("success");
-  }
+    try {
+      const response = await axios.post('/api/payment/initiate', {
+        amount,
+        merchantTransactionId: `TX_${userId}_${Date.now()}`,
+        merchantUserId: userId,
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback?merchantTransactionId=TX_${userId}_${Date.now()}`,
+      });
+
+      if (response.data.success) {
+        router.push(response.data.data.instrumentResponse.redirectInfo.url);
+      } else {
+        setPaymentStatus("error");
+        toast({
+          variant: "destructive",
+          title: "Payment Initiation Failed",
+          description: response.data.message || "Could not connect to payment gateway.",
+        });
+      }
+    } catch (error) {
+      console.error("Payment API error:", error);
+      setPaymentStatus("error");
+      toast({
+        variant: "destructive",
+        title: "Payment Error",
+        description: "An unexpected error occurred while initiating payment.",
+      });
+    }
+  };
 
 
   async function onSubmit(values: AddPartnerForm) {
-    if (currentStep < 4) {
-        handleNextStep();
-        return;
-    }
+    handleNextStep();
   }
+
+  React.useEffect(() => {
+    fetchFees()
+  }, [fetchFees])
 
   const selectedRole = form.watch("role");
   const registrationFee = selectedRole && fees ? fees[selectedRole] : 0;
   const profileImagePreview = form.watch("profileImage");
   const businessLogoPreview = form.watch("businessLogo");
+  
+  const finalSubmitHandler = () => {
+    const values = form.getValues();
+    handleFinalSubmit(values);
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -318,7 +357,13 @@ export default function AddPartnerPage() {
                                         <FormLabel>Profile Image</FormLabel>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="h-20 w-20">
-                                                <AvatarImage src={profileImagePreview} />
+                                                <AvatarImage src={
+                                                    field.value
+                                                    ? typeof field.value === 'string'
+                                                      ? field.value
+                                                      : URL.createObjectURL(field.value)
+                                                    : undefined
+                                                } />
                                                 <AvatarFallback><User/></AvatarFallback>
                                             </Avatar>
                                             <FormControl>
@@ -328,11 +373,7 @@ export default function AddPartnerPage() {
                                                     onChange={(e) => {
                                                         const file = e.target.files?.[0];
                                                         if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                field.onChange(reader.result as string);
-                                                            };
-                                                            reader.readAsDataURL(file);
+                                                            field.onChange(file);
                                                         }
                                                     }}
                                                     className="hidden"
@@ -397,7 +438,13 @@ export default function AddPartnerPage() {
                                         <FormLabel>Business Logo</FormLabel>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="h-20 w-20">
-                                                <AvatarImage src={businessLogoPreview} />
+                                                <AvatarImage src={
+                                                    field.value
+                                                    ? typeof field.value === 'string'
+                                                      ? field.value
+                                                      : URL.createObjectURL(field.value)
+                                                    : undefined
+                                                } />
                                                 <AvatarFallback>Logo</AvatarFallback>
                                             </Avatar>
                                             <FormControl>
@@ -407,11 +454,7 @@ export default function AddPartnerPage() {
                                                     onChange={(e) => {
                                                         const file = e.target.files?.[0];
                                                         if (file) {
-                                                           const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                field.onChange(reader.result as string);
-                                                            };
-                                                            reader.readAsDataURL(file);
+                                                           field.onChange(file);
                                                         }
                                                     }}
                                                     className="hidden"
@@ -461,7 +504,7 @@ export default function AddPartnerPage() {
                     )}
                     {currentStep === 4 && (
                         <div className="space-y-4 text-center">
-                             {isPaymentEnabled ? (
+                             {isPaymentEnabled && registrationFee > 0 ? (
                                 <>
                                     <h3 className="text-lg font-medium">Complete Your Payment</h3>
                                     <p className="text-muted-foreground">To finalize your registration, please pay the partner fee.</p>
@@ -471,15 +514,6 @@ export default function AddPartnerPage() {
                                             <p className="text-sm text-muted-foreground mt-1">One-time Registration Fee</p>
                                         </CardContent>
                                     </Card>
-                                     <Button 
-                                        type="button" 
-                                        className="w-full" 
-                                        onClick={handlePayment}
-                                        disabled={paymentStatus === 'processing' || paymentStatus === 'success' || isSubmitting}
-                                    >
-                                        {(paymentStatus === 'processing' || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        {isSubmitting ? 'Creating Partner...' : paymentStatus === 'processing' ? 'Processing Payment...' : 'Pay with PhonePe'}
-                                    </Button>
                                 </>
                             ) : (
                                 <div>
@@ -490,8 +524,8 @@ export default function AddPartnerPage() {
                         </div>
                     )}
                     <div className="flex justify-end gap-2 pt-4">
-                        {currentStep > 1 && currentStep < 4 && (
-                            <Button type="button" variant="outline" onClick={handlePrevStep}>
+                        {currentStep > 1 && (
+                            <Button type="button" variant="outline" onClick={handlePrevStep} disabled={isSubmitting || paymentStatus === 'processing'}>
                                 Previous
                             </Button>
                         )}
@@ -501,10 +535,17 @@ export default function AddPartnerPage() {
                                 Next
                             </Button>
                         )}
-                        {currentStep === 4 && !isPaymentEnabled && (
-                             <Button type="button" onClick={() => handleFinalSubmit(form.getValues())} disabled={isSubmitting}>
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Finish & Create Partner
+                         {currentStep === 4 && (
+                            <Button 
+                                type="button" 
+                                onClick={finalSubmitHandler}
+                                disabled={paymentStatus === 'processing' || isSubmitting}
+                            >
+                                {(paymentStatus === 'processing' || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isPaymentEnabled && registrationFee > 0
+                                    ? (isSubmitting ? 'Processing...' : `Pay $${registrationFee}`)
+                                    : (isSubmitting ? 'Creating...' : 'Finish & Create Partner')
+                                }
                             </Button>
                         )}
                     </div>
@@ -515,5 +556,3 @@ export default function AddPartnerPage() {
     </div>
   )
 }
-
-    
