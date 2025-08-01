@@ -50,8 +50,4 @@ export const chartData = [
   { month: "Jun", leads: 25 },
 ];
 
-export const marketingKits = [
-  { id: 'kit1', type: 'Poster', title: 'Luxury Villa Showcase', featureImage: 'https://placehold.co/600x400.png', files: ['villa_poster.pdf', 'villa_images.zip'] },
-  { id: 'kit2', type: 'Brochure', title: 'Downtown Condo Brochure', featureImage: 'https://placehold.co/600x400.png', files: ['condo_brochure.pdf'] },
-  { id: 'kit3', type: 'Poster', title: 'Open House: Sunny Lane', featureImage: 'https://placehold.co/600x400.png', files: ['open_house_poster.png'] },
-];
+export const marketingKits: any[] = [];

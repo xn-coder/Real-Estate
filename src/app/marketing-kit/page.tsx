@@ -33,37 +33,50 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { marketingKits } from "@/lib/data"
 import { Loader2, PlusCircle, Upload, Paperclip, Download } from "lucide-react"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
+import { db } from "@/lib/firebase"
+import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore"
+import { generateUserId } from "@/lib/utils"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure"], {
     required_error: "Please select a kit type.",
   }),
   title: z.string().min(1, { message: "Title is required." }),
-  featureImage: z.any().optional(),
+  featureImage: z.any().refine(file => file, "Feature image is required."),
   files: z.any().optional(),
 })
 
 type MarketingKitForm = z.infer<typeof marketingKitSchema>
 
+type KitFile = {
+    name: string;
+    url: string;
+};
+
 type Kit = {
   id: string;
   title: string;
   type: string;
-  featureImage: string | File;
-  files: File[];
+  featureImage: string;
+  files: KitFile[];
+};
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 };
 
 export default function MarketingKitPage() {
   const { toast } = useToast()
-  const [kits, setKits] = React.useState<Kit[]>(marketingKits.map(k => ({
-    ...k,
-    featureImage: k.featureImage,
-    files: [] // Initially empty, as we don't have the File objects for dummy data
-  })))
+  const [kits, setKits] = React.useState<Kit[]>([])
+  const [isLoadingKits, setIsLoadingKits] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const featureImageRef = React.useRef<HTMLInputElement>(null)
@@ -75,19 +88,55 @@ export default function MarketingKitPage() {
       title: "",
     },
   })
+  
+  const fetchKits = React.useCallback(async () => {
+    setIsLoadingKits(true)
+    try {
+      const kitsCollection = collection(db, "marketing_kits")
+      const kitsSnapshot = await getDocs(kitsCollection)
+      const kitsList = kitsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Kit))
+      setKits(kitsList)
+    } catch (error) {
+      console.error("Error fetching kits:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch marketing kits.",
+      })
+    } finally {
+      setIsLoadingKits(false)
+    }
+  }, [toast])
 
-  function onSubmit(values: MarketingKitForm) {
+  React.useEffect(() => {
+    fetchKits()
+  }, [fetchKits])
+
+
+  async function onSubmit(values: MarketingKitForm) {
     setIsSubmitting(true)
-    // Simulate API call
-    setTimeout(() => {
-      const newKit: Kit = {
-        id: `kit${kits.length + 1}`,
-        title: values.title,
-        type: values.kitType === "poster" ? "Poster" : "Brochure",
-        featureImage: values.featureImage,
-        files: values.files ? Array.from(values.files as FileList) : []
-      }
-      setKits(prev => [...prev, newKit])
+    try {
+        const featureImageUrl = await fileToDataUrl(values.featureImage);
+        
+        let fileUrls: KitFile[] = [];
+        if (values.files && values.files.length > 0) {
+            fileUrls = await Promise.all(
+                Array.from(values.files as FileList).map(async (file) => ({
+                    name: file.name,
+                    url: await fileToDataUrl(file),
+                }))
+            );
+        }
+
+        const kitId = generateUserId("KIT");
+        await setDoc(doc(db, "marketing_kits", kitId), {
+            id: kitId,
+            title: values.title,
+            type: values.kitType === "poster" ? "Poster" : "Brochure",
+            featureImage: featureImageUrl,
+            files: fileUrls,
+        });
+
       setIsSubmitting(false)
       setIsDialogOpen(false)
       form.reset()
@@ -97,7 +146,16 @@ export default function MarketingKitPage() {
         title: "Marketing Kit Created",
         description: "Your new marketing kit has been added successfully.",
       })
-    }, 1000)
+      fetchKits();
+    } catch(error) {
+        console.error("Error creating kit:", error)
+        toast({
+            variant: "destructive",
+            title: "Creation Error",
+            description: "An unexpected error occurred. Please try again.",
+        })
+        setIsSubmitting(false)
+    }
   }
 
   const handleDownload = (kit: Kit) => {
@@ -112,23 +170,16 @@ export default function MarketingKitPage() {
 
     kit.files.forEach(file => {
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(file);
+      link.href = file.url;
       link.download = file.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
     });
   };
 
   const featureImage = form.watch("featureImage")
   const uploadedFiles = form.watch("files")
-
-  const getFeatureImageUrl = (image: string | File) => {
-    if (typeof image === 'string') return image;
-    if (image instanceof File) return URL.createObjectURL(image);
-    return 'https://placehold.co/600x400.png';
-  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -267,33 +318,52 @@ export default function MarketingKitPage() {
           </DialogContent>
         </Dialog>
       </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {kits.map((kit) => (
-          <Card key={kit.id}>
-            <CardHeader className="p-0">
-              <Image
-                src={getFeatureImageUrl(kit.featureImage)}
-                alt={kit.title}
-                width={600}
-                height={400}
-                className="rounded-t-lg object-cover aspect-video"
-                data-ai-hint="marketing material"
-              />
-            </CardHeader>
-            <CardContent className="p-4">
-              <Badge variant="secondary" className="mb-2">{kit.type}</Badge>
-              <CardTitle className="text-xl">{kit.title}</CardTitle>
-            </CardContent>
-            <CardFooter className="p-4 pt-0">
-                <Button variant="outline" className="w-full" onClick={() => handleDownload(kit)}>
-                    <Download className="mr-2 h-4 w-4"/>
-                    Download Kit
-                </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      
+      {isLoadingKits ? (
+         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+                <Card key={i}>
+                    <CardHeader className="p-0">
+                        <div className="bg-muted rounded-t-lg aspect-video"></div>
+                    </CardHeader>
+                     <CardContent className="p-4">
+                        <div className="h-5 w-20 rounded-md bg-muted mb-2"></div>
+                        <div className="h-6 w-4/5 rounded-md bg-muted"></div>
+                    </CardContent>
+                    <CardFooter className="p-4 pt-0">
+                        <div className="h-10 w-full rounded-md bg-muted"></div>
+                    </CardFooter>
+                </Card>
+            ))}
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {kits.map((kit) => (
+            <Card key={kit.id}>
+                <CardHeader className="p-0">
+                <Image
+                    src={kit.featureImage}
+                    alt={kit.title}
+                    width={600}
+                    height={400}
+                    className="rounded-t-lg object-cover aspect-video"
+                    data-ai-hint="marketing material"
+                />
+                </CardHeader>
+                <CardContent className="p-4">
+                <Badge variant="secondary" className="mb-2">{kit.type}</Badge>
+                <CardTitle className="text-xl">{kit.title}</CardTitle>
+                </CardContent>
+                <CardFooter className="p-4 pt-0">
+                    <Button variant="outline" className="w-full" onClick={() => handleDownload(kit)}>
+                        <Download className="mr-2 h-4 w-4"/>
+                        Download Kit
+                    </Button>
+                </CardFooter>
+            </Card>
+            ))}
+        </div>
+      )}
     </div>
   )
 }
