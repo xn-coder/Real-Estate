@@ -25,4 +25,7 @@ export type User = {
   panNumber?: string;
   panFile?: string;
   permissions?: string[];
+  paymentStatus?: 'paid' | 'pending' | 'pending_approval' | 'not_required' | 'failed';
+  paymentProof?: string;
+  paymentTransactionId?: string;
 }

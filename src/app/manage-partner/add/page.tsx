@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Upload, CalendarIcon, User, ArrowLeft } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Upload, CalendarIcon, User, ArrowLeft, Paperclip } from "lucide-react"
 import {
   Form,
   FormControl,
@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, doc, setDoc, query, where, getDoc } from "firebase/firestore"
+import { collection, getDocs, doc, setDoc, query, where, getDoc, updateDoc } from "firebase/firestore"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -36,7 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import axios from 'axios';
 
@@ -84,25 +84,45 @@ const addPartnerFormStep3Schema = z.object({
     panFile: z.any().refine(file => file, "PAN card is required."),
 })
 
-const addPartnerFormStep4Schema = z.object({});
+const addPartnerFormStep4GatewaySchema = z.object({});
 
+const addPartnerFormStep4ManualSchema = z.object({
+    paymentProof: z.any().refine(file => file, "Payment proof is required."),
+    transactionId: z.string().min(1, "Transaction ID is required."),
+});
 
-const stepSchemas = [addPartnerFormStep1Schema, addPartnerFormStep2Schema, addPartnerFormStep3Schema, addPartnerFormStep4Schema];
+const isPaymentGatewayEnabled = process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_ENABLED === 'true';
+
+const stepSchemas = [
+    addPartnerFormStep1Schema, 
+    addPartnerFormStep2Schema, 
+    addPartnerFormStep3Schema, 
+    isPaymentGatewayEnabled ? addPartnerFormStep4GatewaySchema : addPartnerFormStep4ManualSchema
+];
 
 const baseCombinedSchema = addPartnerFormStep1Schema
   .merge(addPartnerFormStep2Schema)
   .merge(addPartnerFormStep3Schema);
 
-const combinedSchema = baseCombinedSchema.refine(data => data.password === data.confirmPassword, {
+const combinedSchema = isPaymentGatewayEnabled
+  ? baseCombinedSchema
+  : baseCombinedSchema.merge(addPartnerFormStep4ManualSchema);
+
+
+const finalSchema = combinedSchema.refine(data => data.password === data.confirmPassword, {
     message: "Passwords do not match.",
     path: ["confirmPassword"],
-  });
+});
 
-type AddPartnerForm = z.infer<typeof combinedSchema>;
+type AddPartnerForm = z.infer<typeof finalSchema>;
 
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = reject;
@@ -114,14 +134,15 @@ const fileToDataUrl = (file: File): Promise<string> => {
 export default function AddPartnerPage() {
   const { toast } = useToast()
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [currentStep, setCurrentStep] = React.useState(1);
   const [fees, setFees] = React.useState<Record<string, number> | null>(null);
   const [paymentStatus, setPaymentStatus] = React.useState<"idle" | "processing" | "success" | "error">("idle");
-  const isPaymentEnabled = process.env.NEXT_PUBLIC_PHONEPE_PAYMENT_ENABLED === 'true';
+  const isPaymentEnabled = process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_ENABLED === 'true';
 
   const form = useForm<AddPartnerForm>({
-    resolver: zodResolver(stepSchemas[currentStep - 1]),
+    resolver: zodResolver(finalSchema),
     defaultValues: {
       fullName: "",
       email: "",
@@ -138,6 +159,7 @@ export default function AddPartnerPage() {
       areaCovered: "",
       aadharNumber: "",
       panNumber: "",
+      transactionId: "",
     },
     mode: "onChange"
   })
@@ -155,23 +177,22 @@ export default function AddPartnerPage() {
     }
   }, []);
 
-
   React.useEffect(() => {
-    const values = form.getValues();
-    if (paymentStatus === "success" && values) {
-        handleFinalSubmit(values);
-    }
-  }, [paymentStatus, form])
+    fetchFees()
+  }, [fetchFees])
 
   const handleNextStep = async () => {
-    const isValid = await form.trigger();
+    // Only trigger validation for the fields in the current step
+    const currentStepSchema = stepSchemas[currentStep - 1];
+    const fieldsToValidate = Object.keys(currentStepSchema.shape) as (keyof AddPartnerForm)[];
+    const isValid = await form.trigger(fieldsToValidate);
+    
     if (isValid) {
-      if (currentStep === 4) {
-        // This case is for when payment is disabled
-        handleFinalSubmit(form.getValues());
-      } else {
-         setCurrentStep(prev => prev + 1);
-      }
+        if (currentStep === 4) {
+            handleFinalSubmit(form.getValues());
+        } else {
+            setCurrentStep(prev => prev + 1);
+        }
     }
   }
 
@@ -180,99 +201,95 @@ export default function AddPartnerPage() {
   }
 
   const handleFinalSubmit = React.useCallback(async (values: AddPartnerForm) => {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      const usersRef = collection(db, "users")
-      const q = query(usersRef, where("email", "==", values.email))
-      const querySnapshot = await getDocs(q)
+        const usersRef = collection(db, "users")
+        const q = query(usersRef, where("email", "==", values.email))
+        const querySnapshot = await getDocs(q)
 
-      if (!querySnapshot.empty) {
-        toast({
-          variant: "destructive",
-          title: "Creation Failed",
-          description: "An account with this email already exists.",
-        })
-        setIsSubmitting(false)
-        return;
-      }
-      
-      const salt = await bcrypt.genSalt(10)
-      const hashedPassword = await bcrypt.hash(values.password, salt)
-      const prefix = 'P' + values.role.substring(0, 2).toUpperCase();
-      const userId = generateUserId(prefix)
-      
-      const [firstName, ...lastNameParts] = values.fullName.split(' ');
-      const lastName = lastNameParts.join(' ');
+        if (!querySnapshot.empty) {
+            toast({
+            variant: "destructive",
+            title: "Creation Failed",
+            description: "An account with this email already exists.",
+            })
+            setIsSubmitting(false)
+            return;
+        }
+        
+        const salt = await bcrypt.genSalt(10)
+        const hashedPassword = await bcrypt.hash(values.password, salt)
+        const prefix = 'P' + values.role.substring(0, 2).toUpperCase();
+        const userId = generateUserId(prefix);
 
-      const aadharFileUrl = values.aadharFile ? await fileToDataUrl(values.aadharFile) : '';
-      const panFileUrl = values.panFile ? await fileToDataUrl(values.panFile) : '';
+        const partnerDataBase = {
+            id: userId,
+            name: values.fullName,
+            firstName: values.fullName.split(' ')[0],
+            lastName: values.fullName.split(' ').slice(1).join(' '),
+            email: values.email,
+            phone: values.phone,
+            password: hashedPassword,
+            role: values.role,
+            profileImage: values.profileImage ? (typeof values.profileImage === 'string' ? values.profileImage : await fileToDataUrl(values.profileImage)) : '',
+            dob: values.dob,
+            gender: values.gender,
+            qualification: values.qualification,
+            address: values.address,
+            city: values.city,
+            state: values.state,
+            pincode: values.pincode,
+            businessLogo: values.businessLogo ? (typeof values.businessLogo === 'string' ? values.businessLogo : await fileToDataUrl(values.businessLogo)) : '',
+            businessType: values.businessType,
+            gstn: values.gstn,
+            businessAge: values.businessAge,
+            areaCovered: values.areaCovered,
+            aadharNumber: values.aadharNumber,
+            aadharFile: values.aadharFile ? await fileToDataUrl(values.aadharFile) : '',
+            panNumber: values.panNumber,
+            panFile: values.panFile ? await fileToDataUrl(values.panFile) : '',
+        };
 
-      let profileImageUrl = '';
-      if (values.profileImage) {
-        profileImageUrl = typeof values.profileImage === 'string' ? values.profileImage : await fileToDataUrl(values.profileImage);
-      }
+        const selectedRole = form.watch("role");
+        const registrationFee = selectedRole && fees ? fees[selectedRole] : 0;
 
-      let businessLogoUrl = '';
-      if (values.businessLogo) {
-        businessLogoUrl = typeof values.businessLogo === 'string' ? values.businessLogo : await fileToDataUrl(values.businessLogo);
-      }
-      
-      const partnerData = {
-        id: userId,
-        name: values.fullName,
-        firstName: firstName,
-        lastName: lastName,
-        email: values.email,
-        phone: values.phone,
-        password: hashedPassword,
-        role: values.role,
-        profileImage: profileImageUrl,
-        dob: values.dob,
-        gender: values.gender,
-        qualification: values.qualification,
-        address: values.address,
-        city: values.city,
-        state: values.state,
-        pincode: values.pincode,
-        businessLogo: businessLogoUrl,
-        businessType: values.businessType,
-        gstn: values.gstn,
-        businessAge: values.businessAge,
-        areaCovered: values.areaCovered,
-        aadharNumber: values.aadharNumber,
-        aadharFile: aadharFileUrl,
-        panNumber: values.panNumber,
-        panFile: panFileUrl,
-        paymentStatus: 'pending',
-      };
-
-      await setDoc(doc(db, "users", userId), partnerData);
-      
-      const selectedRole = form.watch("role");
-      const registrationFee = selectedRole && fees ? fees[selectedRole] : 0;
-
-      if (isPaymentEnabled && registrationFee > 0) {
-        await handlePayment(registrationFee, userId);
-      } else {
-         await updateDoc(doc(db, "users", userId), {paymentStatus: 'not_required' });
-         toast({
-          title: "Partner Created",
-          description: "New partner account has been created successfully.",
-        });
-        router.push("/manage-partner");
-      }
+        if (isPaymentEnabled && registrationFee > 0) {
+            await setDoc(doc(db, "users", userId), { ...partnerDataBase, paymentStatus: 'pending' });
+            await handlePayment(registrationFee, userId);
+        } else if (!isPaymentEnabled && registrationFee > 0) {
+            const paymentProofUrl = values.paymentProof ? await fileToDataUrl(values.paymentProof) : '';
+            await setDoc(doc(db, "users", userId), {
+                ...partnerDataBase,
+                paymentStatus: 'pending_approval',
+                paymentProof: paymentProofUrl,
+                paymentTransactionId: values.transactionId,
+            });
+             toast({
+                title: "Registration Submitted",
+                description: "Your registration is under review and will be approved shortly.",
+            });
+            router.push("/manage-partner");
+        } else {
+            await setDoc(doc(db, "users", userId), { ...partnerDataBase, paymentStatus: 'not_required' });
+            toast({
+                title: "Partner Created",
+                description: "New partner account has been created successfully.",
+            });
+            router.push("/manage-partner");
+        }
 
     } catch (error) {
-      console.error("Error creating partner:", error)
-      toast({
-        variant: "destructive",
-        title: "Creation Error",
-        description: "An unexpected error occurred. Please try again.",
-      })
+        console.error("Error creating partner:", error)
+        toast({
+            variant: "destructive",
+            title: "Creation Error",
+            description: "An unexpected error occurred. Please try again.",
+        })
     } finally {
-      setIsSubmitting(false)
+        setIsSubmitting(false)
     }
   }, [toast, router, fees, isPaymentEnabled, form]);
+
 
   const handlePayment = async (amount: number, userId: string) => {
     setPaymentStatus("processing");
@@ -282,7 +299,7 @@ export default function AddPartnerPage() {
         amount,
         merchantTransactionId: transactionId,
         merchantUserId: userId,
-        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/manage-partner/add?payment_status=success&transaction_id=${transactionId}`,
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/manage-partner?payment=success&tid=${transactionId}`,
       });
 
       if (response.data.success) {
@@ -307,23 +324,15 @@ export default function AddPartnerPage() {
   };
 
 
-  async function onSubmit(values: AddPartnerForm) {
+  async function onSubmit() {
     handleNextStep();
   }
 
-  React.useEffect(() => {
-    fetchFees()
-  }, [fetchFees])
-
   const selectedRole = form.watch("role");
   const registrationFee = selectedRole && fees ? fees[selectedRole] : 0;
-  const profileImagePreview = form.watch("profileImage");
-  const businessLogoPreview = form.watch("businessLogo");
   
-  const finalSubmitHandler = () => {
-    const values = form.getValues();
-    handleFinalSubmit(values);
-  }
+  const paymentProofPreview = form.watch("paymentProof");
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -346,7 +355,7 @@ export default function AddPartnerPage() {
             </CardHeader>
             <CardContent>
                 <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-4">
                     {currentStep === 1 && (
                         <div className="space-y-4">
                             <FormField
@@ -470,7 +479,7 @@ export default function AddPartnerPage() {
                                 )}
                             />
                             <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem> <FormLabel>Business Type</FormLabel> <FormControl><Input placeholder="e.g., Real Estate Agency" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="role" render={({ field }) => ( <FormItem> <FormLabel>Partner Category</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select a partner category"/></SelectTrigger></FormControl> <SelectContent> {Object.entries(partnerRoles).map(([key, value]) => ( <SelectItem key={key} value={key}>{value}</SelectItem> ))} </SelectContent> </Select> {selectedRole && fees && <FormDescription>Registration Fee: ${fees[selectedRole].toLocaleString()}</FormDescription>} <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="role" render={({ field }) => ( <FormItem> <FormLabel>Partner Category</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select a partner category"/></SelectTrigger></FormControl> <SelectContent> {Object.entries(partnerRoles).map(([key, value]) => ( <SelectItem key={key} value={key}>{value}</SelectItem> ))} </SelectContent> </Select> {selectedRole && fees && registrationFee > 0 && <FormDescription>Registration Fee: ${fees[selectedRole].toLocaleString()}</FormDescription>} <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="gstn" render={({ field }) => ( <FormItem> <FormLabel>GSTN (Optional)</FormLabel> <FormControl><Input placeholder="Your GST Number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name="businessAge" render={({ field }) => ( <FormItem> <FormLabel>Age of Business (Years)</FormLabel> <FormControl><Input type="number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -517,8 +526,26 @@ export default function AddPartnerPage() {
                                 </>
                             ) : (
                                 <div>
-                                    <h3 className="text-lg font-medium">Registration Complete</h3>
-                                    <p className="text-muted-foreground">Click below to create the partner account.</p>
+                                    <h3 className="text-lg font-medium">Submit Payment Proof</h3>
+                                    <p className="text-muted-foreground mb-4">Please upload your payment proof for verification.</p>
+                                    <div className="space-y-4 text-left">
+                                        <FormField control={form.control} name="transactionId" render={({ field }) => ( <FormItem> <FormLabel>Transaction ID</FormLabel> <FormControl><Input placeholder="Enter the transaction ID" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={form.control} name="paymentProof" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Upload Proof (PDF/Image)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="file" accept="image/*,application/pdf" onChange={(e) => field.onChange(e.target.files?.[0])} />
+                                                </FormControl>
+                                                {paymentProofPreview && (
+                                                    <div className="text-sm text-muted-foreground pt-2 flex items-center gap-2">
+                                                        <Paperclip className="h-4 w-4"/>
+                                                        <span>{paymentProofPreview.name}</span>
+                                                    </div>
+                                                )}
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -530,7 +557,7 @@ export default function AddPartnerPage() {
                             </Button>
                         )}
                          {currentStep < 4 && (
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="button" onClick={handleNextStep} disabled={isSubmitting}>
                                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 Next
                             </Button>
@@ -538,13 +565,13 @@ export default function AddPartnerPage() {
                          {currentStep === 4 && (
                             <Button 
                                 type="button" 
-                                onClick={finalSubmitHandler}
+                                onClick={() => handleFinalSubmit(form.getValues())}
                                 disabled={paymentStatus === 'processing' || isSubmitting}
                             >
                                 {(paymentStatus === 'processing' || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {isPaymentEnabled && registrationFee > 0
                                     ? (isSubmitting ? 'Processing...' : `Pay $${registrationFee}`)
-                                    : (isSubmitting ? 'Creating...' : 'Finish & Create Partner')
+                                    : (isSubmitting ? 'Submitting...' : 'Finish & Submit for Review')
                                 }
                             </Button>
                         )}
