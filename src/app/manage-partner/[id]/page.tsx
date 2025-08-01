@@ -220,7 +220,10 @@ export default function PartnerProfilePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
-                        <p><strong className="font-medium">Status:</strong> <Badge variant={partner.paymentStatus === 'paid' ? 'default' : 'secondary'} className="capitalize">{partner.paymentStatus?.replace('_', ' ')}</Badge></p>
+                        <div className="flex items-center gap-2">
+                           <strong className="font-medium">Status:</strong>
+                           <Badge variant={partner.paymentStatus === 'paid' ? 'default' : 'secondary'} className="capitalize">{partner.paymentStatus?.replace('_', ' ')}</Badge>
+                        </div>
                         {partner.paymentTransactionId && <p><strong className="font-medium">Transaction ID:</strong> {partner.paymentTransactionId}</p>}
                         {partner.paymentProof && (
                              <Button variant="link" asChild className="p-0 h-auto">
