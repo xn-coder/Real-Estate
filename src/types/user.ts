@@ -8,7 +8,7 @@ export type User = {
   phone: string
   whatsappNumber?: string;
   role: string
-  status?: 'active' | 'inactive';
+  status?: 'active' | 'inactive' | 'pending_approval' | 'rejected';
   profileImage?: string;
   dob?: Date;
   gender?: "male" | "female" | "other";
@@ -32,4 +32,5 @@ export type User = {
   paymentTransactionId?: string;
   deactivationReason?: string;
   reactivationReason?: string;
+  rejectionReason?: string;
 }

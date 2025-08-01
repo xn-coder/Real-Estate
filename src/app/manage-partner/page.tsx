@@ -21,12 +21,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 const partnerRoles = {
   'affiliate': 'Affiliate Partner',
@@ -55,6 +65,10 @@ export default function ManagePartnerPage() {
   const router = useRouter();
   const [partners, setPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
+  const [isDeactivating, setIsDeactivating] = React.useState(false)
+  const [deactivationReason, setDeactivationReason] = React.useState("")
+  const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = React.useState(false)
 
   const fetchPartners = React.useCallback(async () => {
     setIsLoading(true)
@@ -81,17 +95,36 @@ export default function ManagePartnerPage() {
     fetchPartners()
   }, [fetchPartners])
 
-  const handleDeactivate = async (partnerId: string) => {
+  const handleDeactivateClick = (partner: PartnerUser) => {
+    setSelectedPartner(partner);
+    setIsDeactivationDialogOpen(true);
+  };
+
+  const handleDeactivate = async () => {
+    if (!selectedPartner || !deactivationReason.trim()) {
+      toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Deactivation reason is required.",
+      });
+      return;
+    }
+    
+    setIsDeactivating(true);
     try {
-        const partnerDocRef = doc(db, "users", partnerId);
+        const partnerDocRef = doc(db, "users", selectedPartner.id);
         await updateDoc(partnerDocRef, {
-            status: 'inactive'
+            status: 'inactive',
+            deactivationReason: deactivationReason.trim(),
         });
         toast({
             title: "Partner Deactivated",
             description: "The partner has been successfully deactivated.",
         });
         fetchPartners(); // Refresh the list
+        setIsDeactivationDialogOpen(false);
+        setDeactivationReason("");
+        setSelectedPartner(null);
     } catch (error) {
         console.error("Error deactivating partner:", error);
         toast({
@@ -99,6 +132,8 @@ export default function ManagePartnerPage() {
             title: "Error",
             description: "Failed to deactivate partner.",
         });
+    } finally {
+      setIsDeactivating(false);
     }
   };
 
@@ -172,7 +207,7 @@ export default function ManagePartnerPage() {
                         Send Message
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => handleDeactivate(partner.id)} className="text-destructive">
+                      <DropdownMenuItem onSelect={() => handleDeactivateClick(partner)} className="text-destructive">
                         <UserX className="mr-2 h-4 w-4" />
                         Deactivate
                       </DropdownMenuItem>
@@ -184,6 +219,41 @@ export default function ManagePartnerPage() {
           </TableBody>
         </Table>
       </div>
+
+       <Dialog open={isDeactivationDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsDeactivationDialogOpen(false);
+            setSelectedPartner(null);
+            setDeactivationReason("");
+          }
+        }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate Partner</DialogTitle>
+            <DialogDescription>
+              Provide a reason for deactivating {selectedPartner?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="reason">Deactivation Reason</Label>
+              <Textarea
+                id="reason"
+                placeholder="Type reason here..."
+                value={deactivationReason}
+                onChange={(e) => setDeactivationReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeactivationDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleDeactivate} disabled={isDeactivating} variant="destructive">
+              {isDeactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Deactivate Partner
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
