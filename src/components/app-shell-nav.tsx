@@ -33,7 +33,7 @@ import {
   Laptop,
   Wallet,
   Trophy,
-  MarketingIcon,
+  ShoppingBag,
   ChevronDown,
   UserX,
   UserCog,
@@ -42,7 +42,7 @@ import {
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/properties', icon: Building, label: 'Properties' },
-  { href: '/marketing-kit', icon: MarketingIcon, label: 'Marketing Kits' },
+  { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
   { href: '/onboarding', icon: UserPlus, label: 'Onboarding' },
 ]
 
