@@ -115,6 +115,8 @@ export default function AddPartnerPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [currentStep, setCurrentStep] = React.useState(1);
   const [fees, setFees] = React.useState<Record<string, number> | null>(null);
+  const [paymentStatus, setPaymentStatus] = React.useState<"idle" | "processing" | "success" | "error">("idle");
+  const isPaymentEnabled = process.env.NEXT_PUBLIC_PHONEPE_PAYMENT_ENABLED === 'true';
 
   const form = useForm<AddPartnerForm>({
     resolver: zodResolver(stepSchemas[currentStep - 1]),
@@ -167,12 +169,7 @@ export default function AddPartnerPage() {
     setCurrentStep(prev => prev - 1);
   }
 
-  async function onSubmit(values: AddPartnerForm) {
-    if (currentStep < 4) {
-        handleNextStep();
-        return;
-    }
-    
+  const handleFinalSubmit = React.useCallback(async (values: AddPartnerForm) => {
     setIsSubmitting(true)
     try {
       const usersRef = collection(db, "users")
@@ -244,6 +241,35 @@ export default function AddPartnerPage() {
       })
     } finally {
       setIsSubmitting(false)
+    }
+  }, [toast, router]);
+  
+
+  React.useEffect(() => {
+    if (paymentStatus === "success") {
+        const values = form.getValues();
+        handleFinalSubmit(values);
+    }
+  }, [paymentStatus, form, handleFinalSubmit])
+
+
+  const handlePayment = async () => {
+    setPaymentStatus("processing");
+    // Simulate API call to PhonePe
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    // In a real app, you would handle success/failure from the gateway
+    toast({
+        title: "Payment Successful",
+        description: "Your payment was processed successfully. Creating account...",
+    });
+    setPaymentStatus("success");
+  }
+
+
+  async function onSubmit(values: AddPartnerForm) {
+    if (currentStep < 4) {
+        handleNextStep();
+        return;
     }
   }
 
@@ -425,30 +451,52 @@ export default function AddPartnerPage() {
                     )}
                     {currentStep === 4 && (
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-medium">Complete Your Payment</h3>
-                            <p className="text-muted-foreground">To finalize your registration, please pay the partner fee.</p>
-                            <Card>
-                                <CardContent className="p-6">
-                                    <div className="text-4xl font-bold">${registrationFee?.toLocaleString()}</div>
-                                    <p className="text-sm text-muted-foreground mt-1">One-time Registration Fee</p>
-                                </CardContent>
-                            </Card>
-                            <Button type="button" className="w-full" onClick={() => alert("Redirecting to payment gateway...")}>
-                                Pay Now
-                            </Button>
-                            <p className="text-xs text-muted-foreground">Payment Gateway Placeholder</p>
+                             {isPaymentEnabled ? (
+                                <>
+                                    <h3 className="text-lg font-medium">Complete Your Payment</h3>
+                                    <p className="text-muted-foreground">To finalize your registration, please pay the partner fee.</p>
+                                    <Card>
+                                        <CardContent className="p-6">
+                                            <div className="text-4xl font-bold">${registrationFee?.toLocaleString()}</div>
+                                            <p className="text-sm text-muted-foreground mt-1">One-time Registration Fee</p>
+                                        </CardContent>
+                                    </Card>
+                                     <Button 
+                                        type="button" 
+                                        className="w-full" 
+                                        onClick={handlePayment}
+                                        disabled={paymentStatus === 'processing' || paymentStatus === 'success' || isSubmitting}
+                                    >
+                                        {(paymentStatus === 'processing' || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {isSubmitting ? 'Creating Partner...' : paymentStatus === 'processing' ? 'Processing Payment...' : 'Pay with PhonePe'}
+                                    </Button>
+                                </>
+                            ) : (
+                                <div>
+                                    <h3 className="text-lg font-medium">Registration Complete</h3>
+                                    <p className="text-muted-foreground">Click below to create the partner account.</p>
+                                </div>
+                            )}
                         </div>
                     )}
                     <div className="flex justify-end gap-2 pt-4">
-                        {currentStep > 1 && (
+                        {currentStep > 1 && currentStep < 4 && (
                             <Button type="button" variant="outline" onClick={handlePrevStep}>
                                 Previous
                             </Button>
                         )}
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {isSubmitting ? 'Creating...' : currentStep === 4 ? 'Finish & Create Partner' : 'Next'}
-                        </Button>
+                         {currentStep < 4 && (
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Next
+                            </Button>
+                        )}
+                        {currentStep === 4 && !isPaymentEnabled && (
+                             <Button type="button" onClick={() => handleFinalSubmit(form.getValues())} disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Finish & Create Partner
+                            </Button>
+                        )}
                     </div>
                 </form>
                 </Form>
