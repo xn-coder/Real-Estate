@@ -34,10 +34,6 @@ import {
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/listings', icon: Building, label: 'Listings' },
-  { href: '/leads', icon: Users, label: 'Leads' },
-  { href: '/deals', icon: Briefcase, label: 'Deals' },
-  { href: '/schedule', icon: Calendar, label: 'Schedule' },
   { href: '/marketing-kit', icon: MarketingIcon, label: 'Marketing Kits' },
   { href: '/send-message', icon: Send, label: 'Send Message' },
   { href: '/onboarding', icon: UserPlus, label: 'Onboarding' },
