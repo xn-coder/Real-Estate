@@ -4,7 +4,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -122,17 +122,9 @@ export default function PartnerProfilePage() {
                     <p className="text-muted-foreground">Partner ID: {partner.id}</p>
                 </div>
                 <div className="flex gap-2">
-                     <Button>
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Send Message
-                    </Button>
-                     <Button variant="outline">
-                        <Smartphone className="mr-2 h-4 w-4" />
-                        WhatsApp
-                    </Button>
-                     <Button variant="outline">
-                        <Phone className="mr-2 h-4 w-4" />
-                        Call Now
+                     <Button variant="outline" size="icon">
+                        <MessageSquare className="h-4 w-4" />
+                        <span className="sr-only">Send Message</span>
                     </Button>
                 </div>
             </CardContent>
@@ -199,6 +191,34 @@ export default function PartnerProfilePage() {
                 </div>
             </CardContent>
         </Card>
+
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Send Message
+                </Button>
+                <Button variant="outline">
+                    <Smartphone className="mr-2 h-4 w-4" />
+                    WhatsApp
+                </Button>
+                <Button variant="outline">
+                    <Phone className="mr-2 h-4 w-4" />
+                    Call Now
+                </Button>
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <Button variant="secondary">
+                    <FileQuestion className="mr-2 h-4 w-4" />
+                    View Enquiries
+                </Button>
+                <Button variant="secondary">
+                    <Users className="mr-2 h-4 w-4" />
+                    Manage Customer
+                </Button>
+            </div>
+        </div>
+
     </div>
   )
 }
