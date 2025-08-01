@@ -87,9 +87,6 @@ const addPartnerFormStep1Schema = z.object({
   city: z.string().min(1, "City is required."),
   state: z.string().min(1, "State is required."),
   pincode: z.string().min(6, "Please enter a valid pincode."),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords do not match.",
-  path: ["confirmPassword"],
 });
 
 const addPartnerFormStep2Schema = z.object({
@@ -110,7 +107,13 @@ const addPartnerFormStep3Schema = z.object({
     panFile: z.any().refine(file => file, "PAN card is required."),
 })
 
-const combinedSchema = addPartnerFormStep1Schema.merge(addPartnerFormStep2Schema).merge(addPartnerFormStep3Schema);
+const combinedSchema = addPartnerFormStep1Schema
+    .merge(addPartnerFormStep2Schema)
+    .merge(addPartnerFormStep3Schema)
+    .refine(data => data.password === data.confirmPassword, {
+        message: "Passwords do not match.",
+        path: ["confirmPassword"],
+    });
 
 type AddPartnerForm = z.infer<typeof combinedSchema>;
 
@@ -145,7 +148,8 @@ export default function ManagePartnerPage() {
     resolver: zodResolver(
         currentStep === 1 ? addPartnerFormStep1Schema :
         currentStep === 2 ? addPartnerFormStep2Schema :
-        addPartnerFormStep3Schema
+        currentStep === 3 ? addPartnerFormStep3Schema :
+        combinedSchema
     ),
     defaultValues: {
       fullName: "",
@@ -219,7 +223,10 @@ export default function ManagePartnerPage() {
 
   async function onSubmit(values: AddPartnerForm) {
     if (currentStep < 4) {
-        handleNextStep();
+        const isValid = await form.trigger();
+        if (isValid) {
+          setCurrentStep(prev => prev + 1);
+        }
         return;
     }
     
