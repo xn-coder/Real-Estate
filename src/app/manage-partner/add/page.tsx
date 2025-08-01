@@ -104,17 +104,17 @@ const baseCombinedSchema = addPartnerFormStep1Schema
   .merge(addPartnerFormStep2Schema)
   .merge(addPartnerFormStep3Schema);
 
-const combinedSchema = isPaymentGatewayEnabled
-  ? baseCombinedSchema
-  : baseCombinedSchema.merge(addPartnerFormStep4ManualSchema);
-
-
-const finalSchema = combinedSchema.refine(data => data.password === data.confirmPassword, {
-    message: "Passwords do not match.",
-    path: ["confirmPassword"],
+const combinedSchema = (
+  isPaymentGatewayEnabled
+    ? baseCombinedSchema
+    : baseCombinedSchema.merge(addPartnerFormStep4ManualSchema)
+).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match.",
+  path: ["confirmPassword"],
 });
 
-type AddPartnerForm = z.infer<typeof finalSchema>;
+
+type AddPartnerForm = z.infer<typeof combinedSchema>;
 
 
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -142,7 +142,7 @@ export default function AddPartnerPage() {
   const isPaymentEnabled = process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_ENABLED === 'true';
 
   const form = useForm<AddPartnerForm>({
-    resolver: zodResolver(finalSchema),
+    resolver: zodResolver(combinedSchema),
     defaultValues: {
       fullName: "",
       email: "",
@@ -257,12 +257,13 @@ export default function AddPartnerPage() {
             await setDoc(doc(db, "users", userId), { ...partnerDataBase, paymentStatus: 'pending' });
             await handlePayment(registrationFee, userId);
         } else if (!isPaymentEnabled && registrationFee > 0) {
-            const paymentProofUrl = values.paymentProof ? await fileToDataUrl(values.paymentProof) : '';
+             const paymentData = values as z.infer<typeof addPartnerFormStep4ManualSchema>;
+             const paymentProofUrl = paymentData.paymentProof ? await fileToDataUrl(paymentData.paymentProof) : '';
             await setDoc(doc(db, "users", userId), {
                 ...partnerDataBase,
                 paymentStatus: 'pending_approval',
                 paymentProof: paymentProofUrl,
-                paymentTransactionId: values.transactionId,
+                paymentTransactionId: paymentData.transactionId,
             });
              toast({
                 title: "Registration Submitted",
