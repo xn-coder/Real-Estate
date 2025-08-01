@@ -17,11 +17,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, doc, setDoc, query, where } from "firebase/firestore"
+import { collection, getDocs, doc, setDoc, query, where, updateDoc, getDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, MoreHorizontal } from "lucide-react"
+import { Loader2, PlusCircle, MoreHorizontal, Pencil, Landmark } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { User } from "@/hooks/use-user"
@@ -50,14 +50,36 @@ const addAccessFormSchema = z.object({
 
 type AddAccessForm = z.infer<typeof addAccessFormSchema>
 
+const partnerRoles = {
+  'affiliate': 'Affiliate Partner',
+  'super_affiliate': 'Super Affiliate Partner',
+  'associate': 'Associate Partner',
+  'channel': 'Channel Partner',
+  'franchisee': 'Franchisee',
+} as const;
+type PartnerRole = keyof typeof partnerRoles;
+
+const feesFormSchema = z.object({
+  affiliate: z.coerce.number().min(0, { message: "Fee must be a positive number." }),
+  super_affiliate: z.coerce.number().min(0, { message: "Fee must be a positive number." }),
+  associate: z.coerce.number().min(0, { message: "Fee must be a positive number." }),
+  channel: z.coerce.number().min(0, { message: "Fee must be a positive number." }),
+  franchisee: z.coerce.number().min(0, { message: "Fee must be a positive number." }),
+})
+
+type FeesForm = z.infer<typeof feesFormSchema>
+
 export default function SettingsPage() {
   const { toast } = useToast()
   const [users, setUsers] = React.useState<User[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [isFeesDialogOpen, setIsFeesDialogOpen] = React.useState(false)
+  const [isUpdatingFees, setIsUpdatingFees] = React.useState(false)
+  const [fees, setFees] = React.useState<FeesForm | null>(null)
 
-  const form = useForm<AddAccessForm>({
+  const accessForm = useForm<AddAccessForm>({
     resolver: zodResolver(addAccessFormSchema),
     defaultValues: {
       firstName: "",
@@ -66,6 +88,10 @@ export default function SettingsPage() {
       password: "",
       permissions: [],
     },
+  })
+
+  const feesForm = useForm<FeesForm>({
+    resolver: zodResolver(feesFormSchema),
   })
 
   const fetchUsers = React.useCallback(async () => {
@@ -87,11 +113,44 @@ export default function SettingsPage() {
     }
   }, [toast])
 
+  const fetchFees = React.useCallback(async () => {
+    try {
+        const feesDocRef = doc(db, "app_settings", "registration_fees");
+        const feesDoc = await getDoc(feesDocRef);
+
+        if (feesDoc.exists()) {
+            const feesData = feesDoc.data() as FeesForm;
+            setFees(feesData);
+            feesForm.reset(feesData);
+        } else {
+            // If not exist, set with default values
+            const defaultFees: FeesForm = {
+                affiliate: 0,
+                super_affiliate: 200,
+                associate: 300,
+                channel: 400,
+                franchisee: 1000,
+            };
+            await setDoc(feesDocRef, defaultFees);
+            setFees(defaultFees);
+            feesForm.reset(defaultFees);
+        }
+    } catch (error) {
+        console.error("Error fetching fees:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to fetch registration fees.",
+        });
+    }
+  }, [toast, feesForm]);
+
   React.useEffect(() => {
     fetchUsers()
-  }, [fetchUsers])
+    fetchFees()
+  }, [fetchUsers, fetchFees])
 
-  async function onSubmit(values: AddAccessForm) {
+  async function onAccessSubmit(values: AddAccessForm) {
     setIsSubmitting(true)
     try {
         const usersRef = collection(db, "users")
@@ -126,7 +185,7 @@ export default function SettingsPage() {
             title: "User Created",
             description: "New admin user has been created successfully.",
         })
-        form.reset()
+        accessForm.reset()
         setIsDialogOpen(false)
         fetchUsers() // Refresh user list
     } catch (error) {
@@ -141,145 +200,249 @@ export default function SettingsPage() {
     }
   }
 
+  async function onFeesSubmit(values: FeesForm) {
+    setIsUpdatingFees(true)
+    try {
+        const feesDocRef = doc(db, "app_settings", "registration_fees");
+        await updateDoc(feesDocRef, values);
+        toast({
+            title: "Fees Updated",
+            description: "Partner registration fees updated successfully.",
+        })
+        setIsFeesDialogOpen(false)
+        fetchFees()
+    } catch (error) {
+        console.error("Error updating fees:", error);
+        toast({
+            variant: "destructive",
+            title: "Update Error",
+            description: "Failed to update registration fees.",
+        })
+    } finally {
+        setIsUpdatingFees(false)
+    }
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Settings</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Access
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Admin Access</DialogTitle>
-              <DialogDescription>
-                Create a new admin account with limited access features.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                 <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="John" {...field} disabled={isSubmitting} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Doe" {...field} disabled={isSubmitting} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="admin@example.com" {...field} disabled={isSubmitting} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} disabled={isSubmitting} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="permissions"
-                  render={() => (
-                    <FormItem>
-                      <div className="mb-4">
-                        <FormLabel className="text-base">Permissions</FormLabel>
-                      </div>
-                      <div className="space-y-2">
-                        {permissions.map((item) => (
-                          <FormField
-                            key={item.id}
-                            control={form.control}
-                            name="permissions"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={item.id}
-                                  className="flex flex-row items-center space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(item.id)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([...field.value, item.id])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== item.id
-                                              )
-                                            )
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal">
-                                    {item.label}
-                                  </FormLabel>
-                                </FormItem>
-                              )
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Create User
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
       </div>
 
+       <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>Partner Registration Fees</CardTitle>
+                <CardDescription>Manage registration fees for each partner tier.</CardDescription>
+            </div>
+            <Dialog open={isFeesDialogOpen} onOpenChange={setIsFeesDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline">
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Fees
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                     <Form {...feesForm}>
+                        <form onSubmit={feesForm.handleSubmit(onFeesSubmit)} className="space-y-4">
+                            <DialogHeader>
+                                <DialogTitle>Edit Registration Fees</DialogTitle>
+                                <DialogDescription>Update the registration fee for each partner type.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                {Object.keys(partnerRoles).map((role) => (
+                                     <FormField
+                                        key={role}
+                                        control={feesForm.control}
+                                        name={role as PartnerRole}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>{partnerRoles[role as PartnerRole]}</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" {...field} disabled={isUpdatingFees} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                ))}
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit" disabled={isUpdatingFees}>
+                                    {isUpdatingFees && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Changes
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+        </CardHeader>
+        <CardContent>
+            <div className="border rounded-lg">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Partner Role</TableHead>
+                            <TableHead className="text-right">Fee ($)</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                       {fees ? (
+                            Object.entries(fees).map(([role, fee]) => (
+                                <TableRow key={role}>
+                                    <TableCell className="font-medium">{partnerRoles[role as PartnerRole]}</TableCell>
+                                    <TableCell className="text-right">{fee.toLocaleString()}</TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                             <TableRow>
+                                <TableCell colSpan={2} className="h-24 text-center">
+                                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                                </TableCell>
+                              </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </CardContent>
+       </Card>
+
       <Card>
-        <CardHeader>
-          <CardTitle>Manage Access</CardTitle>
-          <CardDescription>
-            Here is a list of all users with access to the platform.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>Manage Access</CardTitle>
+                <CardDescription>
+                    Here is a list of all users with access to the platform.
+                </CardDescription>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Access
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Add New Admin Access</DialogTitle>
+                  <DialogDescription>
+                    Create a new admin account with limited access features.
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...accessForm}>
+                  <form onSubmit={accessForm.handleSubmit(onAccessSubmit)} className="space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={accessForm.control}
+                            name="firstName"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>First Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="John" {...field} disabled={isSubmitting} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={accessForm.control}
+                            name="lastName"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Last Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Doe" {...field} disabled={isSubmitting} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    <FormField
+                      control={accessForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="admin@example.com" {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={accessForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={accessForm.control}
+                      name="permissions"
+                      render={() => (
+                        <FormItem>
+                          <div className="mb-4">
+                            <FormLabel className="text-base">Permissions</FormLabel>
+                          </div>
+                          <div className="space-y-2">
+                            {permissions.map((item) => (
+                              <FormField
+                                key={item.id}
+                                control={accessForm.control}
+                                name="permissions"
+                                render={({ field }) => {
+                                  return (
+                                    <FormItem
+                                      key={item.id}
+                                      className="flex flex-row items-center space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value?.includes(item.id)}
+                                          onCheckedChange={(checked) => {
+                                            return checked
+                                              ? field.onChange([...field.value, item.id])
+                                              : field.onChange(
+                                                  field.value?.filter(
+                                                    (value) => value !== item.id
+                                                  )
+                                                )
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="font-normal">
+                                        {item.label}
+                                      </FormLabel>
+                                    </FormItem>
+                                  )
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <DialogFooter>
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create User
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
         </CardHeader>
         <CardContent>
           <div className="border rounded-lg">
