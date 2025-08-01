@@ -36,6 +36,7 @@ import {
 import { marketingKits } from "@/lib/data"
 import { Loader2, PlusCircle, Upload, Paperclip, Download } from "lucide-react"
 import Image from "next/image"
+import { Badge } from "@/components/ui/badge"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure"], {
