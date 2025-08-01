@@ -1,4 +1,6 @@
 
+"use client"
+
 import * as React from "react"
 import {
   Sidebar,
@@ -143,5 +145,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   )
 }
-
-    

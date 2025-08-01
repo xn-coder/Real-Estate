@@ -4,17 +4,7 @@
 import * as React from "react"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-
-export type User = {
-  id: string
-  name: string
-  firstName?: string
-  lastName?: string
-  email: string
-  phone: string
-  role: string
-  profileImage?: string
-}
+import type { User } from "@/types/user"
 
 type UserContextType = {
   user: User | null
@@ -41,7 +31,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const userDocRef = doc(db, "users", userId)
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists()) {
-        setUser({ id: userDoc.id, ...userDoc.data() } as User)
+        const data = userDoc.data();
+        if (data.dob && data.dob.toDate) {
+            data.dob = data.dob.toDate();
+        }
+        setUser({ id: userDoc.id, ...data } as User)
       } else {
         console.warn("User not found in Firestore")
         setUser(null)

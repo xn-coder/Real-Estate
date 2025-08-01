@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Upload, CalendarIcon } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Upload, CalendarIcon, User } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,7 +52,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, doc, setDoc, query, where, getDoc } from "firebase/firestore"
-import { User } from "@/hooks/use-user"
+import type { User as PartnerUser } from "@/types/user"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
@@ -134,7 +134,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 
 export default function ManagePartnerPage() {
   const { toast } = useToast()
-  const [partners, setPartners] = React.useState<User[]>([])
+  const [partners, setPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
@@ -173,7 +173,7 @@ export default function ManagePartnerPage() {
       const partnerRolesKeys = Object.keys(partnerRoles);
       const q = query(usersCollection, where("role", "in", partnerRolesKeys))
       const partnerSnapshot = await getDocs(q)
-      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User))
+      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setPartners(partnerList)
     } catch (error) {
       console.error("Error fetching partners:", error)
@@ -557,5 +557,3 @@ export default function ManagePartnerPage() {
     </div>
   )
 }
-
-    

@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, PlusCircle, MoreHorizontal, Pencil, Landmark } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
-import { User } from "@/hooks/use-user"
+import type { User } from "@/types/user"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
