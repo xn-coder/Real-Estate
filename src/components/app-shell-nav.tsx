@@ -26,14 +26,22 @@ import {
   Wallet,
   Trophy,
   Megaphone as MarketingIcon,
+  Calendar,
+  Settings,
+  Send,
+  Building
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/properties', icon: Home, label: 'Properties' },
-  { href: '/marketing-kits', icon: MarketingIcon, label: 'Marketing Kits' },
-  { href: '/onboarding', icon: UserPlus, label: 'Onboarding' },
+  { href: '/listings', icon: Building, label: 'Listings' },
+  { href: '/leads', icon: Users, label: 'Leads' },
+  { href: '/deals', icon: Briefcase, label: 'Deals' },
+  { href: '/schedule', icon: Calendar, label: 'Schedule' },
+  { href: '/marketing-kit', icon: MarketingIcon, label: 'Marketing Kits' },
+  { href: '/send-message', icon: Send, label: 'Send Message' },
   { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
+  { href: '/onboarding', icon: UserPlus, label: 'Onboarding' },
   { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
   { href: '/manage-lead', icon: UserRound, label: 'Manage Lead' },
   { href: '/manage-deals', icon: Briefcase, label: 'Manage Deals' },
