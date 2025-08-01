@@ -26,8 +26,6 @@ export async function POST(req: NextRequest) {
                     status: 'SUCCESS'
                 }
             });
-
-            localStorage.removeItem(`partner_draft_${userId}`);
             
             return NextResponse.redirect(new URL(`/manage-partner?payment=success&tid=${transactionId}`, req.url));
 

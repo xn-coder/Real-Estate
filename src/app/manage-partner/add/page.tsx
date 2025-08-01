@@ -246,7 +246,7 @@ export default function AddPartnerPage() {
         paymentStatus: 'pending',
       };
 
-      localStorage.setItem(`partner_draft_${userId}`, JSON.stringify(partnerData));
+      await setDoc(doc(db, "users", userId), partnerData);
       
       const selectedRole = form.watch("role");
       const registrationFee = selectedRole && fees ? fees[selectedRole] : 0;
@@ -254,8 +254,7 @@ export default function AddPartnerPage() {
       if (isPaymentEnabled && registrationFee > 0) {
         await handlePayment(registrationFee, userId);
       } else {
-         await setDoc(doc(db, "users", userId), {...partnerData, paymentStatus: 'not_required' });
-         localStorage.removeItem(`partner_draft_${userId}`);
+         await updateDoc(doc(db, "users", userId), {paymentStatus: 'not_required' });
          toast({
           title: "Partner Created",
           description: "New partner account has been created successfully.",
@@ -283,7 +282,7 @@ export default function AddPartnerPage() {
         amount,
         merchantTransactionId: transactionId,
         merchantUserId: userId,
-        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/manage-partner?payment_status=success&transaction_id=${transactionId}`,
+        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/manage-partner/add?payment_status=success&transaction_id=${transactionId}`,
       });
 
       if (response.data.success) {
