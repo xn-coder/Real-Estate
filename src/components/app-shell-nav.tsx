@@ -96,32 +96,24 @@ export function AppShellNav() {
         <CollapsibleContent>
             <SidebarMenuSub>
                 <SidebarMenuSubItem>
-                    <Link href="/manage-partner" className='w-full'>
-                        <SidebarMenuSubButton isActive={pathname === '/manage-partner'}>
-                            Manage Partner
-                        </SidebarMenuSubButton>
-                    </Link>
+                    <SidebarMenuSubButton href="/manage-partner" isActive={pathname === '/manage-partner'}>
+                        Manage Partner
+                    </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
-                     <Link href="/manage-partner/activation" className='w-full'>
-                        <SidebarMenuSubButton isActive={pathname === '/manage-partner/activation'}>
-                           Partner Activation
-                        </SidebarMenuSubButton>
-                    </Link>
+                    <SidebarMenuSubButton href="/manage-partner/activation" isActive={pathname === '/manage-partner/activation'}>
+                       Partner Activation
+                    </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                  <SidebarMenuSubItem>
-                     <Link href="/manage-partner/deactivation-list" className='w-full'>
-                        <SidebarMenuSubButton isActive={pathname === '/manage-partner/deactivation-list'}>
-                           Deactivation List
-                        </SidebarMenuSubButton>
-                    </Link>
+                    <SidebarMenuSubButton href="/manage-partner/deactivation-list" isActive={pathname === '/manage-partner/deactivation-list'}>
+                       Deactivation List
+                    </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                  <SidebarMenuSubItem>
-                     <Link href="/manage-partner/deactivated" className='w-full'>
-                        <SidebarMenuSubButton isActive={pathname === '/manage-partner/deactivated'}>
-                           Deactivated Partner
-                        </SidebarMenuSubButton>
-                    </Link>
+                    <SidebarMenuSubButton href="/manage-partner/deactivated" isActive={pathname === '/manage-partner/deactivated'}>
+                       Deactivated Partner
+                    </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
             </SidebarMenuSub>
         </CollapsibleContent>
