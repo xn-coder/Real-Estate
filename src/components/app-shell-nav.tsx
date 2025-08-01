@@ -35,6 +35,8 @@ import {
   Trophy,
   Megaphone as MarketingIcon,
   ChevronDown,
+  UserX,
+  UserCog,
 } from 'lucide-react'
 
 const navItems = [
@@ -112,6 +114,11 @@ export function AppShellNav() {
                 <SidebarMenuSubItem>
                     <SidebarMenuSubButton href="/manage-partner/activation" isActive={pathname === '/manage-partner/activation'}>
                        Partner Activation
+                    </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                 <SidebarMenuSubItem>
+                    <SidebarMenuSubButton href="/manage-partner/suspended" isActive={pathname === '/manage-partner/suspended'}>
+                       Suspended List
                     </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                  <SidebarMenuSubItem>

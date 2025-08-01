@@ -26,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, updateDoc, and } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Image from "next/image"
@@ -60,7 +60,7 @@ export default function PartnerActivationPage() {
       const pendingList = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setPendingPartners(pendingList)
 
-      const reactivatedQuery = query(usersCollection, where("status", "==", "active"), where("reactivationReason", "!=", null))
+      const reactivatedQuery = query(usersCollection, and(where("status", "==", "active"), where("reactivationReason", "!=", null)))
       const reactivatedSnapshot = await getDocs(reactivatedQuery)
       const reactivatedList = reactivatedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setReactivatedPartners(reactivatedList)

@@ -58,7 +58,7 @@ export default function DeactivatedPartnerPage() {
     setIsLoading(true)
     try {
       const usersCollection = collection(db, "users")
-      const q = query(usersCollection, where("status", "==", "inactive"))
+      const q = query(usersCollection, where("status", "in", ["inactive", "suspended"]))
       const partnerSnapshot = await getDocs(q)
       const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setPartners(partnerList)
@@ -123,7 +123,7 @@ export default function DeactivatedPartnerPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Deactivated Partners</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Deactivated & Suspended Partners</h1>
       </div>
       <div className="border rounded-lg">
         <Table>
@@ -132,8 +132,7 @@ export default function DeactivatedPartnerPage() {
               <TableHead>Partner Name</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Email</TableHead>
-              <TableHead className="hidden md:table-cell">Phone</TableHead>
+              <TableHead className="hidden md:table-cell">Reason</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -142,14 +141,14 @@ export default function DeactivatedPartnerPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : partners.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                    No deactivated partners found.
+                    <TableCell colSpan={5} className="h-24 text-center">
+                    No deactivated or suspended partners found.
                     </TableCell>
                 </TableRow>
             ) : partners.map((partner) => (
@@ -159,12 +158,11 @@ export default function DeactivatedPartnerPage() {
                   <Badge variant="outline">{roleNameMapping[partner.role] || partner.role}</Badge>
                 </TableCell>
                 <TableCell>
-                    <Badge variant="secondary" className="capitalize">
+                    <Badge variant={partner.status === 'inactive' ? 'secondary' : 'destructive'} className="capitalize">
                         {partner.status}
                     </Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{partner.email}</TableCell>
-                <TableCell className="hidden md:table-cell">{partner.phone}</TableCell>
+                <TableCell className="hidden md:table-cell">{partner.deactivationReason}</TableCell>
                 <TableCell>
                   <Dialog open={isDialogOpen && selectedPartner?.id === partner.id} onOpenChange={(open) => {
                       if (!open) {

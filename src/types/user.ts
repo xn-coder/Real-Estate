@@ -8,7 +8,7 @@ export type User = {
   phone: string
   whatsappNumber?: string;
   role: string
-  status?: 'active' | 'inactive' | 'pending_approval' | 'rejected';
+  status?: 'active' | 'inactive' | 'pending_approval' | 'rejected' | 'suspended';
   profileImage?: string;
   dob?: Date;
   gender?: "male" | "female" | "other";
