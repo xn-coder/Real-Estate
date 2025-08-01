@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
         const { amount, merchantTransactionId, merchantUserId, redirectUrl } = await req.json();
 
         const merchantId = process.env.PHONEPE_MERCHANT_ID;
-        const saltKey = process.env.PHONEPE_SALT_KEY;
+        const saltKey = process.env.PHONEPE_SECRET_KEY;
         const saltIndex = 1;
 
         const payload = {
@@ -56,4 +56,3 @@ export async function POST(req: NextRequest) {
         }, { status: 500 });
     }
 }
-
