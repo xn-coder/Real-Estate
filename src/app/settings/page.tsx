@@ -69,6 +69,13 @@ const feesFormSchema = z.object({
 
 type FeesForm = z.infer<typeof feesFormSchema>
 
+const paymentTestSchema = z.object({
+    amount: z.coerce.number().min(1, { message: "Amount must be at least $1." }),
+})
+
+type PaymentTestForm = z.infer<typeof paymentTestSchema>
+
+
 export default function SettingsPage() {
   const { toast } = useToast()
   const [users, setUsers] = React.useState<User[]>([])
@@ -78,6 +85,7 @@ export default function SettingsPage() {
   const [isFeesDialogOpen, setIsFeesDialogOpen] = React.useState(false)
   const [isUpdatingFees, setIsUpdatingFees] = React.useState(false)
   const [fees, setFees] = React.useState<FeesForm | null>(null)
+  const [isTestingPayment, setIsTestingPayment] = React.useState(false)
 
   const accessForm = useForm<AddAccessForm>({
     resolver: zodResolver(addAccessFormSchema),
@@ -93,6 +101,14 @@ export default function SettingsPage() {
   const feesForm = useForm<FeesForm>({
     resolver: zodResolver(feesFormSchema),
   })
+
+  const paymentTestForm = useForm<PaymentTestForm>({
+    resolver: zodResolver(paymentTestSchema),
+    defaultValues: {
+        amount: 10,
+    }
+  })
+
 
   const fetchUsers = React.useCallback(async () => {
     setIsLoading(true)
@@ -223,11 +239,65 @@ export default function SettingsPage() {
     }
   }
 
+  async function onPaymentTestSubmit(values: PaymentTestForm) {
+    setIsTestingPayment(true)
+    try {
+        // Simulate API call to PhonePe
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        toast({
+            title: "Payment Test Successful",
+            description: `A test payment of $${values.amount} was processed successfully.`,
+        });
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Payment Test Failed",
+            description: "An unexpected error occurred during the test.",
+        });
+    } finally {
+        setIsTestingPayment(false)
+    }
+  }
+
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Settings</h1>
       </div>
+      
+       <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>Payment Gateway Testing</CardTitle>
+                <CardDescription>Use this section to test the simulated payment gateway.</CardDescription>
+            </div>
+            <Landmark className="h-6 w-6 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+            <Form {...paymentTestForm}>
+                <form onSubmit={paymentTestForm.handleSubmit(onPaymentTestSubmit)} className="flex items-end gap-4">
+                    <FormField
+                        control={paymentTestForm.control}
+                        name="amount"
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                                <FormLabel>Amount</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="Enter amount" {...field} disabled={isTestingPayment} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="submit" disabled={isTestingPayment}>
+                        {isTestingPayment && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isTestingPayment ? "Processing..." : "Run Test Payment"}
+                    </Button>
+                </form>
+            </Form>
+        </CardContent>
+       </Card>
 
        <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -493,3 +563,5 @@ export default function SettingsPage() {
     </div>
   )
 }
+
+    
