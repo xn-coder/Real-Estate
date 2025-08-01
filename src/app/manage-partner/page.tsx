@@ -12,19 +12,21 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2 } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 const partnerRoles = {
   'affiliate': 'Affiliate Partner',
@@ -42,8 +44,15 @@ const roleNameMapping: Record<string, string> = {
   franchisee: 'Franchisee',
 };
 
+const statusColors: { [key: string]: "default" | "secondary" | "destructive" } = {
+  active: 'default',
+  inactive: 'secondary',
+};
+
+
 export default function ManagePartnerPage() {
   const { toast } = useToast()
+  const router = useRouter();
   const [partners, setPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -54,7 +63,7 @@ export default function ManagePartnerPage() {
       const partnerRolesKeys = Object.keys(partnerRoles);
       const q = query(usersCollection, where("role", "in", partnerRolesKeys))
       const partnerSnapshot = await getDocs(q)
-      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
+      const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), status: doc.data().status || 'active' } as PartnerUser))
       setPartners(partnerList)
     } catch (error) {
       console.error("Error fetching partners:", error)
@@ -72,6 +81,26 @@ export default function ManagePartnerPage() {
     fetchPartners()
   }, [fetchPartners])
 
+  const handleDeactivate = async (partnerId: string) => {
+    try {
+        const partnerDocRef = doc(db, "users", partnerId);
+        await updateDoc(partnerDocRef, {
+            status: 'inactive'
+        });
+        toast({
+            title: "Partner Deactivated",
+            description: "The partner has been successfully deactivated.",
+        });
+        fetchPartners(); // Refresh the list
+    } catch (error) {
+        console.error("Error deactivating partner:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to deactivate partner.",
+        });
+    }
+  };
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -88,9 +117,10 @@ export default function ManagePartnerPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Partner Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden md:table-cell">Email</TableHead>
+              <TableHead className="hidden md:table-cell">Phone</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -99,18 +129,23 @@ export default function ManagePartnerPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : partners.map((partner) => (
               <TableRow key={partner.id}>
                 <TableCell className="font-medium">{partner.name}</TableCell>
-                <TableCell>{partner.email}</TableCell>
-                <TableCell>{partner.phone}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{roleNameMapping[partner.role] || partner.role}</Badge>
                 </TableCell>
+                <TableCell>
+                    <Badge variant={statusColors[partner.status || 'active'] || 'default'} className="capitalize">
+                        {partner.status || 'active'}
+                    </Badge>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">{partner.email}</TableCell>
+                <TableCell className="hidden md:table-cell">{partner.phone}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -121,8 +156,20 @@ export default function ManagePartnerPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => router.push(`/manage-partner/${partner.id}`)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Send Message
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => handleDeactivate(partner.id)} className="text-destructive">
+                        <UserX className="mr-2 h-4 w-4" />
+                        Deactivate
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

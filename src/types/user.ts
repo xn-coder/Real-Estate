@@ -7,6 +7,7 @@ export type User = {
   email: string
   phone: string
   role: string
+  status?: 'active' | 'inactive';
   profileImage?: string;
   dob?: Date;
   gender?: "male" | "female" | "other";
