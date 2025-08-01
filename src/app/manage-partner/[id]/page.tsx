@@ -4,7 +4,7 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion, ChevronRight } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -156,35 +156,35 @@ export default function PartnerProfilePage() {
                     <div className="flex items-start gap-3">
                         <UserIcon className="h-5 w-5 mt-1 text-muted-foreground"/>
                         <div>
-                            <p className="font-semibold text-muted-foreground">Name</p>
+                            <div className="font-semibold text-muted-foreground">Name</div>
                             <p>{partner.name}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
                         <Phone className="h-5 w-5 mt-1 text-muted-foreground"/>
                         <div>
-                            <p className="font-semibold text-muted-foreground">Phone Number</p>
+                            <div className="font-semibold text-muted-foreground">Phone Number</div>
                             <p>{partner.phone}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
                         <AtSign className="h-5 w-5 mt-1 text-muted-foreground"/>
                         <div>
-                            <p className="font-semibold text-muted-foreground">Email</p>
+                            <div className="font-semibold text-muted-foreground">Email</div>
                             <p>{partner.email}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
                         <Smartphone className="h-5 w-5 mt-1 text-muted-foreground"/>
                         <div>
-                            <p className="font-semibold text-muted-foreground">WhatsApp No.</p>
+                            <div className="font-semibold text-muted-foreground">WhatsApp No.</div>
                             <p>{partner.whatsappNumber || 'N/A'}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-3 md:col-span-2">
                         <MapPin className="h-5 w-5 mt-1 text-muted-foreground"/>
                         <div>
-                            <p className="font-semibold text-muted-foreground">Address</p>
+                            <div className="font-semibold text-muted-foreground">Address</div>
                             <p>{`${partner.address}, ${partner.city}, ${partner.state} - ${partner.pincode}`}</p>
                         </div>
                     </div>
@@ -194,31 +194,39 @@ export default function PartnerProfilePage() {
 
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button>
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Send Message
-                </Button>
-                <Button variant="outline">
-                    <Smartphone className="mr-2 h-4 w-4" />
-                    WhatsApp
-                </Button>
-                <Button variant="outline">
-                    <Phone className="mr-2 h-4 w-4" />
-                    Call Now
-                </Button>
+                <Card className="hover:bg-muted transition-colors cursor-pointer">
+                    <CardContent className="p-4 flex justify-between items-center">
+                        <span className="font-medium">Send Message</span>
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                    </CardContent>
+                </Card>
+                 <Card className="hover:bg-muted transition-colors cursor-pointer">
+                    <CardContent className="p-4 flex justify-between items-center">
+                        <span className="font-medium">WhatsApp</span>
+                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    </CardContent>
+                </Card>
+                 <Card className="hover:bg-muted transition-colors cursor-pointer">
+                    <CardContent className="p-4 flex justify-between items-center">
+                        <span className="font-medium">Call Now</span>
+                        <Phone className="h-5 w-5 text-muted-foreground" />
+                    </CardContent>
+                </Card>
             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <Button variant="secondary">
-                    <FileQuestion className="mr-2 h-4 w-4" />
-                    View Enquiries
-                </Button>
-                <Button variant="secondary">
-                    <Users className="mr-2 h-4 w-4" />
-                    Manage Customer
-                </Button>
-            </div>
+             <Card>
+                <CardContent className="p-0">
+                    <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
+                        <span className="font-medium">View Enquiry</span>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
+                        <span className="font-medium">Manage Customer</span>
+                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                </CardContent>
+            </Card>
         </div>
-
     </div>
   )
 }
