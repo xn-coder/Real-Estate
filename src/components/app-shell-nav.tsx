@@ -11,6 +11,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import {
   Collapsible,
@@ -58,7 +59,14 @@ const bottomNavItems = [
 
 export function AppShellNav() {
   const pathname = usePathname()
+  const { state: sidebarState, setOpen: setSidebarOpen } = useSidebar();
   const [isPartnerMenuOpen, setIsPartnerMenuOpen] = React.useState(false);
+
+  const handlePartnerMenuClick = () => {
+    if (sidebarState === 'collapsed') {
+      setSidebarOpen(true);
+    }
+  };
 
   return (
     <SidebarMenu>
@@ -86,6 +94,7 @@ export function AppShellNav() {
                     isActive={pathname.startsWith('/manage-partner')}
                     tooltip="Manage Partner"
                     className="justify-start group-data-[collapsible=icon]:justify-center p-2"
+                    onClick={handlePartnerMenuClick}
                 >
                     <Handshake />
                     <span className="group-data-[collapsible=icon]:hidden flex-1 text-left">Manage Partner</span>
