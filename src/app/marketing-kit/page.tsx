@@ -49,9 +49,21 @@ const marketingKitSchema = z.object({
 
 type MarketingKitForm = z.infer<typeof marketingKitSchema>
 
+type Kit = {
+  id: string;
+  title: string;
+  type: string;
+  featureImage: string | File;
+  files: File[];
+};
+
 export default function MarketingKitPage() {
   const { toast } = useToast()
-  const [kits, setKits] = React.useState(marketingKits)
+  const [kits, setKits] = React.useState<Kit[]>(marketingKits.map(k => ({
+    ...k,
+    featureImage: k.featureImage,
+    files: [] // Initially empty, as we don't have the File objects for dummy data
+  })))
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const featureImageRef = React.useRef<HTMLInputElement>(null)
@@ -66,20 +78,21 @@ export default function MarketingKitPage() {
 
   function onSubmit(values: MarketingKitForm) {
     setIsSubmitting(true)
-    console.log(values)
     // Simulate API call
     setTimeout(() => {
-      const newKit = {
+      const newKit: Kit = {
         id: `kit${kits.length + 1}`,
         title: values.title,
         type: values.kitType === "poster" ? "Poster" : "Brochure",
-        featureImage: values.featureImage ? URL.createObjectURL(values.featureImage) : 'https://placehold.co/600x400.png',
-        files: values.files ? Array.from(values.files as FileList).map(f => f.name) : []
+        featureImage: values.featureImage,
+        files: values.files ? Array.from(values.files as FileList) : []
       }
       setKits(prev => [...prev, newKit])
       setIsSubmitting(false)
       setIsDialogOpen(false)
       form.reset()
+      if (featureImageRef.current) featureImageRef.current.value = "";
+      if (filesRef.current) filesRef.current.value = "";
       toast({
         title: "Marketing Kit Created",
         description: "Your new marketing kit has been added successfully.",
@@ -87,8 +100,35 @@ export default function MarketingKitPage() {
     }, 1000)
   }
 
+  const handleDownload = (kit: Kit) => {
+    if (kit.files.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: "No files to download",
+        description: "There are no files uploaded for this kit.",
+      });
+      return;
+    }
+
+    kit.files.forEach(file => {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(file);
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    });
+  };
+
   const featureImage = form.watch("featureImage")
   const uploadedFiles = form.watch("files")
+
+  const getFeatureImageUrl = (image: string | File) => {
+    if (typeof image === 'string') return image;
+    if (image instanceof File) return URL.createObjectURL(image);
+    return 'https://placehold.co/600x400.png';
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -233,7 +273,7 @@ export default function MarketingKitPage() {
           <Card key={kit.id}>
             <CardHeader className="p-0">
               <Image
-                src={kit.featureImage}
+                src={getFeatureImageUrl(kit.featureImage)}
                 alt={kit.title}
                 width={600}
                 height={400}
@@ -246,7 +286,7 @@ export default function MarketingKitPage() {
               <CardTitle className="text-xl">{kit.title}</CardTitle>
             </CardContent>
             <CardFooter className="p-4 pt-0">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={() => handleDownload(kit)}>
                     <Download className="mr-2 h-4 w-4"/>
                     Download Kit
                 </Button>
