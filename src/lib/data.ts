@@ -1,3 +1,4 @@
+
 export const activeLeads = [
   { id: 'lead1', name: 'John Smith', email: 'john.smith@example.com', phone: '123-456-7890', status: 'New' },
   { id: 'lead2', name: 'Jane Doe', email: 'jane.doe@example.com', phone: '234-567-8901', status: 'Contacted' },
@@ -47,4 +48,10 @@ export const chartData = [
   { month: "Apr", leads: 22 },
   { month: "May", leads: 18 },
   { month: "Jun", leads: 25 },
+];
+
+export const marketingKits = [
+  { id: 'kit1', type: 'Poster', title: 'Luxury Villa Showcase', featureImage: 'https://placehold.co/600x400.png', files: ['villa_poster.pdf', 'villa_images.zip'] },
+  { id: 'kit2', type: 'Brochure', title: 'Downtown Condo Brochure', featureImage: 'https://placehold.co/600x400.png', files: ['condo_brochure.pdf'] },
+  { id: 'kit3', type: 'Poster', title: 'Open House: Sunny Lane', featureImage: 'https://placehold.co/600x400.png', files: ['open_house_poster.png'] },
 ];
