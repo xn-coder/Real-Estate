@@ -37,27 +37,27 @@ const roleNameMapping: Record<string, string> = {
   franchisee: 'Franchisee',
 };
 
-export default function DeactivatedPartnerPage() {
+export default function SuspendedPartnerPage() {
   const { toast } = useToast()
-  const [inactivePartners, setInactivePartners] = React.useState<PartnerUser[]>([])
+  const [suspendedPartners, setSuspendedPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isReactivating, setIsReactivating] = React.useState(false)
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
   const [reactivationReason, setReactivationReason] = React.useState("")
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
 
-  const fetchDeactivatedPartners = React.useCallback(async () => {
+  const fetchSuspendedPartners = React.useCallback(async () => {
     setIsLoading(true)
     try {
       const usersCollection = collection(db, "users")
       
-      const inactiveQuery = query(usersCollection, where("status", "==", "inactive"))
-      const inactiveSnapshot = await getDocs(inactiveQuery)
-      const inactiveList = inactiveSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
-      setInactivePartners(inactiveList)
+      const suspendedQuery = query(usersCollection, where("status", "==", "suspended"))
+      const suspendedSnapshot = await getDocs(suspendedQuery)
+      const suspendedList = suspendedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
+      setSuspendedPartners(suspendedList)
 
     } catch (error) {
-      console.error("Error fetching deactivated partners:", error)
+      console.error("Error fetching suspended partners:", error)
       toast({
         variant: "destructive",
         title: "Error",
@@ -69,8 +69,8 @@ export default function DeactivatedPartnerPage() {
   }, [toast])
 
   React.useEffect(() => {
-    fetchDeactivatedPartners()
-  }, [fetchDeactivatedPartners])
+    fetchSuspendedPartners()
+  }, [fetchSuspendedPartners])
 
   const handleReactivateClick = (partner: PartnerUser) => {
     setSelectedPartner(partner)
@@ -98,7 +98,7 @@ export default function DeactivatedPartnerPage() {
             title: "Partner Reactivated",
             description: "The partner has been successfully reactivated.",
         });
-        fetchDeactivatedPartners();
+        fetchSuspendedPartners();
         setIsDialogOpen(false);
         setReactivationReason("");
         setSelectedPartner(null);
@@ -121,7 +121,7 @@ export default function DeactivatedPartnerPage() {
           <TableRow>
             <TableHead>Partner Name</TableHead>
             <TableHead>Role</TableHead>
-            <TableHead>Reason for Deactivation</TableHead>
+            <TableHead>Reason for Suspension</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -135,7 +135,7 @@ export default function DeactivatedPartnerPage() {
           ) : partners.length === 0 ? (
               <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    No deactivated partners found.
+                    No suspended partners found.
                   </TableCell>
               </TableRow>
           ) : partners.map((partner) => (
@@ -146,12 +146,12 @@ export default function DeactivatedPartnerPage() {
               </TableCell>
               <TableCell className="hidden md:table-cell">{partner.deactivationReason}</TableCell>
               <TableCell className="flex gap-2">
-                <Button size="sm" variant="outline" asChild>
+                 <Button size="sm" variant="outline" asChild>
                     <Link href={`/manage-partner/${partner.id}`}>
                         <Eye className="mr-2 h-4 w-4" /> View
                     </Link>
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => handleReactivateClick(partner)}>
+                <Button size="sm" onClick={() => handleReactivateClick(partner)}>
                   <RotateCw className="mr-2 h-4 w-4"/>
                   Reactivate
                 </Button>
@@ -166,9 +166,9 @@ export default function DeactivatedPartnerPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Deactivated Partners</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Suspended Partners</h1>
       </div>
-      {renderTable(inactivePartners)}
+      {renderTable(suspendedPartners)}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
           if (!open) {
             setIsDialogOpen(false);

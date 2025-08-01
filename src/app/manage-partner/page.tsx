@@ -37,7 +37,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 const partnerRoles = {
   'affiliate': 'Affiliate Partner',
@@ -70,7 +69,6 @@ export default function ManagePartnerPage() {
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
   const [isDeactivating, setIsDeactivating] = React.useState(false)
   const [deactivationReason, setDeactivationReason] = React.useState("")
-  const [deactivationType, setDeactivationType] = React.useState<'suspended' | 'inactive'>('suspended');
   const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = React.useState(false)
 
   const fetchPartners = React.useCallback(async () => {
@@ -103,7 +101,7 @@ export default function ManagePartnerPage() {
     setIsDeactivationDialogOpen(true);
   };
 
-  const handleDeactivate = async () => {
+  const handleUpdateStatus = async (status: 'suspended' | 'inactive') => {
     if (!selectedPartner || !deactivationReason.trim()) {
       toast({
           variant: "destructive",
@@ -117,12 +115,12 @@ export default function ManagePartnerPage() {
     try {
         const partnerDocRef = doc(db, "users", selectedPartner.id);
         await updateDoc(partnerDocRef, {
-            status: deactivationType,
+            status: status,
             deactivationReason: deactivationReason.trim(),
         });
         toast({
-            title: `Partner ${deactivationType === 'suspended' ? 'Suspended' : 'Deactivated'}`,
-            description: `The partner has been successfully ${deactivationType === 'suspended' ? 'suspended' : 'deactivated'}.`,
+            title: `Partner ${status === 'suspended' ? 'Suspended' : 'Deactivated'}`,
+            description: `The partner has been successfully ${status === 'suspended' ? 'suspended' : 'deactivated'}.`,
         });
         fetchPartners(); // Refresh the list
         setIsDeactivationDialogOpen(false);
@@ -234,25 +232,12 @@ export default function ManagePartnerPage() {
           <DialogHeader>
             <DialogTitle>Update Partner Status</DialogTitle>
             <DialogDescription>
-              Suspend or deactivate {selectedPartner?.name}. Provide a reason for this action.
+              Suspend or deactivate {selectedPartner?.name}. Please provide a reason for this action.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-             <div className="grid gap-2">
-                <Label>Action</Label>
-                <RadioGroup defaultValue="suspended" onValueChange={(value: 'suspended' | 'inactive') => setDeactivationType(value)}>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="suspended" id="r1" />
-                        <Label htmlFor="r1">Suspend</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="inactive" id="r2" />
-                        <Label htmlFor="r2">Deactivate</Label>
-                    </div>
-                </RadioGroup>
-            </div>
             <div className="grid gap-2">
-              <Label htmlFor="reason">Reason</Label>
+              <Label htmlFor="reason">Reason for {selectedPartner?.id}</Label>
               <Textarea
                 id="reason"
                 placeholder="Type reason here..."
@@ -261,12 +246,18 @@ export default function ManagePartnerPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="justify-between">
             <Button variant="outline" onClick={() => setIsDeactivationDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleDeactivate} disabled={isDeactivating} variant="destructive">
-              {isDeactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm
-            </Button>
+            <div className="flex gap-2">
+                <Button onClick={() => handleUpdateStatus('suspended')} disabled={isDeactivating} variant="destructive">
+                {isDeactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Suspend
+                </Button>
+                 <Button onClick={() => handleUpdateStatus('inactive')} disabled={isDeactivating} variant="destructive">
+                {isDeactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Deactivate
+                </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -117,6 +117,11 @@ export function AppShellNav() {
                     </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton href="/manage-partner/suspended" isActive={pathname === '/manage-partner/suspended'}>
+                       Suspended Partners
+                    </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
                     <SidebarMenuSubButton href="/manage-partner/deactivated" isActive={pathname === '/manage-partner/deactivated'}>
                        Deactivated Partners
                     </SidebarMenuSubButton>

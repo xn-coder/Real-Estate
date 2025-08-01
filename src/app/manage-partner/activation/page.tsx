@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle, XCircle, FileText, Eye } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Eye, MessageSquare } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -20,17 +20,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, updateDoc, and } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -42,6 +41,7 @@ const roleNameMapping: Record<string, string> = {
 
 export default function PartnerActivationPage() {
   const { toast } = useToast()
+  const router = useRouter();
   const [pendingPartners, setPendingPartners] = React.useState<PartnerUser[]>([])
   const [reactivatedPartners, setReactivatedPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -60,7 +60,7 @@ export default function PartnerActivationPage() {
       const pendingList = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setPendingPartners(pendingList)
 
-      const reactivatedQuery = query(usersCollection, and(where("status", "==", "active"), where("reactivationReason", "!=", null)))
+      const reactivatedQuery = query(usersCollection, where("status", "==", "active"), where("reactivationReason", "!=", null))
       const reactivatedSnapshot = await getDocs(reactivatedQuery)
       const reactivatedList = reactivatedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setReactivatedPartners(reactivatedList)
@@ -147,6 +147,34 @@ export default function PartnerActivationPage() {
         setIsUpdating(false);
     }
   }
+  
+  const handleDeactivate = async (partnerId: string) => {
+    // This could open another dialog for reason, but for now we'll just deactivate
+    setIsUpdating(true);
+     try {
+        const partnerDocRef = doc(db, "users", partnerId);
+        await updateDoc(partnerDocRef, {
+            status: 'inactive',
+            reactivationReason: null, // Clear reactivation reason upon deactivation
+            deactivationReason: 'Deactivated from activation panel.'
+        });
+        toast({
+            title: "Partner Deactivated",
+            description: "The partner has been moved to the deactivated list.",
+        });
+        fetchPartners();
+    } catch (error) {
+        console.error("Error deactivating partner:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to deactivate partner.",
+        });
+    } finally {
+        setIsUpdating(false);
+    }
+  }
+
 
   const renderTable = (partners: PartnerUser[], type: 'pending' | 'reactivated') => (
      <div className="border rounded-lg">
@@ -155,7 +183,7 @@ export default function PartnerActivationPage() {
             <TableRow>
               <TableHead>Partner Name</TableHead>
               <TableHead>Role</TableHead>
-              {type === 'pending' ? <TableHead>Payment Proof</TableHead> : <TableHead>Reactivation Reason</TableHead>}
+              <TableHead>{type === 'pending' ? 'Payment Tnx ID' : 'Reactivation Reason'}</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -197,11 +225,17 @@ export default function PartnerActivationPage() {
                        </Button>
                      </div>
                    ) : (
-                     <Button size="sm" variant="outline" asChild>
-                         <Link href={`/manage-partner/${partner.id}`}>
-                            <Eye className="mr-2 h-4 w-4" /> View Profile
-                         </Link>
-                     </Button>
+                     <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => router.push(`/manage-partner/${partner.id}`)}>
+                            <Eye className="mr-2 h-4 w-4" /> View
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={isUpdating}>
+                            <MessageSquare className="mr-2 h-4 w-4" /> Message
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeactivate(partner.id)} disabled={isUpdating}>
+                            <XCircle className="mr-2 h-4 w-4" /> Deactivate
+                        </Button>
+                     </div>
                    )}
                 </TableCell>
               </TableRow>
@@ -235,6 +269,7 @@ export default function PartnerActivationPage() {
           if (!open) {
             setIsRejectDialogOpen(false);
             setSelectedPartner(null);
+            setRejectionReason("");
           }
         }}>
         <DialogContent>
