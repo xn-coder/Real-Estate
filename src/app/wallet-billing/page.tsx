@@ -19,10 +19,12 @@ const walletStats = [
 
 const walletOptions = [
   "Manage Wallet",
+  "Withdrawal Request",
   "Send Reward Points",
   "Reward Points History",
   "Receivable Cash List",
   "Payable List",
+  "Renew Billing & Invoice, Quotation",
   "Payment History",
 ]
 
