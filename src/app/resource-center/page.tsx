@@ -67,22 +67,19 @@ const resourceFormSchema = z.object({
     answer: z.string().min(1, "Answer cannot be empty."),
   })).optional(),
 }).superRefine((data, ctx) => {
-    if (data.contentType === "article" && (!data.articleContent || data.articleContent.length < 8)) { // CKEditor might add empty tags like <p></p>
+    if (data.contentType === "article" && (!data.articleContent || data.articleContent.length < 8)) {
        ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Article content is required.",
         path: ["articleContent"],
        });
     }
-    if (data.contentType === "video") {
-        const urlCheck = z.string().url({ message: "Please enter a valid URL." }).safeParse(data.videoUrl);
-        if(!urlCheck.success) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: urlCheck.error.issues[0].message,
-                path: ["videoUrl"],
-            });
-        }
+    if (data.contentType === "video" && (!data.videoUrl || !z.string().url().safeParse(data.videoUrl).success)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "A valid video URL is required.",
+            path: ["videoUrl"],
+        });
     }
     if (data.contentType === "faq" && (!data.faqs || data.faqs.length === 0 || data.faqs.some(f => !f.question || !f.answer))) {
        ctx.addIssue({
@@ -374,7 +371,7 @@ export default function ResourceCenterPage() {
                                             name={`faqs.${index}.question`}
                                             render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Question</FormLabel>
+                                                <FormLabel className="sr-only">Question</FormLabel>
                                                 <FormControl>
                                                 <Input placeholder={`Question ${index + 1}`} {...field} />
                                                 </FormControl>
@@ -387,7 +384,7 @@ export default function ResourceCenterPage() {
                                             name={`faqs.${index}.answer`}
                                             render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Answer</FormLabel>
+                                                <FormLabel className="sr-only">Answer</FormLabel>
                                                 <FormControl>
                                                 <Input placeholder="Answer" {...field} />
                                                 </FormControl>
