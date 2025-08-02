@@ -61,10 +61,10 @@ const resourceFormSchema = z.object({
   contentType: z.enum(["article", "video", "faq"]),
   featureImage: z.any().refine(file => file, "Feature image is required."),
   articleContent: z.string().optional(),
-  videoUrl: z.string().optional(),
+  videoUrl: z.string().url().optional().or(z.literal('')),
   faqs: z.array(z.object({
-    question: z.string().min(1, "Question cannot be empty."),
-    answer: z.string().min(1, "Answer cannot be empty."),
+    question: z.string(),
+    answer: z.string(),
   })).optional(),
 }).superRefine((data, ctx) => {
     if (data.contentType === "article" && (!data.articleContent || data.articleContent.length < 8)) {
@@ -74,19 +74,38 @@ const resourceFormSchema = z.object({
         path: ["articleContent"],
        });
     }
-    if (data.contentType === "video" && (!data.videoUrl || !z.string().url().safeParse(data.videoUrl).success)) {
+    if (data.contentType === "video" && !data.videoUrl) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "A valid video URL is required.",
             path: ["videoUrl"],
         });
     }
-    if (data.contentType === "faq" && (!data.faqs || data.faqs.length === 0 || data.faqs.some(f => !f.question || !f.answer))) {
-       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "At least one complete FAQ item is required.",
-        path: ["faqs"],
-       });
+    if (data.contentType === "faq") {
+        if (!data.faqs || data.faqs.length === 0) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "At least one FAQ item is required.",
+                path: ["faqs"],
+            });
+        } else {
+            data.faqs.forEach((faq, index) => {
+                if (!faq.question) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "Question cannot be empty.",
+                        path: [`faqs.${index}.question`],
+                    });
+                }
+                if (!faq.answer) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "Answer cannot be empty.",
+                        path: [`faqs.${index}.answer`],
+                    });
+                }
+            })
+        }
     }
 });
 
@@ -130,6 +149,7 @@ export default function ResourceCenterPage() {
       articleContent: "",
       videoUrl: ""
     },
+    mode: "onChange"
   });
 
   const categoryForm = useForm<CategoryFormValues>({
@@ -318,7 +338,15 @@ export default function ResourceCenterPage() {
                                     <FormItem>
                                     <FormLabel>Feature Image</FormLabel>
                                         <div className="flex items-center gap-4">
-                                            {value && <Image src={typeof value === 'string' ? value : URL.createObjectURL(value)} alt="Preview" width={100} height={100} className="rounded-md object-cover"/>}
+                                            {featureImage && (
+                                                <Image 
+                                                    src={URL.createObjectURL(featureImage)} 
+                                                    alt="Preview" 
+                                                    width={100} 
+                                                    height={100} 
+                                                    className="rounded-md object-cover"
+                                                />
+                                            )}
                                             <FormControl>
                                                 <Input type="file" accept="image/*" onChange={e => onChange(e.target.files?.[0])} {...rest} />
                                             </FormControl>
@@ -522,5 +550,3 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
-
-    
