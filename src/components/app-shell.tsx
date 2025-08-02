@@ -75,10 +75,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
             <div className="flex items-center gap-4">
-               <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-                <span className="sr-only">Toggle notifications</span>
-              </Button>
+               <Link href="/updates">
+                <Button variant="ghost" size="icon">
+                  <Bell className="h-5 w-5" />
+                  <span className="sr-only">Toggle notifications</span>
+                </Button>
+               </Link>
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
