@@ -207,7 +207,7 @@ export default function ResourceCenterPage() {
         </TabsList>
         <TabsContent value="resources">
           <Card>
-            <CardHeader>
+            <CardHeader className="relative">
               <CardTitle>Resources</CardTitle>
               <CardDescription>Add and manage your educational content.</CardDescription>
               <Dialog open={isResourceDialogOpen} onOpenChange={setIsResourceDialogOpen}>
@@ -411,7 +411,7 @@ export default function ResourceCenterPage() {
         </TabsContent>
         <TabsContent value="categories">
           <Card>
-            <CardHeader>
+            <CardHeader className="relative">
               <CardTitle>Categories</CardTitle>
               <CardDescription>Organize your resources by category.</CardDescription>
                <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
@@ -481,3 +481,5 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
+
+    
