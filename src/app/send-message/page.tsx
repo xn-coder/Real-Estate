@@ -70,10 +70,10 @@ export default function SendMessagePage() {
 
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
-    values: {
-      messageType: messageTypeParam || "announcement",
+    defaultValues: {
+      messageType: "announcement",
       announcementType: undefined,
-      recipientId: recipientId || "",
+      recipientId: "",
       subject: "",
       details: ""
     }
@@ -83,13 +83,23 @@ export default function SendMessagePage() {
     const recipientId = searchParams.get('recipientId');
     const type = searchParams.get('type') as 'to_partner' | 'to_seller' | null;
 
-    form.reset({
-      messageType: type || 'announcement',
-      recipientId: recipientId || '',
-      subject: '',
-      details: '',
-      announcementType: undefined
-    });
+    if (type && recipientId) {
+        form.reset({
+            messageType: type,
+            recipientId: recipientId,
+            subject: '',
+            details: '',
+            announcementType: undefined
+        });
+    } else {
+        form.reset({
+            messageType: 'announcement',
+            recipientId: '',
+            subject: '',
+            details: '',
+            announcementType: undefined
+        });
+    }
   }, [searchParams, form]);
 
 
