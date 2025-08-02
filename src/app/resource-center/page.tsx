@@ -442,7 +442,7 @@ export default function ResourceCenterPage() {
                                         <FormItem>
                                         <FormLabel>Video URL</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="https://youtube.com/watch?v=..." {...field} />
+                                            <Input placeholder="https://youtube.com/watch?v=..." {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                         </FormItem>
@@ -650,3 +650,5 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
+
+    
