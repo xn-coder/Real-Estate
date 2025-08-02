@@ -49,6 +49,7 @@ import {
   Home,
   CheckSquare
 } from 'lucide-react'
+import { useUser } from '@/hooks/use-user'
 
 type NavItem = {
   href: string;
@@ -88,7 +89,7 @@ const adminNavItems: NavItem[] = [
 
 const partnerNavItems: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/listings', icon: Building, label: 'Properties' }, // Assuming properties are listings
+  { href: '/listings', icon: Building, label: 'Properties' },
   { href: '/leads', icon: UserRound, label: 'Manage Leads' },
   { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
   { href: '/schedule', icon: Calendar, label: 'Location Visit Schedule' },
@@ -141,12 +142,10 @@ const NavList = ({ items }: { items: NavItem[] }) => {
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 {item.subItems.map(subItem => (
-                                     <SidebarMenuSubItem key={subItem.href}>
-                                        <Link href={subItem.href} legacyBehavior passHref>
-                                            <SidebarMenuSubButton isActive={pathname === subItem.href}>
-                                                {subItem.label}
-                                            </SidebarMenuSubButton>
-                                        </Link>
+                                     <SidebarMenuSubItem key={`${subItem.href}-${subItem.label}`}>
+                                        <SidebarMenuSubButton href={subItem.href} isActive={pathname === subItem.href}>
+                                            {subItem.label}
+                                        </SidebarMenuSubButton>
                                     </SidebarMenuSubItem>
                                 ))}
                             </SidebarMenuSub>
@@ -174,10 +173,11 @@ const NavList = ({ items }: { items: NavItem[] }) => {
 };
 
 
-export function AppShellNav({ role }: { role: string }) {
+export function AppShellNav() {
+  const { user } = useUser();
   let navItems: NavItem[] = [];
 
-  switch (role) {
+  switch (user?.role) {
     case 'admin':
       navItems = adminNavItems;
       break;
