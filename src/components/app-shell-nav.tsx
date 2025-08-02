@@ -49,7 +49,12 @@ import {
   Home,
   CheckSquare,
   Settings,
-  MessageSquare
+  MessageSquare,
+  Users2,
+  User,
+  Plane,
+  Headset,
+  PanelTop,
 } from 'lucide-react'
 import { useUser } from '@/hooks/use-user'
 
@@ -66,30 +71,33 @@ type SubNavItem = {
 }
 
 const adminNavItems: NavItem[] = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/listings', icon: Building, label: 'Listings' },
-  { href: '/leads', icon: UserPlus, label: 'Leads' },
-  { href: '/deals', icon: Handshake, label: 'Deals' },
-  { 
-    href: '/manage-partner', 
-    icon: Handshake, 
-    label: 'Manage Partner',
-    subItems: [
-        { href: '/manage-partner', label: 'Manage Partner' },
-        { href: '/manage-partner/activation', label: 'Partner Activation' },
-        { href: '/manage-partner/suspended', label: 'Suspended Partners' },
-        { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
-    ]
-  },
-  { href: '/contact-book', icon: UserSquare, label: 'Contact Book' },
-  { href: '/send-message', icon: MessageSquare, label: 'Send Message'},
-  { href: '/updates', icon: History, label: 'Updates'},
-  { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
-  { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
-  { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
-  { href: '/schedule', icon: Calendar, label: 'Schedule' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/listings', icon: Building, label: 'Properties' }, // Properties is same as listings
+    { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
+    { href: '/onboarding', icon: Plane, label: 'Onboarding' }, // No direct onboarding page, will route to manage-partner
+    { 
+      href: '/manage-partner', 
+      icon: Handshake, 
+      label: 'Manage Partner',
+      subItems: [
+          { href: '/manage-partner', label: 'Manage Partner' },
+          { href: '/manage-partner/activation', label: 'Partner Activation' },
+          { href: '/manage-partner/suspended', label: 'Suspended Partners' },
+          { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
+      ]
+    },
+    { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' }, // No manage seller page exists
+    { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
+    { href: '/deals', icon: Handshake, label: 'Manage Deals' },
+    { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
+    { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
+    { href: '/support-ticket', icon: Headset, label: 'Manage Support' },
+    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
+    { href: '/website-panel', icon: PanelTop, label: 'Website Panel' },
+    { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
+    { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
 ];
+
 
 const partnerNavItems: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -159,7 +167,7 @@ const NavList = ({ items }: { items: NavItem[] }) => {
                     <SidebarMenuItem key={`${item.href}-${item.label}`}>
                         <Link href={item.href} className="block">
                             <SidebarMenuButton
-                                isActive={pathname === item.href}
+                                isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/')}
                                 tooltip={item.label}
                                 className="justify-start group-data-[collapsible=icon]:justify-center p-2"
                             >
@@ -177,11 +185,10 @@ const NavList = ({ items }: { items: NavItem[] }) => {
 };
 
 
-export function AppShellNav() {
-  const { user } = useUser();
+export function AppShellNav({role}: {role: string}) {
   let navItems: NavItem[] = [];
 
-  switch (user?.role) {
+  switch (role) {
     case 'admin':
       navItems = adminNavItems;
       break;
