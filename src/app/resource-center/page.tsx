@@ -66,46 +66,49 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   loading: () => <div className="h-[242px] w-full rounded-md border border-input flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
 });
 
-const resourceFormSchema = z.object({
+const baseSchema = z.object({
   title: z.string().min(1, "Title is required."),
   categoryId: z.string().min(1, "Please select a category."),
-  contentType: z.enum(["article", "video", "faq", "terms_condition"]),
   featureImage: z.any().optional(),
+});
+
+const articleSchema = baseSchema.extend({
+  contentType: z.literal("article"),
+  articleContent: z.string().min(8, "Article content is required."), // CKEditor might return `<p></p>`
+  videoUrl: z.string().optional(),
+  faqs: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+});
+
+const termsConditionSchema = baseSchema.extend({
+  contentType: z.literal("terms_condition"),
+  articleContent: z.string().min(8, "Terms & Condition content is required."),
+  videoUrl: z.string().optional(),
+  faqs: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+});
+
+const videoSchema = baseSchema.extend({
+  contentType: z.literal("video"),
+  videoUrl: z.string().url("A valid video URL is required.").min(1, "A valid video URL is required."),
   articleContent: z.string().optional(),
-  videoUrl: z.string().url().optional().or(z.literal('')),
+  faqs: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+});
+
+const faqSchema = baseSchema.extend({
+  contentType: z.literal("faq"),
   faqs: z.array(z.object({
     question: z.string().min(1, "Question cannot be empty."),
     answer: z.string().min(1, "Answer cannot be empty."),
-  })).optional(),
-}).superRefine((data, ctx) => {
-    if (data.contentType === 'article' || data.contentType === 'terms_condition') {
-        if (!data.articleContent || data.articleContent.length < 8) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Article content is required.",
-                path: ["articleContent"],
-            });
-        }
-    }
-    if (data.contentType === 'video') {
-        if (!data.videoUrl) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "A valid video URL is required.",
-                path: ["videoUrl"],
-            });
-        }
-    }
-    if (data.contentType === 'faq') {
-        if (!data.faqs || data.faqs.length === 0 || data.faqs.some(faq => !faq.question || !faq.answer)) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "At least one complete FAQ item is required.",
-                path: ["faqs"],
-            });
-        }
-    }
+  })).min(1, "At least one FAQ item is required."),
+  articleContent: z.string().optional(),
+  videoUrl: z.string().optional(),
 });
+
+const resourceFormSchema = z.discriminatedUnion("contentType", [
+    articleSchema,
+    videoSchema,
+    faqSchema,
+    termsConditionSchema,
+]);
 
 
 type ResourceFormValues = z.infer<typeof resourceFormSchema>;
@@ -129,7 +132,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
-const defaultResourceValues = {
+const defaultResourceValues: Partial<ResourceFormValues> = {
     title: "",
     contentType: "article" as const,
     categoryId: "",
@@ -152,7 +155,7 @@ export default function ResourceCenterPage() {
 
   const resourceForm = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
-    defaultValues: defaultResourceValues,
+    defaultValues: defaultResourceValues as ResourceFormValues,
     mode: "onChange"
   });
 
@@ -193,10 +196,11 @@ export default function ResourceCenterPage() {
             ...resource,
             faqs: resource.faqs?.length ? resource.faqs : [{ question: "", answer: "" }],
             videoUrl: resource.videoUrl || '',
+            articleContent: resource.articleContent || '',
             featureImage: resource.featureImage || undefined,
-        });
+        } as ResourceFormValues);
     } else {
-        resourceForm.reset(defaultResourceValues);
+        resourceForm.reset(defaultResourceValues as ResourceFormValues);
     }
     setIsResourceDialogOpen(true);
   }
@@ -204,7 +208,7 @@ export default function ResourceCenterPage() {
   const closeResourceDialog = () => {
     setIsResourceDialogOpen(false);
     setEditingResource(null);
-    resourceForm.reset(defaultResourceValues);
+    resourceForm.reset(defaultResourceValues as ResourceFormValues);
   }
 
   const openCategoryDialog = (category: Category | null) => {
@@ -670,3 +674,5 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
+
+    
