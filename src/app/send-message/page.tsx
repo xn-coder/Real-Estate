@@ -24,7 +24,11 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
+import dynamic from 'next/dynamic';
+
+const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
+  ssr: false,
+});
 
 
 const messageFormSchema = z.object({
@@ -180,10 +184,9 @@ export default function SendMessagePage() {
                   <FormItem>
                     <FormLabel>Details</FormLabel>
                      <FormControl>
-                        <Textarea
-                          placeholder="Type your message here."
-                          className="min-h-[200px]"
-                          {...field}
+                        <RichTextEditor
+                            initialData={field.value}
+                            onChange={field.onChange}
                         />
                     </FormControl>
                     <FormMessage />
