@@ -33,7 +33,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, Trash2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Loader2, PlusCircle, Trash2, Pencil } from "lucide-react"
 import Image from "next/image"
 import {
   Table,
@@ -45,8 +56,8 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from 'next/dynamic'
-import { db } from "@/lib/firebase"
-import { collection, doc, setDoc, getDocs, Timestamp } from "firebase/firestore"
+import { db, deleteDoc } from "@/lib/firebase"
+import { collection, doc, setDoc, getDocs, Timestamp, updateDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { Resource, Category } from "@/types/resource"
 
@@ -139,6 +150,8 @@ export default function ResourceCenterPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isResourceDialogOpen, setIsResourceDialogOpen] = React.useState(false)
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false)
+  const [editingResource, setEditingResource] = React.useState<Resource | null>(null);
+  const [editingCategory, setEditingCategory] = React.useState<Category | null>(null);
 
   const resourceForm = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
@@ -181,46 +194,67 @@ export default function ResourceCenterPage() {
     fetchData();
   }, [fetchData]);
 
+  React.useEffect(() => {
+    if (editingResource) {
+        resourceForm.reset({
+            ...editingResource,
+            faqs: editingResource.faqs?.length ? editingResource.faqs : [{ question: "", answer: "" }]
+        });
+    } else {
+        resourceForm.reset({
+            title: "",
+            contentType: "article",
+            categoryId: "",
+            faqs: [{ question: "", answer: "" }],
+            articleContent: "",
+            videoUrl: "",
+            featureImage: undefined,
+        });
+    }
+  }, [editingResource, resourceForm]);
+
+  React.useEffect(() => {
+    if (editingCategory) {
+        categoryForm.reset(editingCategory);
+    } else {
+        categoryForm.reset({ name: "" });
+    }
+  }, [editingCategory, categoryForm]);
+
+
   const onResourceSubmit = async (values: ResourceFormValues) => {
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await fileToDataUrl(values.featureImage);
-        const resourceId = generateUserId("RES");
+        let featureImageUrl = editingResource?.featureImage || '';
+        if (values.featureImage && typeof values.featureImage !== 'string') {
+            featureImageUrl = await fileToDataUrl(values.featureImage);
+        }
         
-        const resourceData: Omit<Resource, 'id'> = {
+        const resourceData = {
             title: values.title,
             categoryId: values.categoryId,
             contentType: values.contentType,
             featureImage: featureImageUrl,
-            articleContent: null,
-            videoUrl: null,
-            faqs: null,
-            createdAt: Timestamp.now(),
+            articleContent: values.contentType === 'article' ? (values.articleContent ?? '') : null,
+            videoUrl: values.contentType === 'video' ? (values.videoUrl ?? '') : null,
+            faqs: values.contentType === 'faq' ? (values.faqs ?? []) : null,
         };
 
-        if (values.contentType === 'article') {
-            resourceData.articleContent = values.articleContent ?? '';
-        } else if (values.contentType === 'video') {
-            resourceData.videoUrl = values.videoUrl ?? '';
-        } else if (values.contentType === 'faq') {
-            resourceData.faqs = values.faqs ?? [];
+        if (editingResource) {
+            await updateDoc(doc(db, "resources", editingResource.id), resourceData);
+            toast({ title: "Resource Updated", description: "The resource has been updated." });
+        } else {
+            const resourceId = generateUserId("RES");
+            await setDoc(doc(db, "resources", resourceId), { ...resourceData, id: resourceId, createdAt: Timestamp.now() });
+            toast({ title: "Resource Created", description: "The new resource has been added." });
         }
 
-        await setDoc(doc(db, "resources", resourceId), {id: resourceId, ...resourceData});
-
-        toast({ title: "Resource Created", description: "The new resource has been added." });
         setIsResourceDialogOpen(false);
-        resourceForm.reset({
-            title: "",
-            contentType: "article",
-            faqs: [{ question: "", answer: "" }],
-            articleContent: "",
-            videoUrl: ""
-        });
+        setEditingResource(null);
         await fetchData();
     } catch (error) {
-        console.error("Error creating resource:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to create resource." });
+        console.error("Error saving resource:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to save resource." });
     } finally {
         setIsSubmitting(false);
     }
@@ -229,19 +263,47 @@ export default function ResourceCenterPage() {
   const onCategorySubmit = async (values: CategoryFormValues) => {
     setIsSubmitting(true);
     try {
-        const categoryId = generateUserId("CAT");
-        await setDoc(doc(db, "resource_categories", categoryId), { id: categoryId, name: values.name });
-        toast({ title: "Category Created", description: "The new category has been added." });
+        if (editingCategory) {
+            await updateDoc(doc(db, "resource_categories", editingCategory.id), values);
+            toast({ title: "Category Updated", description: "The category has been updated." });
+        } else {
+            const categoryId = generateUserId("CAT");
+            await setDoc(doc(db, "resource_categories", categoryId), { id: categoryId, name: values.name });
+            toast({ title: "Category Created", description: "The new category has been added." });
+        }
+
         setIsCategoryDialogOpen(false);
-        categoryForm.reset();
+        setEditingCategory(null);
         await fetchData();
     } catch (error) {
-        console.error("Error creating category:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to create category." });
+        console.error("Error saving category:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to save category." });
     } finally {
         setIsSubmitting(false);
     }
   };
+
+  const deleteResource = async (resourceId: string) => {
+    try {
+        await deleteDoc(doc(db, "resources", resourceId));
+        toast({ title: "Resource Deleted", description: "The resource has been removed." });
+        await fetchData();
+    } catch (error) {
+        console.error("Error deleting resource:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete resource." });
+    }
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    try {
+        await deleteDoc(doc(db, "resource_categories", categoryId));
+        toast({ title: "Category Deleted", description: "The category has been removed." });
+        await fetchData();
+    } catch (error) {
+        console.error("Error deleting category:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete category." });
+    }
+    };
 
   const contentType = resourceForm.watch("contentType");
   const featureImage = resourceForm.watch("featureImage");
@@ -267,16 +329,16 @@ export default function ResourceCenterPage() {
             <CardHeader className="relative">
               <CardTitle>Resources</CardTitle>
               <CardDescription>Add and manage your educational content.</CardDescription>
-              <Dialog open={isResourceDialogOpen} onOpenChange={setIsResourceDialogOpen}>
+              <Dialog open={isResourceDialogOpen} onOpenChange={(isOpen) => { setIsResourceDialogOpen(isOpen); if (!isOpen) setEditingResource(null); }}>
                 <DialogTrigger asChild>
-                    <Button className="absolute top-6 right-6">
+                    <Button className="absolute top-6 right-6" onClick={() => setEditingResource(null)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Resource
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Add New Resource</DialogTitle>
-                        <DialogDescription>Fill out the form to add a new resource.</DialogDescription>
+                        <DialogTitle>{editingResource ? "Edit Resource" : "Add New Resource"}</DialogTitle>
+                        <DialogDescription>Fill out the form to {editingResource ? "update the" : "add a new"} resource.</DialogDescription>
                     </DialogHeader>
                     <Form {...resourceForm}>
                         <form onSubmit={resourceForm.handleSubmit(onResourceSubmit)} className="space-y-4">
@@ -340,7 +402,7 @@ export default function ResourceCenterPage() {
                                         <div className="flex items-center gap-4">
                                             {featureImage && (
                                                 <Image 
-                                                    src={URL.createObjectURL(featureImage)} 
+                                                    src={typeof featureImage === 'string' ? featureImage : URL.createObjectURL(featureImage)} 
                                                     alt="Preview" 
                                                     width={100} 
                                                     height={100} 
@@ -435,7 +497,7 @@ export default function ResourceCenterPage() {
                             <DialogFooter>
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    Save Resource
+                                    {editingResource ? "Save Changes" : "Save Resource"}
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -450,7 +512,7 @@ export default function ResourceCenterPage() {
                         <TableHead>Title</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Type</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -464,8 +526,27 @@ export default function ResourceCenterPage() {
                                 <TableCell>{resource.title}</TableCell>
                                 <TableCell>{getCategoryName(resource.categoryId)}</TableCell>
                                 <TableCell className="capitalize">{resource.contentType}</TableCell>
-                                <TableCell>
-                                    <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => { setEditingResource(resource); setIsResourceDialogOpen(true); }}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete the resource.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => deleteResource(resource.id)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </TableCell>
                             </TableRow>
                         ))
@@ -482,15 +563,15 @@ export default function ResourceCenterPage() {
                 <CardTitle>Categories</CardTitle>
                 <CardDescription>Organize your resources by category.</CardDescription>
               </div>
-               <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+               <Dialog open={isCategoryDialogOpen} onOpenChange={(isOpen) => { setIsCategoryDialogOpen(isOpen); if (!isOpen) setEditingCategory(null); }}>
                 <DialogTrigger asChild>
-                    <Button>
+                    <Button onClick={() => setEditingCategory(null)}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Category
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-md">
                      <DialogHeader>
-                        <DialogTitle>Add New Category</DialogTitle>
+                        <DialogTitle>{editingCategory ? "Edit Category" : "Add New Category"}</DialogTitle>
                     </DialogHeader>
                     <Form {...categoryForm}>
                         <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
@@ -510,7 +591,7 @@ export default function ResourceCenterPage() {
                             <DialogFooter>
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    Save Category
+                                    {editingCategory ? "Save Changes" : "Save Category"}
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -523,7 +604,7 @@ export default function ResourceCenterPage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Name</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                  <TableBody>
@@ -535,8 +616,27 @@ export default function ResourceCenterPage() {
                         categories.map(cat => (
                             <TableRow key={cat.id}>
                                 <TableCell>{cat.name}</TableCell>
-                                <TableCell>
-                                    <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setIsCategoryDialogOpen(true); }}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                     <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                           <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete the category.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => deleteCategory(cat.id)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </TableCell>
                             </TableRow>
                         ))
