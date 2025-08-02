@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ChevronRight } from "lucide-react"
+import Link from "next/link"
 
 const walletStats = [
     { title: "Total Balance", amount: "0", description: "Available in your wallet" },
@@ -18,14 +19,14 @@ const walletStats = [
 ]
 
 const walletOptions = [
-  "Manage Wallet",
-  "Withdrawal Request",
-  "Send Reward Points",
-  "Reward Points History",
-  "Receivable Cash List",
-  "Payable List",
-  "Renew Billing & Invoice, Quotation",
-  "Payment History",
+  { name: "Manage Wallet", href: "/wallet-billing/manage" },
+  { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
+  { name: "Send Reward Points", href: "/wallet-billing/rewards" },
+  { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
+  { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
+  { name: "Payable List", href: "/wallet-billing/payable" },
+  { name: "Renew Billing & Invoice, Quotation", href: "/wallet-billing/billing" },
+  { name: "Payment History", href: "/wallet-billing/history" },
 ]
 
 export default function WalletBillingPage() {
@@ -53,10 +54,12 @@ export default function WalletBillingPage() {
             <CardContent className="p-0">
                 <div className="divide-y divide-border">
                     {walletOptions.map((option) => (
-                        <div key={option} className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
-                            <span className="font-medium">{option}</span>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                        </div>
+                        <Link href={option.href} key={option.name}>
+                            <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+                                <span className="font-medium">{option.name}</span>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        </Link>
                     ))}
                 </div>
             </CardContent>
