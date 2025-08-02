@@ -72,9 +72,9 @@ type SubNavItem = {
 
 const adminNavItems: NavItem[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/listings', icon: Building, label: 'Properties' }, // Properties is same as listings
+    { href: '/listings', icon: Building, label: 'Properties' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
-    { href: '/onboarding', icon: Plane, label: 'Onboarding' }, // No direct onboarding page, will route to manage-partner
+    { href: '/onboarding', icon: Plane, label: 'Onboarding' },
     { 
       href: '/manage-partner', 
       icon: Handshake, 
@@ -86,7 +86,7 @@ const adminNavItems: NavItem[] = [
           { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
       ]
     },
-    { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' }, // No manage seller page exists
+    { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
     { href: '/deals', icon: Handshake, label: 'Manage Deals' },
     { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
@@ -141,7 +141,7 @@ const NavList = ({ items }: { items: NavItem[] }) => {
                                 <SidebarMenuButton
                                     isActive={pathname.startsWith(item.href)}
                                     tooltip={item.label}
-                                    className="justify-between group-data-[collapsible=icon]:justify-center p-2 w-full"
+                                    className="justify-between group-data-[collapsible=icon]:justify-center w-full"
                                 >
                                     <div className="flex items-center gap-2">
                                         <item.icon />
@@ -169,7 +169,7 @@ const NavList = ({ items }: { items: NavItem[] }) => {
                             <SidebarMenuButton
                                 isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/')}
                                 tooltip={item.label}
-                                className="justify-start group-data-[collapsible=icon]:justify-center p-2"
+                                className="justify-start group-data-[collapsible=icon]:justify-center"
                             >
                                 <item.icon />
                                 <span className="group-data-[collapsible=icon]:hidden">
