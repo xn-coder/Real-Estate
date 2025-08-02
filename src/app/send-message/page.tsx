@@ -34,9 +34,7 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
 });
 
 const messageFormSchema = z.object({
-  messageType: z.enum(["announcement", "to_partner", "to_seller"], {
-    required_error: "Please select a message type.",
-  }),
+  messageType: z.enum(["announcement", "to_partner", "to_seller"]),
   announcementType: z.enum(["partner", "seller", "both"]).optional(),
   recipientId: z.string().optional(),
   subject: z.string().min(1, { message: "Subject is required." }),
@@ -65,40 +63,33 @@ export default function SendMessagePage() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isPrefilled, setIsPrefilled] = React.useState(false);
+  
+  const recipientId = searchParams.get('recipientId');
+  const messageTypeParam = searchParams.get('type') as 'to_partner' | 'to_seller' | null;
+  const isPrefilled = !!(recipientId && messageTypeParam);
 
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
-    defaultValues: {
-      messageType: "announcement",
+    values: {
+      messageType: messageTypeParam || "announcement",
+      announcementType: undefined,
+      recipientId: recipientId || "",
       subject: "",
-      details: "",
-      recipientId: "",
-    },
+      details: ""
+    }
   })
 
   React.useEffect(() => {
     const recipientId = searchParams.get('recipientId');
     const type = searchParams.get('type') as 'to_partner' | 'to_seller' | null;
 
-    if (recipientId && type) {
-      form.reset({
-        recipientId: recipientId,
-        messageType: type,
-        subject: "",
-        details: ""
-      });
-      setIsPrefilled(true);
-    } else {
-      form.reset({
-        messageType: "announcement",
-        subject: "",
-        details: "",
-        recipientId: "",
-        announcementType: undefined,
-      });
-      setIsPrefilled(false);
-    }
+    form.reset({
+      messageType: type || 'announcement',
+      recipientId: recipientId || '',
+      subject: '',
+      details: '',
+      announcementType: undefined
+    });
   }, [searchParams, form]);
 
 
@@ -113,13 +104,17 @@ export default function SendMessagePage() {
       title: "Message Sent!",
       description: "Your message has been successfully sent.",
     })
+    
+    // Reset form to default state after submission
     form.reset({
       messageType: "announcement",
       subject: "",
       details: "",
-      recipientId: ""
-    })
-    setIsPrefilled(false); // Reset prefill state
+      recipientId: "",
+      announcementType: undefined,
+    });
+    // If you were to redirect, you would do it here.
+    // For this example, we'll just clear the form.
     setIsSubmitting(false)
   }
 
@@ -146,9 +141,9 @@ export default function SendMessagePage() {
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                <SelectItem value="announcement">Announcement</SelectItem>
-                                <SelectItem value="to_partner">To Partner</SelectItem>
-                                <SelectItem value="to_seller">To Seller</SelectItem>
+                                    <SelectItem value="announcement">Announcement</SelectItem>
+                                    <SelectItem value="to_partner">To Partner</SelectItem>
+                                    <SelectItem value="to_seller">To Seller</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -181,7 +176,7 @@ export default function SendMessagePage() {
                         />
                     )}
 
-                    {(messageType === 'to_partner' || messageType === 'to_seller') && !isPrefilled && (
+                    {!isPrefilled && (messageType === 'to_partner' || messageType === 'to_seller') && (
                          <FormField
                             control={form.control}
                             name="recipientId"
@@ -226,7 +221,7 @@ export default function SendMessagePage() {
                     <FormLabel>Details</FormLabel>
                      <FormControl>
                         <RichTextEditor
-                            initialData={field.value}
+                            initialData={field.value || ''}
                             onChange={field.onChange}
                         />
                     </FormControl>
