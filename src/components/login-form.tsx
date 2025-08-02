@@ -89,6 +89,18 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
     try {
+      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+      
+      if (values.email !== adminEmail) {
+          toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: "Only admin users are allowed to log in.",
+          });
+          setIsLoading(false);
+          return;
+      }
+
       const usersRef = collection(db, "users")
       const q = query(usersRef, where("email", "==", values.email))
       const querySnapshot = await getDocs(q)
@@ -103,6 +115,15 @@ export function LoginForm() {
         const userDoc = querySnapshot.docs[0]
         const user = userDoc.data()
         
+        if (user.role !== 'admin') {
+            toast({
+              variant: "destructive",
+              title: "Login Failed",
+              description: "Only admin users are allowed to log in.",
+            });
+            return;
+        }
+
         const isPasswordValid = await bcrypt.compare(values.password, user.password)
         
         if (isPasswordValid) {
