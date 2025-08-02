@@ -65,7 +65,7 @@ export default function SendMessagePage() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isRecipientIdDisabled, setIsRecipientIdDisabled] = React.useState(false);
+  const [isPrefilled, setIsPrefilled] = React.useState(false);
 
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
@@ -83,9 +83,9 @@ export default function SendMessagePage() {
     if (recipientId && (type === 'to_partner' || type === 'to_seller')) {
       form.setValue('recipientId', recipientId);
       form.setValue('messageType', type);
-      setIsRecipientIdDisabled(true);
+      setIsPrefilled(true);
     } else {
-        setIsRecipientIdDisabled(false);
+      setIsPrefilled(false);
     }
   }, [searchParams, form]);
 
@@ -126,9 +126,9 @@ export default function SendMessagePage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Message Type</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} disabled={isSubmitting || isPrefilled}>
                                 <FormControl>
-                                <SelectTrigger disabled={isSubmitting || isRecipientIdDisabled}>
+                                <SelectTrigger>
                                     <SelectValue placeholder="Select a message type" />
                                 </SelectTrigger>
                                 </FormControl>
@@ -168,7 +168,7 @@ export default function SendMessagePage() {
                         />
                     )}
 
-                    {(messageType === 'to_partner' || messageType === 'to_seller') && !isRecipientIdDisabled && (
+                    {(messageType === 'to_partner' || messageType === 'to_seller') && !isPrefilled && (
                          <FormField
                             control={form.control}
                             name="recipientId"
@@ -181,7 +181,7 @@ export default function SendMessagePage() {
                                     <Input 
                                         placeholder={`Enter ${messageType === 'to_partner' ? 'Partner' : 'Seller'} ID`} 
                                         {...field}
-                                        disabled={isSubmitting || isRecipientIdDisabled}
+                                        disabled={isSubmitting}
                                     />
                                 </FormControl>
                                 <FormMessage />
