@@ -11,7 +11,6 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-  useSidebar,
 } from '@/components/ui/sidebar'
 import {
   Collapsible,
@@ -39,116 +38,163 @@ import {
   UserCog,
   BookOpen,
   History,
+  Tag,
+  Calendar,
+  FileText,
+  Users,
+  BarChart2,
+  Ticket,
+  Award,
+  Power,
+  Home,
+  CheckSquare
 } from 'lucide-react'
 
-const navItems = [
+type NavItem = {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  subItems?: SubNavItem[];
+}
+
+type SubNavItem = {
+    href: string;
+    label: string;
+}
+
+const adminNavItems: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/properties', icon: Building, label: 'Properties' },
+  { href: '/listings', icon: Building, label: 'Listings' },
+  { href: '/leads', icon: UserPlus, label: 'Leads' },
+  { href: '/deals', icon: Handshake, label: 'Deals' },
+  { 
+    href: '/manage-partner', 
+    icon: Handshake, 
+    label: 'Manage Partner',
+    subItems: [
+        { href: '/manage-partner', label: 'Manage Partner' },
+        { href: '/manage-partner/activation', label: 'Partner Activation' },
+        { href: '/manage-partner/suspended', label: 'Suspended Partners' },
+        { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
+    ]
+  },
+  { href: '/contact-book', icon: UserSquare, label: 'Contact Book' },
+  { href: '/updates', icon: History, label: 'Updates'},
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
-  { href: '/onboarding', icon: UserPlus, label: 'Onboarding' },
-]
+  { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
+  { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
+  { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+];
 
-const bottomNavItems = [
-    { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
-    { href: '/manage-lead', icon: UserRound, label: 'Manage Lead' },
-    { href: '/manage-deals', icon: Briefcase, label: 'Manage Deals' },
-    { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
-    { href: '/manage-visitor', icon: UserCheck, label: 'Manage Visitor' },
-    { href: '/manage-support', icon: LifeBuoy, label: 'Manage Support' },
-    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
-    { href: '/website-panel', icon: Laptop, label: 'Website Panel' },
-    { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
-    { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
-]
+const partnerNavItems: NavItem[] = [
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/listings', icon: Building, label: 'Properties' }, // Assuming properties are listings
+  { href: '/leads', icon: UserRound, label: 'Manage Leads' },
+  { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
+  { href: '/schedule', icon: Calendar, label: 'Location Visit Schedule' },
+  { href: '/manage-quotation', icon: FileText, label: 'Manage Quotation' },
+  { href: '/send-quotation', icon: FileText, label: 'Send Quotation' },
+  { href: '/booking-management', icon: CheckSquare, label: 'Booking Management' },
+  { href: '/document-management', icon: FileText, label: 'Document Management' },
+  { href: '/reports-analytics', icon: BarChart2, label: 'Reports & Analytics' },
+  { href: '/team-management', icon: Users, label: 'Team Management' },
+  { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
+  { href: '/support-ticket', icon: Ticket, label: 'Support Ticket' },
+  { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+  { href: '/upgrade', icon: Award, label: 'Upgrade' },
+];
 
-export function AppShellNav() {
-  const pathname = usePathname()
-  const { state: sidebarState, setOpen: setSidebarOpen } = useSidebar();
-  const [isPartnerMenuOpen, setIsPartnerMenuOpen] = React.useState(false);
+const sellerNavItems: NavItem[] = [
+    { href: '/listings', icon: Building, label: 'My Listings' },
+    { href: '/leads', icon: UserRound, label: 'My Leads' },
+    { href: '/schedule', icon: Calendar, label: 'Appointments' },
+];
 
-  const handlePartnerMenuClick = () => {
-    if (sidebarState === 'collapsed') {
-      setSidebarOpen(true);
-    }
-  };
-
-  return (
-    <SidebarMenu>
-      {navItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
-          <Link href={item.href} className="block">
-            <SidebarMenuButton
-              isActive={pathname.startsWith(item.href)}
-              tooltip={item.label}
-              className="justify-start group-data-[collapsible=icon]:justify-center p-2"
-            >
-              <item.icon />
-              <span className="group-data-[collapsible=icon]:hidden">
-                {item.label}
-              </span>
-            </SidebarMenuButton>
-          </Link>
-        </SidebarMenuItem>
-      ))}
-
-      <Collapsible open={isPartnerMenuOpen} onOpenChange={setIsPartnerMenuOpen} className="w-full">
-         <SidebarMenuItem>
-            <CollapsibleTrigger asChild>
-                <SidebarMenuButton
-                    isActive={pathname.startsWith('/manage-partner')}
-                    tooltip="Manage Partner"
-                    className="justify-start group-data-[collapsible=icon]:justify-center p-2"
-                    onClick={handlePartnerMenuClick}
-                >
-                    <Handshake />
-                    <span className="group-data-[collapsible=icon]:hidden flex-1 text-left">Manage Partner</span>
-                    <ChevronDown className={`h-4 w-4 group-data-[collapsible=icon]:hidden transition-transform ${isPartnerMenuOpen ? 'rotate-180' : ''}`} />
-                </SidebarMenuButton>
-            </CollapsibleTrigger>
-        </SidebarMenuItem>
-        <CollapsibleContent>
-            <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSubButton href="/manage-partner" isActive={pathname === '/manage-partner'}>
-                        Manage Partner
-                    </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSubButton href="/manage-partner/activation" isActive={pathname === '/manage-partner/activation'}>
-                       Partner Activation
-                    </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                 <SidebarMenuSubItem>
-                    <SidebarMenuSubButton href="/manage-partner/suspended" isActive={pathname === '/manage-partner/suspended'}>
-                       Suspended Partners
-                    </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSubButton href="/manage-partner/deactivated" isActive={pathname === '/manage-partner/deactivated'}>
-                       Deactivated Partners
-                    </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-            </SidebarMenuSub>
-        </CollapsibleContent>
-      </Collapsible>
+const userNavItems: NavItem[] = [
+    { href: '/listings', icon: Home, label: 'Browse Listings' },
+];
 
 
-      {bottomNavItems.map((item) => (
-        <SidebarMenuItem key={item.href}>
-          <Link href={item.href} className="block">
-            <SidebarMenuButton
-              isActive={pathname.startsWith(item.href)}
-              tooltip={item.label}
-              className="justify-start group-data-[collapsible=icon]:justify-center p-2"
-            >
-              <item.icon />
-              <span className="group-data-[collapsible=icon]:hidden">
-                {item.label}
-              </span>
-            </SidebarMenuButton>
-          </Link>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  )
+const NavList = ({ items }: { items: NavItem[] }) => {
+    const pathname = usePathname();
+    
+    return (
+        <SidebarMenu>
+            {items.map((item) => (
+                item.subItems ? (
+                    <Collapsible key={`${item.href}-${item.label}`} className="w-full">
+                        <SidebarMenuItem>
+                            <CollapsibleTrigger asChild>
+                                <SidebarMenuButton
+                                    isActive={pathname.startsWith(item.href)}
+                                    tooltip={item.label}
+                                    className="justify-between group-data-[collapsible=icon]:justify-center p-2 w-full"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <item.icon />
+                                        <span className="group-data-[collapsible=icon]:hidden flex-1 text-left">{item.label}</span>
+                                    </div>
+                                    <ChevronDown className={`h-4 w-4 group-data-[collapsible=icon]:hidden transition-transform`} />
+                                </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                        </SidebarMenuItem>
+                        <CollapsibleContent>
+                            <SidebarMenuSub>
+                                {item.subItems.map(subItem => (
+                                     <SidebarMenuSubItem key={subItem.href}>
+                                        <Link href={subItem.href} legacyBehavior passHref>
+                                            <SidebarMenuSubButton isActive={pathname === subItem.href}>
+                                                {subItem.label}
+                                            </SidebarMenuSubButton>
+                                        </Link>
+                                    </SidebarMenuSubItem>
+                                ))}
+                            </SidebarMenuSub>
+                        </CollapsibleContent>
+                    </Collapsible>
+                ) : (
+                    <SidebarMenuItem key={`${item.href}-${item.label}`}>
+                        <Link href={item.href} className="block">
+                            <SidebarMenuButton
+                                isActive={pathname === item.href}
+                                tooltip={item.label}
+                                className="justify-start group-data-[collapsible=icon]:justify-center p-2"
+                            >
+                                <item.icon />
+                                <span className="group-data-[collapsible=icon]:hidden">
+                                    {item.label}
+                                </span>
+                            </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                )
+            ))}
+        </SidebarMenu>
+    );
+};
+
+
+export function AppShellNav({ role }: { role: string }) {
+  let navItems: NavItem[] = [];
+
+  switch (role) {
+    case 'admin':
+      navItems = adminNavItems;
+      break;
+    case 'affiliate':
+    case 'super_affiliate':
+    case 'associate':
+    case 'channel':
+    case 'franchisee':
+      navItems = partnerNavItems;
+      break;
+    case 'seller':
+        navItems = sellerNavItems;
+        break;
+    default:
+        navItems = userNavItems;
+        break;
+  }
+  
+  return <NavList items={navItems} />;
 }

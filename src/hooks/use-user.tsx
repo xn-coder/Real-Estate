@@ -10,6 +10,7 @@ type UserContextType = {
   user: User | null
   isLoading: boolean
   fetchUser: () => Promise<void>
+  logout: () => void;
 }
 
 const UserContext = React.createContext<UserContextType | undefined>(undefined)
@@ -49,12 +50,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const logout = React.useCallback(() => {
+    localStorage.removeItem("userId");
+    setUser(null);
+  }, []);
+
+
   React.useEffect(() => {
-    fetchUser()
+    const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === "userId") {
+            fetchUser();
+        }
+    }
+    
+    window.addEventListener('storage', handleStorageChange);
+    fetchUser();
+
+    return () => {
+        window.removeEventListener('storage', handleStorageChange);
+    }
   }, [fetchUser])
 
   return (
-    <UserContext.Provider value={{ user, isLoading, fetchUser }}>
+    <UserContext.Provider value={{ user, isLoading, fetchUser, logout }}>
       {children}
     </UserContext.Provider>
   )

@@ -21,25 +21,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser } from "lucide-react"
+import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import Link from "next/link"
 import { Input } from "./ui/input"
 import { useUser } from "@/hooks/use-user"
 import { Skeleton } from "./ui/skeleton"
+import { useRouter } from "next/navigation"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-    const { user, isLoading } = useUser();
+    const { user, isLoading, logout } = useUser();
+    const router = useRouter();
 
     const getInitials = () => {
         if (user?.firstName && user?.lastName) {
             return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
         }
         if (user?.name) {
-            return user.name.charAt(0)
+            return user.name.split(' ').map(n => n[0]).join('')
         }
         return 'U'
+    }
+
+    const handleLogout = () => {
+        logout();
+        router.push('/');
     }
 
   return (
@@ -56,7 +63,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </SidebarHeader>
         <SidebarContent className="p-2">
-          <AppShellNav />
+          {isLoading ? (
+            <div className="space-y-2 p-2">
+                {[...Array(8)].map((_, i) => (
+                    <Skeleton key={i} className="h-8 w-full" />
+                ))}
+            </div>
+          ) : (
+            <AppShellNav role={user?.role || 'user'} />
+          )}
         </SidebarContent>
         <SidebarFooter className="p-2">
         </SidebarFooter>
@@ -103,31 +118,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <span>My Profile</span>
                         </DropdownMenuItem>
                     </Link>
-                     <Link href="/send-message">
-                        <DropdownMenuItem>
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        <span>Send Message</span>
-                        </DropdownMenuItem>
-                    </Link>
-                     <Link href="/contact-book">
-                        <DropdownMenuItem>
-                        <BookUser className="mr-2 h-4 w-4" />
-                        <span>Contact Book</span>
-                        </DropdownMenuItem>
-                    </Link>
-                    <Link href="/settings">
-                        <DropdownMenuItem>
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                        </DropdownMenuItem>
-                    </Link>
+                     {user?.role === 'admin' && (
+                        <>
+                            <Link href="/send-message">
+                                <DropdownMenuItem>
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                <span>Send Message</span>
+                                </DropdownMenuItem>
+                            </Link>
+                            <Link href="/contact-book">
+                                <DropdownMenuItem>
+                                <BookUser className="mr-2 h-4 w-4" />
+                                <span>Contact Book</span>
+                                </DropdownMenuItem>
+                            </Link>
+                            <Link href="/settings">
+                                <DropdownMenuItem>
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Settings</span>
+                                </DropdownMenuItem>
+                            </Link>
+                        </>
+                     )}
                     <DropdownMenuSeparator />
-                     <Link href="/">
-                        <DropdownMenuItem>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Log out</span>
-                        </DropdownMenuItem>
-                      </Link>
+                     <DropdownMenuItem onSelect={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
             </div>
