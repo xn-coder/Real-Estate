@@ -104,6 +104,7 @@ const resourceFormSchema = z.object({
                 path: ["faqs"],
             });
         } else {
+            let hasError = false;
             data.faqs.forEach((faq, index) => {
                 if (!faq.question) {
                     ctx.addIssue({
@@ -111,6 +112,7 @@ const resourceFormSchema = z.object({
                         message: "Question cannot be empty.",
                         path: [`faqs.${index}.question`],
                     });
+                    hasError = true;
                 }
                 if (!faq.answer) {
                     ctx.addIssue({
@@ -118,8 +120,10 @@ const resourceFormSchema = z.object({
                         message: "Answer cannot be empty.",
                         path: [`faqs.${index}.answer`],
                     });
+                    hasError = true;
                 }
-            })
+            });
+            if(hasError) return z.NEVER;
         }
     }
 });
@@ -229,44 +233,48 @@ export default function ResourceCenterPage() {
   const onResourceSubmit = async (values: ResourceFormValues) => {
     setIsSubmitting(true);
     try {
-        let featureImageUrl = editingResource?.featureImage || '';
-        if (values.featureImage && typeof values.featureImage !== 'string') {
-            featureImageUrl = await fileToDataUrl(values.featureImage);
-        }
-
-        if (!editingResource && !featureImageUrl) {
-            resourceForm.setError("featureImage", { message: "Feature image is required." });
-            setIsSubmitting(false);
-            return;
-        }
-        
-        const resourceData: Omit<Resource, 'id' | 'createdAt'> = {
-            title: values.title,
-            categoryId: values.categoryId,
-            contentType: values.contentType,
-            featureImage: featureImageUrl,
-            articleContent: (values.contentType === 'article' || values.contentType === 'terms_condition') ? (values.articleContent ?? '') : null,
-            videoUrl: values.contentType === 'video' ? (values.videoUrl ?? '') : null,
-            faqs: values.contentType === 'faq' ? (values.faqs ?? []) : null,
-        };
-
-        if (editingResource) {
-            await updateDoc(doc(db, "resources", editingResource.id), resourceData);
-            toast({ title: "Resource Updated", description: "The resource has been updated." });
-        } else {
-            const resourceId = generateUserId("RES");
-            await setDoc(doc(db, "resources", resourceId), { ...resourceData, id: resourceId, createdAt: Timestamp.now() });
-            toast({ title: "Resource Created", description: "The new resource has been added." });
-        }
-
-        setIsResourceDialogOpen(false);
-        setEditingResource(null);
-        await fetchData();
-    } catch (error) {
-        console.error("Error saving resource:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to save resource." });
-    } finally {
+      let featureImageUrl = editingResource?.featureImage || '';
+      if (values.featureImage && typeof values.featureImage !== 'string') {
+        featureImageUrl = await fileToDataUrl(values.featureImage as File);
+      } else if (typeof values.featureImage === 'string') {
+        featureImageUrl = values.featureImage;
+      }
+  
+      if (!editingResource && !values.featureImage) {
+        resourceForm.setError("featureImage", { message: "Feature image is required." });
         setIsSubmitting(false);
+        return;
+      }
+  
+      const resourceData: Omit<Resource, 'id' | 'createdAt'> & { id?: string; createdAt?: Timestamp } = {
+        title: values.title,
+        categoryId: values.categoryId,
+        contentType: values.contentType,
+        featureImage: featureImageUrl,
+        articleContent: values.contentType === 'article' || values.contentType === 'terms_condition' ? values.articleContent ?? null : null,
+        videoUrl: values.contentType === 'video' ? values.videoUrl ?? null : null,
+        faqs: values.contentType === 'faq' ? values.faqs ?? null : null,
+      };
+  
+      if (editingResource) {
+        await updateDoc(doc(db, "resources", editingResource.id), resourceData);
+        toast({ title: "Resource Updated", description: "The resource has been updated." });
+      } else {
+        const resourceId = generateUserId("RES");
+        resourceData.id = resourceId;
+        resourceData.createdAt = Timestamp.now();
+        await setDoc(doc(db, "resources", resourceId), resourceData);
+        toast({ title: "Resource Created", description: "The new resource has been added." });
+      }
+  
+      setIsResourceDialogOpen(false);
+      setEditingResource(null);
+      await fetchData();
+    } catch (error) {
+      console.error("Error saving resource:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to save resource." });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -674,3 +682,5 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
+
+    
