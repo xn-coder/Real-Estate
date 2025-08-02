@@ -107,10 +107,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         <span>Send Message</span>
                         </DropdownMenuItem>
                     </Link>
-                     <DropdownMenuItem>
-                      <BookUser className="mr-2 h-4 w-4" />
-                      <span>Contact Book</span>
-                    </DropdownMenuItem>
+                     <Link href="/contact-book">
+                        <DropdownMenuItem>
+                        <BookUser className="mr-2 h-4 w-4" />
+                        <span>Contact Book</span>
+                        </DropdownMenuItem>
+                    </Link>
                     <Link href="/settings">
                         <DropdownMenuItem>
                         <Settings className="mr-2 h-4 w-4" />
