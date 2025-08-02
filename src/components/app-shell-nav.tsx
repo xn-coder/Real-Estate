@@ -139,6 +139,7 @@ const NavList = ({ items }: { items: NavItem[] }) => {
                         <SidebarMenuItem>
                             <CollapsibleTrigger asChild>
                                 <SidebarMenuButton
+                                    size="icon"
                                     isActive={pathname.startsWith(item.href)}
                                     tooltip={item.label}
                                     className="justify-between group-data-[collapsible=icon]:justify-center w-full"
