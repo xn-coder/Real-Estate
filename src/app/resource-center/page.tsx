@@ -74,8 +74,8 @@ const resourceFormSchema = z.object({
   articleContent: z.string().optional(),
   videoUrl: z.string().url().optional().or(z.literal('')),
   faqs: z.array(z.object({
-    question: z.string(),
-    answer: z.string(),
+    question: z.string().min(1, "Question cannot be empty."),
+    answer: z.string().min(1, "Answer cannot be empty."),
   })).optional(),
 }).superRefine((data, ctx) => {
     if (data.contentType === 'article' || data.contentType === 'terms_condition') {
@@ -103,27 +103,6 @@ const resourceFormSchema = z.object({
                 message: "At least one FAQ item is required.",
                 path: ["faqs"],
             });
-        } else {
-            let hasError = false;
-            data.faqs.forEach((faq, index) => {
-                if (!faq.question) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: "Question cannot be empty.",
-                        path: [`faqs.${index}.question`],
-                    });
-                    hasError = true;
-                }
-                if (!faq.answer) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: "Answer cannot be empty.",
-                        path: [`faqs.${index}.answer`],
-                    });
-                    hasError = true;
-                }
-            });
-            if(hasError) return z.NEVER;
         }
     }
 });
@@ -206,36 +185,41 @@ export default function ResourceCenterPage() {
     fetchData();
   }, [fetchData]);
 
-  React.useEffect(() => {
-    if (editingResource) {
+  const openResourceDialog = (resource: Resource | null) => {
+    setEditingResource(resource);
+    if (resource) {
         resourceForm.reset({
-            ...editingResource,
-            faqs: editingResource.faqs?.length ? editingResource.faqs : [{ question: "", answer: "" }]
+            ...defaultResourceValues,
+            ...resource,
+            faqs: resource.faqs?.length ? resource.faqs : [{ question: "", answer: "" }],
+            videoUrl: resource.videoUrl || '',
         });
     } else {
         resourceForm.reset(defaultResourceValues);
     }
-  }, [editingResource, resourceForm]);
+    setIsResourceDialogOpen(true);
+  }
 
-  React.useEffect(() => {
-    if (editingCategory) {
-        categoryForm.reset(editingCategory);
+  const openCategoryDialog = (category: Category | null) => {
+    setEditingCategory(category);
+    if (category) {
+        categoryForm.reset(category);
     } else {
         categoryForm.reset({ name: "" });
     }
-  }, [editingCategory, categoryForm]);
-
+    setIsCategoryDialogOpen(true);
+  }
 
   const onResourceSubmit = async (values: ResourceFormValues) => {
     setIsSubmitting(true);
     try {
       let featureImageUrl = editingResource?.featureImage || '';
+      // Check if a new file is uploaded
       if (values.featureImage && typeof values.featureImage !== 'string') {
         featureImageUrl = await fileToDataUrl(values.featureImage as File);
-      } else if (typeof values.featureImage === 'string') {
-        featureImageUrl = values.featureImage;
       }
-  
+      
+      // If adding new, image is required
       if (!editingResource && !values.featureImage) {
         resourceForm.setError("featureImage", { message: "Feature image is required." });
         setIsSubmitting(false);
@@ -247,9 +231,9 @@ export default function ResourceCenterPage() {
         categoryId: values.categoryId,
         contentType: values.contentType,
         featureImage: featureImageUrl,
-        articleContent: values.contentType === 'article' || values.contentType === 'terms_condition' ? values.articleContent ?? null : null,
-        videoUrl: values.contentType === 'video' ? values.videoUrl ?? null : null,
-        faqs: values.contentType === 'faq' ? values.faqs ?? null : null,
+        articleContent: values.contentType === 'article' || values.contentType === 'terms_condition' ? values.articleContent || null : null,
+        videoUrl: values.contentType === 'video' ? values.videoUrl || null : null,
+        faqs: values.contentType === 'faq' ? values.faqs || null : null,
       };
   
       if (editingResource) {
@@ -356,7 +340,7 @@ export default function ResourceCenterPage() {
                 </div>
                 <Dialog open={isResourceDialogOpen} onOpenChange={(isOpen) => { setIsResourceDialogOpen(isOpen); if (!isOpen) setEditingResource(null); }}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => setEditingResource(null)}>
+                        <Button onClick={() => openResourceDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Resource
                         </Button>
                     </DialogTrigger>
@@ -517,6 +501,9 @@ export default function ResourceCenterPage() {
                                         <Button type="button" variant="outline" size="sm" onClick={() => append({ question: "", answer: "" })}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Add FAQ
                                         </Button>
+                                        <FormMessage>
+                                            {resourceForm.formState.errors.faqs?.message}
+                                        </FormMessage>
                                     </div>
                                 )}
 
@@ -554,7 +541,7 @@ export default function ResourceCenterPage() {
                                 <TableCell>{getCategoryName(resource.categoryId)}</TableCell>
                                 <TableCell className="capitalize">{contentTypeDisplay[resource.contentType]}</TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => { setEditingResource(resource); setIsResourceDialogOpen(true); }}>
+                                    <Button variant="ghost" size="icon" onClick={() => openResourceDialog(resource)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
                                     <AlertDialog>
@@ -593,7 +580,7 @@ export default function ResourceCenterPage() {
                     </div>
                     <Dialog open={isCategoryDialogOpen} onOpenChange={(isOpen) => { setIsCategoryDialogOpen(isOpen); if (!isOpen) setEditingCategory(null); }}>
                         <DialogTrigger asChild>
-                            <Button onClick={() => setEditingCategory(null)}>
+                            <Button onClick={() => openCategoryDialog(null)}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Category
                             </Button>
                         </DialogTrigger>
@@ -646,7 +633,7 @@ export default function ResourceCenterPage() {
                             <TableRow key={cat.id}>
                                 <TableCell>{cat.name}</TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => { setEditingCategory(cat); setIsCategoryDialogOpen(true); }}>
+                                    <Button variant="ghost" size="icon" onClick={() => openCategoryDialog(cat)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
                                      <AlertDialog>
