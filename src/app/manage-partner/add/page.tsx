@@ -32,10 +32,6 @@ import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { Calendar } from "@/components/ui/calendar"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import axios from 'axios';
@@ -53,7 +49,7 @@ type PartnerRole = keyof typeof partnerRoles;
 const addPartnerFormStep1Schema = z.object({
   profileImage: z.any().optional(),
   fullName: z.string().min(1, "Full name is required."),
-  dob: z.date({ required_error: "Date of birth is required." }),
+  dob: z.string().min(1, "Date of birth is required."),
   gender: z.enum(["male", "female", "other"], { required_error: "Please select a gender." }),
   qualification: z.string().min(1, "Qualification is required."),
   phone: z.string().min(10, "Please enter a valid phone number."),
@@ -149,6 +145,7 @@ export default function AddPartnerPage() {
       phone: "",
       password: "",
       confirmPassword: "",
+      dob: "",
       address: "",
       city: "",
       state: "",
@@ -232,7 +229,7 @@ export default function AddPartnerPage() {
             password: hashedPassword,
             role: values.role,
             profileImage: values.profileImage ? (typeof values.profileImage === 'string' ? values.profileImage : await fileToDataUrl(values.profileImage)) : '',
-            dob: values.dob,
+            dob: new Date(values.dob),
             gender: values.gender,
             qualification: values.qualification,
             address: values.address,
@@ -400,37 +397,19 @@ export default function AddPartnerPage() {
                             />
                             <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem> <FormLabel>Full Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="dob" render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Date of Birth</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
+                                <FormField
+                                    control={form.control}
+                                    name="dob"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Date of Birth</FormLabel>
                                             <FormControl>
-                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
+                                                <Input type="date" {...field} />
                                             </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar 
-                                                mode="single" 
-                                                selected={field.value} 
-                                                onSelect={field.onChange}
-                                                captionLayout="dropdown-buttons"
-                                                fromYear={1950}
-                                                toYear={new Date().getFullYear()}
-                                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")} 
-                                                initialFocus
-                                                showFooter
-                                                onClear={() => field.onChange(undefined)}
-                                                onToday={() => field.onChange(new Date())}
-                                            />
-                                            </PopoverContent>
-                                        </Popover>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                                 <FormField control={form.control} name="gender" render={({ field }) => ( <FormItem> <FormLabel>Gender</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select gender"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="male">Male</SelectItem> <SelectItem value="female">Female</SelectItem> <SelectItem value="other">Other</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
                             </div>
                             <FormField control={form.control} name="qualification" render={({ field }) => ( <FormItem> <FormLabel>Qualification</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select qualification"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="post-graduate">Post Graduate</SelectItem> <SelectItem value="graduate">Graduate</SelectItem> <SelectItem value="undergraduate">Undergraduate</SelectItem> <SelectItem value="diploma">Diploma</SelectItem> <SelectItem value="12th">12th</SelectItem> <SelectItem value="10th">10th</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
@@ -596,3 +575,5 @@ export default function AddPartnerPage() {
     </div>
   )
 }
+
+    
