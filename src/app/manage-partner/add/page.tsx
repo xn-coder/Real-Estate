@@ -228,6 +228,7 @@ export default function AddPartnerPage() {
             phone: values.phone,
             password: hashedPassword,
             role: values.role,
+            status: 'active' as 'active',
             profileImage: values.profileImage ? (typeof values.profileImage === 'string' ? values.profileImage : await fileToDataUrl(values.profileImage)) : '',
             dob: new Date(values.dob),
             gender: values.gender,
@@ -575,5 +576,3 @@ export default function AddPartnerPage() {
     </div>
   )
 }
-
-    
