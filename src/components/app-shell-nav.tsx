@@ -37,6 +37,7 @@ import {
   ChevronDown,
   UserX,
   UserCog,
+  BookOpen,
 } from 'lucide-react'
 
 const navItems = [
@@ -53,7 +54,7 @@ const bottomNavItems = [
     { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
     { href: '/manage-visitor', icon: UserCheck, label: 'Manage Visitor' },
     { href: '/manage-support', icon: LifeBuoy, label: 'Manage Support' },
-    { href: '/resource-center', icon: Book, label: 'Resource Center' },
+    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/website-panel', icon: Laptop, label: 'Website Panel' },
     { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
     { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
