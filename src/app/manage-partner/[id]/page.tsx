@@ -103,10 +103,8 @@ export default function PartnerProfilePage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
         <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" asChild>
-                <Link href="/manage-partner">
-                    <ArrowLeft className="h-4 w-4" />
-                </Link>
+            <Button variant="outline" size="icon" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Profile</h1>
         </div>
