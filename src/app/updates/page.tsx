@@ -25,11 +25,13 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { format } from "date-fns"
+import { Button } from "@/components/ui/button"
+import { Eye } from "lucide-react"
 
 const receivedMessages = [
-  { id: 'msg1', from: 'John Doe (Partner)', subject: 'New Lead Submission', date: new Date(), read: false },
-  { id: 'msg2', from: 'System Announcement', subject: 'Upcoming Platform Maintenance', date: new Date(new Date().setDate(new Date().getDate() - 1)), read: true },
-  { id: 'msg3', from: 'Jane Smith (Seller)', subject: 'Question about my listing', date: new Date(new Date().setDate(new Date().getDate() - 2)), read: true },
+  { id: 'msg1', senderId: 'PARTNER001', from: 'John Doe (Partner)', subject: 'New Lead Submission', date: new Date(), read: false },
+  { id: 'msg2', senderId: 'SYSTEM', from: 'System Announcement', subject: 'Upcoming Platform Maintenance', date: new Date(new Date().setDate(new Date().getDate() - 1)), read: true },
+  { id: 'msg3', senderId: 'SELLER001', from: 'Jane Smith (Seller)', subject: 'Question about my listing', date: new Date(new Date().setDate(new Date().getDate() - 2)), read: true },
 ];
 
 const sentMessages = [
@@ -60,17 +62,28 @@ export default function UpdatesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>From</TableHead>
+                    <TableHead>Sender ID</TableHead>
+                    <TableHead>Sender Name</TableHead>
                     <TableHead>Subject</TableHead>
-                    <TableHead className="text-right">Date</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {receivedMessages.map((message) => (
                     <TableRow key={message.id} className={!message.read ? 'bg-muted/50 font-bold' : ''}>
+                      <TableCell>
+                        <Badge variant="outline">{message.senderId}</Badge>
+                      </TableCell>
                       <TableCell>{message.from}</TableCell>
                       <TableCell>{message.subject}</TableCell>
-                      <TableCell className="text-right">{format(message.date, 'PP')}</TableCell>
+                      <TableCell>{format(message.date, 'PP')}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon">
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">View Message</span>
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
