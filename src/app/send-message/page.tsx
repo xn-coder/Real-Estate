@@ -168,7 +168,7 @@ export default function SendMessagePage() {
                         />
                     )}
 
-                    {(messageType === 'to_partner' || messageType === 'to_seller') && (
+                    {(messageType === 'to_partner' || messageType === 'to_seller') && !isRecipientIdDisabled && (
                          <FormField
                             control={form.control}
                             name="recipientId"
