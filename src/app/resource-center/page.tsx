@@ -70,7 +70,7 @@ const resourceFormSchema = z.object({
   title: z.string().min(1, "Title is required."),
   categoryId: z.string().min(1, "Please select a category."),
   contentType: z.enum(["article", "video", "faq", "terms_condition"]),
-  featureImage: z.any().refine(file => file, "Feature image is required."),
+  featureImage: z.any().optional(),
   articleContent: z.string().optional(),
   videoUrl: z.string().url().optional().or(z.literal('')),
   faqs: z.array(z.object({
@@ -78,21 +78,25 @@ const resourceFormSchema = z.object({
     answer: z.string(),
   })).optional(),
 }).superRefine((data, ctx) => {
-    if ((data.contentType === "article" || data.contentType === "terms_condition") && (!data.articleContent || data.articleContent.length < 8)) {
-       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Article content is required.",
-        path: ["articleContent"],
-       });
+    if (data.contentType === 'article' || data.contentType === 'terms_condition') {
+        if (!data.articleContent || data.articleContent.length < 8) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Article content is required.",
+                path: ["articleContent"],
+            });
+        }
     }
-    if (data.contentType === "video" && !data.videoUrl) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "A valid video URL is required.",
-            path: ["videoUrl"],
-        });
+    if (data.contentType === 'video') {
+        if (!data.videoUrl) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "A valid video URL is required.",
+                path: ["videoUrl"],
+            });
+        }
     }
-    if (data.contentType === "faq") {
+    if (data.contentType === 'faq') {
         if (!data.faqs || data.faqs.length === 0) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
@@ -228,6 +232,12 @@ export default function ResourceCenterPage() {
         let featureImageUrl = editingResource?.featureImage || '';
         if (values.featureImage && typeof values.featureImage !== 'string') {
             featureImageUrl = await fileToDataUrl(values.featureImage);
+        }
+
+        if (!editingResource && !featureImageUrl) {
+            resourceForm.setError("featureImage", { message: "Feature image is required." });
+            setIsSubmitting(false);
+            return;
         }
         
         const resourceData: Omit<Resource, 'id' | 'createdAt'> = {
@@ -389,7 +399,7 @@ export default function ResourceCenterPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Content Type</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingResource}>
+                                                <Select onValueChange={field.onChange} value={field.value} disabled={!!editingResource}>
                                                     <FormControl><SelectTrigger><SelectValue placeholder="Select content type" /></SelectTrigger></FormControl>
                                                     <SelectContent>
                                                         <SelectItem value="article">Article</SelectItem>
@@ -664,5 +674,3 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
-
-    
