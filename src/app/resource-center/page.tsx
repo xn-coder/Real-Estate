@@ -33,7 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, Upload, X, Trash2 } from "lucide-react"
+import { Loader2, PlusCircle, Trash2 } from "lucide-react"
 import Image from "next/image"
 import {
   Table,
@@ -46,9 +46,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from 'next/dynamic'
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore"
+import { collection, doc, setDoc, getDocs } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
-import type { Resource, Category, FaqItem } from "@/types/resource"
+import type { Resource, Category } from "@/types/resource"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -56,32 +56,35 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
 });
 
 const resourceFormSchema = z.object({
-  title: z.string().min(1, { message: "Title is required." }),
-  categoryId: z.string().min(1, { message: "Please select a category." }),
-  contentType: z.enum(["article", "video", "faq"], { required_error: "Content type is required." }),
+  title: z.string().min(1, "Title is required."),
+  categoryId: z.string().min(1, "Please select a category."),
+  contentType: z.enum(["article", "video", "faq"]),
   featureImage: z.any().refine(file => file, "Feature image is required."),
   articleContent: z.string().optional(),
-  videoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  videoUrl: z.string().optional(),
   faqs: z.array(z.object({
     question: z.string().min(1, "Question cannot be empty."),
     answer: z.string().min(1, "Answer cannot be empty."),
   })).optional(),
 }).superRefine((data, ctx) => {
-    if (data.contentType === "article" && (!data.articleContent || data.articleContent.length < 8)) {
+    if (data.contentType === "article" && (!data.articleContent || data.articleContent.length < 8)) { // CKEditor might add empty tags like <p></p>
        ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Article content is required.",
         path: ["articleContent"],
        });
     }
-    if (data.contentType === "video" && !data.videoUrl) {
-       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Video URL is required.",
-        path: ["videoUrl"],
-       });
+    if (data.contentType === "video") {
+        const urlCheck = z.string().url({ message: "Please enter a valid URL." }).safeParse(data.videoUrl);
+        if(!urlCheck.success) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: urlCheck.error.issues[0].message,
+                path: ["videoUrl"],
+            });
+        }
     }
-     if (data.contentType === "faq" && (!data.faqs || data.faqs.length === 0 || data.faqs.some(f => !f.question || !f.answer))) {
+    if (data.contentType === "faq" && (!data.faqs || data.faqs.length === 0 || data.faqs.some(f => !f.question || !f.answer))) {
        ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one complete FAQ item is required.",
@@ -101,6 +104,10 @@ type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = reject;
@@ -167,9 +174,9 @@ export default function ResourceCenterPage() {
             categoryId: values.categoryId,
             contentType: values.contentType,
             featureImage: featureImageUrl,
-            articleContent: values.contentType === 'article' ? values.articleContent || null : null,
-            videoUrl: values.contentType === 'video' ? values.videoUrl || null : null,
-            faqs: values.contentType === 'faq' ? values.faqs || null : null,
+            articleContent: values.contentType === 'article' ? values.articleContent ?? null : null,
+            videoUrl: values.contentType === 'video' ? values.videoUrl ?? null : null,
+            faqs: values.contentType === 'faq' ? values.faqs ?? null : null,
             createdAt: new Date(),
         };
         await setDoc(doc(db, "resources", resourceId), {id: resourceId, ...resourceData});
@@ -185,7 +192,7 @@ export default function ResourceCenterPage() {
             videoUrl: "",
             featureImage: undefined,
         });
-        fetchData();
+        await fetchData();
     } catch (error) {
         console.error("Error creating resource:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to create resource." });
@@ -202,7 +209,7 @@ export default function ResourceCenterPage() {
         toast({ title: "Category Created", description: "The new category has been added." });
         setIsCategoryDialogOpen(false);
         categoryForm.reset();
-        fetchData();
+        await fetchData();
     } catch (error) {
         console.error("Error creating category:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to create category." });
@@ -391,11 +398,11 @@ export default function ResourceCenterPage() {
                                     </Button>
                                 </div>
                             )}
-                            <FormMessage>{resourceForm.formState.errors.root?.message}</FormMessage>
 
                             <DialogFooter>
                                 <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Resource"}
+                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Save Resource
                                 </Button>
                             </DialogFooter>
                         </form>
@@ -469,7 +476,8 @@ export default function ResourceCenterPage() {
                             />
                             <DialogFooter>
                                 <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Category"}
+                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Save Category
                                 </Button>
                             </DialogFooter>
                         </form>
