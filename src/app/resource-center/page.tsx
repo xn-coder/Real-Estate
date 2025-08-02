@@ -389,7 +389,7 @@ export default function ResourceCenterPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Content Type</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingResource}>
                                                     <FormControl><SelectTrigger><SelectValue placeholder="Select content type" /></SelectTrigger></FormControl>
                                                     <SelectContent>
                                                         <SelectItem value="article">Article</SelectItem>
@@ -664,3 +664,5 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
+
+    
