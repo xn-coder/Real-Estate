@@ -67,13 +67,13 @@ const resourceFormSchema = z.object({
     answer: z.string().min(1, "Answer cannot be empty."),
   })).optional(),
 }).refine(data => {
-    if (data.contentType === "article") return !!data.articleContent;
+    if (data.contentType === "article") return !!data.articleContent && data.articleContent.length > 8; // CKEditor might add <p></p>
     if (data.contentType === "video") return !!data.videoUrl;
-    if (data.contentType === "faq") return data.faqs && data.faqs.length > 0;
+    if (data.contentType === "faq") return data.faqs && data.faqs.length > 0 && data.faqs.every(f => f.question && f.answer);
     return true;
 }, {
     message: "Please provide content for the selected type.",
-    path: ["articleContent"], // You can choose any path here
+    path: ["articleContent"], // Shows error under the first dynamic field
 });
 
 type ResourceFormValues = z.infer<typeof resourceFormSchema>;
@@ -108,6 +108,8 @@ export default function ResourceCenterPage() {
       title: "",
       contentType: "article",
       faqs: [{ question: "", answer: "" }],
+      articleContent: "",
+      videoUrl: ""
     },
   });
 
@@ -150,16 +152,22 @@ export default function ResourceCenterPage() {
             categoryId: values.categoryId,
             contentType: values.contentType,
             featureImage: featureImageUrl,
-            articleContent: values.articleContent || null,
-            videoUrl: values.videoUrl || null,
-            faqs: values.faqs || null,
+            articleContent: values.contentType === 'article' ? values.articleContent || null : null,
+            videoUrl: values.contentType === 'video' ? values.videoUrl || null : null,
+            faqs: values.contentType === 'faq' ? values.faqs || null : null,
             createdAt: new Date(),
         };
         await setDoc(doc(db, "resources", resourceId), {id: resourceId, ...resourceData});
 
         toast({ title: "Resource Created", description: "The new resource has been added." });
         setIsResourceDialogOpen(false);
-        resourceForm.reset();
+        resourceForm.reset({
+            title: "",
+            contentType: "article",
+            faqs: [{ question: "", answer: "" }],
+            articleContent: "",
+            videoUrl: ""
+        });
         fetchData();
     } catch (error) {
         console.error("Error creating resource:", error);
@@ -277,13 +285,13 @@ export default function ResourceCenterPage() {
                              <FormField
                                 control={resourceForm.control}
                                 name="featureImage"
-                                render={({ field }) => (
+                                render={({ field: { onChange, value, ...rest }}) => (
                                     <FormItem>
                                     <FormLabel>Feature Image</FormLabel>
                                         <div className="flex items-center gap-4">
-                                            {featureImage && <Image src={URL.createObjectURL(featureImage)} alt="Preview" width={100} height={100} className="rounded-md object-cover"/>}
+                                            {value && <Image src={typeof value === 'string' ? value : URL.createObjectURL(value)} alt="Preview" width={100} height={100} className="rounded-md object-cover"/>}
                                             <FormControl>
-                                                <Input type="file" accept="image/*" onChange={e => field.onChange(e.target.files?.[0])} />
+                                                <Input type="file" accept="image/*" onChange={e => onChange(e.target.files?.[0])} {...rest} />
                                             </FormControl>
                                         </div>
                                     <FormMessage />
