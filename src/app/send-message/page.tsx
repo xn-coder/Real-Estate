@@ -81,10 +81,20 @@ export default function SendMessagePage() {
     const recipientId = searchParams.get('recipientId');
     const type = searchParams.get('type');
     if (recipientId && (type === 'to_partner' || type === 'to_seller')) {
-      form.setValue('recipientId', recipientId);
-      form.setValue('messageType', type);
+      form.reset({
+        recipientId: recipientId,
+        messageType: type,
+        subject: "",
+        details: ""
+      });
       setIsPrefilled(true);
     } else {
+      form.reset({
+        messageType: "announcement",
+        subject: "",
+        details: "",
+        recipientId: ""
+      });
       setIsPrefilled(false);
     }
   }, [searchParams, form]);
@@ -108,6 +118,7 @@ export default function SendMessagePage() {
       recipientId: ""
     })
     setIsSubmitting(false);
+    setIsPrefilled(false); // Reset prefill state
   }
 
   return (
