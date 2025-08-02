@@ -120,6 +120,7 @@ export default function SendMessagePage() {
       recipientId: ""
     })
     setIsPrefilled(false); // Reset prefill state
+    setIsSubmitting(false)
   }
 
   return (
