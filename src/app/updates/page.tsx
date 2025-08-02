@@ -35,9 +35,9 @@ const receivedMessages = [
 ];
 
 const sentMessages = [
-  { id: 'sent1', to: 'All Partners', subject: 'Q2 Commission Reports', date: new Date() },
-  { id: 'sent2', to: 'Jane Smith (Seller)', subject: 'Re: Question about your listing', date: new Date(new Date().setDate(new Date().getDate() - 1)) },
-  { id: 'sent3', to: 'Mark Johnson (Partner)', subject: 'Welcome to the team!', date: new Date(new Date().setDate(new Date().getDate() - 3)) },
+  { id: 'sent1', recipientId: 'ALL_PARTNERS', recipientName: 'All Partners', subject: 'Q2 Commission Reports', date: new Date() },
+  { id: 'sent2', recipientId: 'SELLER001', recipientName: 'Jane Smith (Seller)', subject: 'Re: Question about your listing', date: new Date(new Date().setDate(new Date().getDate() - 1)) },
+  { id: 'sent3', recipientId: 'PARTNER002', recipientName: 'Mark Johnson (Partner)', subject: 'Welcome to the team!', date: new Date(new Date().setDate(new Date().getDate() - 3)) },
 ];
 
 
@@ -103,17 +103,28 @@ export default function UpdatesPage() {
                 <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>To</TableHead>
+                        <TableHead>Recipient ID</TableHead>
+                        <TableHead>Recipient Name</TableHead>
                         <TableHead>Subject</TableHead>
-                        <TableHead className="text-right">Date</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
                     {sentMessages.map((message) => (
                         <TableRow key={message.id}>
-                        <TableCell>{message.to}</TableCell>
-                        <TableCell>{message.subject}</TableCell>
-                        <TableCell className="text-right">{format(message.date, 'PP')}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{message.recipientId}</Badge>
+                          </TableCell>
+                          <TableCell>{message.recipientName}</TableCell>
+                          <TableCell>{message.subject}</TableCell>
+                          <TableCell>{format(message.date, 'PP')}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon">
+                                <Eye className="h-4 w-4" />
+                                <span className="sr-only">View Message</span>
+                            </Button>
+                          </TableCell>
                         </TableRow>
                     ))}
                     </TableBody>
