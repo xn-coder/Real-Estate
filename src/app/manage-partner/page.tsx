@@ -203,7 +203,7 @@ export default function ManagePartnerPage() {
                         <Eye className="mr-2 h-4 w-4" />
                         View Profile
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => router.push(`/send-message?recipientId=${partner.id}&type=to_partner`)}>
                         <MessageSquare className="mr-2 h-4 w-4" />
                         Send Message
                       </DropdownMenuItem>

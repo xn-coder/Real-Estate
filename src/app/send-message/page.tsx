@@ -25,11 +25,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import dynamic from 'next/dynamic';
+import { useSearchParams } from "next/navigation"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
 });
-
 
 const messageFormSchema = z.object({
   messageType: z.enum(["announcement", "to_partner", "to_seller"], {
@@ -61,6 +61,7 @@ type MessageForm = z.infer<typeof messageFormSchema>;
 
 export default function SendMessagePage() {
   const { toast } = useToast()
+  const searchParams = useSearchParams()
 
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
@@ -68,8 +69,19 @@ export default function SendMessagePage() {
       messageType: "announcement",
       subject: "",
       details: "",
+      recipientId: "",
     },
   })
+
+  React.useEffect(() => {
+    const recipientId = searchParams.get('recipientId');
+    const type = searchParams.get('type');
+    if (recipientId && (type === 'to_partner' || type === 'to_seller')) {
+      form.setValue('recipientId', recipientId);
+      form.setValue('messageType', type);
+    }
+  }, [searchParams, form]);
+
 
   const messageType = form.watch("messageType")
 
@@ -102,7 +114,7 @@ export default function SendMessagePage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Message Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a message type" />
