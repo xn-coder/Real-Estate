@@ -137,7 +137,7 @@ export default function SendMessagePage() {
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Message Type</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} disabled={isSubmitting || isPrefilled}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting || isPrefilled}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a message type" />
