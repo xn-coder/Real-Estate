@@ -26,9 +26,11 @@ import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import dynamic from 'next/dynamic';
 import { useSearchParams } from "next/navigation"
+import { Loader2 } from "lucide-react"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
+  loading: () => <div className="h-[242px] w-full rounded-md border border-input flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
 });
 
 const messageFormSchema = z.object({
@@ -49,7 +51,7 @@ const messageFormSchema = z.object({
     path: ["announcementType"],
 }).refine(data => {
     if (data.messageType === 'to_partner' || data.messageType === 'to_seller') {
-        return !!data.recipientId && data.recipientId.length > 0;
+        return !!data.recipientId && data.recipientId.trim().length > 0;
     }
     return true;
 }, {
@@ -62,6 +64,8 @@ type MessageForm = z.infer<typeof messageFormSchema>;
 export default function SendMessagePage() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isRecipientIdDisabled, setIsRecipientIdDisabled] = React.useState(false);
 
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
@@ -79,14 +83,20 @@ export default function SendMessagePage() {
     if (recipientId && (type === 'to_partner' || type === 'to_seller')) {
       form.setValue('recipientId', recipientId);
       form.setValue('messageType', type);
+      setIsRecipientIdDisabled(true);
+    } else {
+        setIsRecipientIdDisabled(false);
     }
   }, [searchParams, form]);
 
 
   const messageType = form.watch("messageType")
 
-  function onSubmit(values: MessageForm) {
+  async function onSubmit(values: MessageForm) {
+    setIsSubmitting(true);
     console.log(values)
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
     toast({
       title: "Message Sent!",
       description: "Your message has been successfully sent.",
@@ -95,7 +105,9 @@ export default function SendMessagePage() {
       messageType: "announcement",
       subject: "",
       details: "",
+      recipientId: ""
     })
+    setIsSubmitting(false);
   }
 
   return (
@@ -116,7 +128,7 @@ export default function SendMessagePage() {
                             <FormLabel>Message Type</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                 <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger disabled={isSubmitting || isRecipientIdDisabled}>
                                     <SelectValue placeholder="Select a message type" />
                                 </SelectTrigger>
                                 </FormControl>
@@ -140,7 +152,7 @@ export default function SendMessagePage() {
                                 <FormLabel>Announcement For</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
-                                    <SelectTrigger>
+                                    <SelectTrigger disabled={isSubmitting}>
                                         <SelectValue placeholder="Select announcement type" />
                                     </SelectTrigger>
                                     </FormControl>
@@ -166,7 +178,11 @@ export default function SendMessagePage() {
                                     {messageType === 'to_partner' ? 'Partner ID' : 'Seller ID'}
                                 </FormLabel>
                                 <FormControl>
-                                    <Input placeholder={`Enter ${messageType === 'to_partner' ? 'Partner' : 'Seller'} ID`} {...field} />
+                                    <Input 
+                                        placeholder={`Enter ${messageType === 'to_partner' ? 'Partner' : 'Seller'} ID`} 
+                                        {...field}
+                                        disabled={isSubmitting || isRecipientIdDisabled}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -182,7 +198,7 @@ export default function SendMessagePage() {
                   <FormItem>
                     <FormLabel>Subject</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter message subject" {...field} />
+                      <Input placeholder="Enter message subject" {...field} disabled={isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -205,7 +221,10 @@ export default function SendMessagePage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit">Send Message</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                Send Message
+              </Button>
             </form>
           </Form>
         </CardContent>
