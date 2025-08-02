@@ -61,30 +61,33 @@ const resourceFormSchema = z.object({
   contentType: z.enum(["article", "video", "faq"], { required_error: "Content type is required." }),
   featureImage: z.any().refine(file => file, "Feature image is required."),
   articleContent: z.string().optional(),
-  videoUrl: z.string().optional(),
+  videoUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   faqs: z.array(z.object({
     question: z.string().min(1, "Question cannot be empty."),
     answer: z.string().min(1, "Answer cannot be empty."),
   })).optional(),
-}).refine(data => {
-    if (data.contentType === "article") {
-      return !!data.articleContent && data.articleContent.length > 8; // CKEditor might add <p></p>
+}).superRefine((data, ctx) => {
+    if (data.contentType === "article" && (!data.articleContent || data.articleContent.length < 8)) {
+       ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Article content is required.",
+        path: ["articleContent"],
+       });
     }
-    if (data.contentType === "video") {
-        try {
-            z.string().url().parse(data.videoUrl);
-            return true;
-        } catch (e) {
-            return false;
-        }
+    if (data.contentType === "video" && !data.videoUrl) {
+       ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Video URL is required.",
+        path: ["videoUrl"],
+       });
     }
-    if (data.contentType === "faq") {
-      return data.faqs && data.faqs.length > 0 && data.faqs.every(f => f.question && f.answer);
+     if (data.contentType === "faq" && (!data.faqs || data.faqs.length === 0 || data.faqs.some(f => !f.question || !f.answer))) {
+       ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one complete FAQ item is required.",
+        path: ["faqs"],
+       });
     }
-    return true;
-}, {
-    message: "Please provide valid content for the selected type.",
-    path: ["articleContent"], // This path is a bit of a hack, but it will show the error.
 });
 
 
@@ -175,10 +178,12 @@ export default function ResourceCenterPage() {
         setIsResourceDialogOpen(false);
         resourceForm.reset({
             title: "",
+            categoryId: undefined,
             contentType: "article",
             faqs: [{ question: "", answer: "" }],
             articleContent: "",
-            videoUrl: ""
+            videoUrl: "",
+            featureImage: undefined,
         });
         fetchData();
     } catch (error) {
@@ -386,6 +391,7 @@ export default function ResourceCenterPage() {
                                     </Button>
                                 </div>
                             )}
+                            <FormMessage>{resourceForm.formState.errors.root?.message}</FormMessage>
 
                             <DialogFooter>
                                 <Button type="submit" disabled={isSubmitting}>
@@ -431,12 +437,14 @@ export default function ResourceCenterPage() {
         </TabsContent>
         <TabsContent value="categories">
           <Card>
-            <CardHeader className="relative">
-              <CardTitle>Categories</CardTitle>
-              <CardDescription>Organize your resources by category.</CardDescription>
+            <CardHeader className="relative flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Categories</CardTitle>
+                <CardDescription>Organize your resources by category.</CardDescription>
+              </div>
                <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button className="absolute top-6 right-6">
+                    <Button>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Category
                     </Button>
                 </DialogTrigger>
@@ -501,3 +509,5 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
+
+    
