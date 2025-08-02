@@ -47,7 +47,9 @@ import {
   Award,
   Power,
   Home,
-  CheckSquare
+  CheckSquare,
+  Settings,
+  MessageSquare
 } from 'lucide-react'
 import { useUser } from '@/hooks/use-user'
 
@@ -80,11 +82,13 @@ const adminNavItems: NavItem[] = [
     ]
   },
   { href: '/contact-book', icon: UserSquare, label: 'Contact Book' },
+  { href: '/send-message', icon: MessageSquare, label: 'Send Message'},
   { href: '/updates', icon: History, label: 'Updates'},
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
   { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
   { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
-  { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+  { href: '/schedule', icon: Calendar, label: 'Schedule' },
+  { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 const partnerNavItems: NavItem[] = [
