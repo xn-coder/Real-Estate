@@ -46,7 +46,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from 'next/dynamic'
 import { db } from "@/lib/firebase"
-import { collection, doc, setDoc, getDocs } from "firebase/firestore"
+import { collection, doc, setDoc, getDocs, Timestamp } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { Resource, Category } from "@/types/resource"
 
@@ -169,28 +169,36 @@ export default function ResourceCenterPage() {
     try {
         const featureImageUrl = await fileToDataUrl(values.featureImage);
         const resourceId = generateUserId("RES");
+        
         const resourceData: Omit<Resource, 'id'> = {
             title: values.title,
             categoryId: values.categoryId,
             contentType: values.contentType,
             featureImage: featureImageUrl,
-            articleContent: values.contentType === 'article' ? values.articleContent ?? null : null,
-            videoUrl: values.contentType === 'video' ? values.videoUrl ?? null : null,
-            faqs: values.contentType === 'faq' ? values.faqs ?? null : null,
-            createdAt: new Date(),
+            articleContent: null,
+            videoUrl: null,
+            faqs: null,
+            createdAt: Timestamp.now(),
         };
+
+        if (values.contentType === 'article') {
+            resourceData.articleContent = values.articleContent ?? '';
+        } else if (values.contentType === 'video') {
+            resourceData.videoUrl = values.videoUrl ?? '';
+        } else if (values.contentType === 'faq') {
+            resourceData.faqs = values.faqs ?? [];
+        }
+
         await setDoc(doc(db, "resources", resourceId), {id: resourceId, ...resourceData});
 
         toast({ title: "Resource Created", description: "The new resource has been added." });
         setIsResourceDialogOpen(false);
         resourceForm.reset({
             title: "",
-            categoryId: undefined,
             contentType: "article",
             faqs: [{ question: "", answer: "" }],
             articleContent: "",
-            videoUrl: "",
-            featureImage: undefined,
+            videoUrl: ""
         });
         await fetchData();
     } catch (error) {

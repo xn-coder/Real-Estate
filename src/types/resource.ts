@@ -1,4 +1,6 @@
 
+import type { Timestamp } from "firebase/firestore";
+
 export type FaqItem = {
     question: string;
     answer: string;
@@ -13,10 +15,12 @@ export type Resource = {
     articleContent: string | null;
     videoUrl: string | null;
     faqs: FaqItem[] | null;
-    createdAt: Date;
+    createdAt: Date | Timestamp;
 };
 
 export type Category = {
     id: string;
     name: string;
 };
+
+    
