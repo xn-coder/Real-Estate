@@ -56,8 +56,8 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from 'next/dynamic'
-import { db, deleteDoc } from "@/lib/firebase"
-import { collection, doc, setDoc, getDocs, Timestamp, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { collection, doc, setDoc, getDocs, Timestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { Resource, Category } from "@/types/resource"
 
@@ -97,10 +97,10 @@ const resourceFormSchema = z.object({
         }
     }
     if (data.contentType === 'faq') {
-        if (!data.faqs || data.faqs.length === 0) {
+        if (!data.faqs || data.faqs.length === 0 || data.faqs.some(faq => !faq.question || !faq.answer)) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "At least one FAQ item is required.",
+                message: "At least one complete FAQ item is required.",
                 path: ["faqs"],
             });
         }
@@ -193,11 +193,18 @@ export default function ResourceCenterPage() {
             ...resource,
             faqs: resource.faqs?.length ? resource.faqs : [{ question: "", answer: "" }],
             videoUrl: resource.videoUrl || '',
+            featureImage: resource.featureImage || undefined,
         });
     } else {
         resourceForm.reset(defaultResourceValues);
     }
     setIsResourceDialogOpen(true);
+  }
+  
+  const closeResourceDialog = () => {
+    setIsResourceDialogOpen(false);
+    setEditingResource(null);
+    resourceForm.reset(defaultResourceValues);
   }
 
   const openCategoryDialog = (category: Category | null) => {
@@ -214,12 +221,11 @@ export default function ResourceCenterPage() {
     setIsSubmitting(true);
     try {
       let featureImageUrl = editingResource?.featureImage || '';
-      // Check if a new file is uploaded
+      
       if (values.featureImage && typeof values.featureImage !== 'string') {
         featureImageUrl = await fileToDataUrl(values.featureImage as File);
       }
       
-      // If adding new, image is required
       if (!editingResource && !values.featureImage) {
         resourceForm.setError("featureImage", { message: "Feature image is required." });
         setIsSubmitting(false);
@@ -247,9 +253,7 @@ export default function ResourceCenterPage() {
         toast({ title: "Resource Created", description: "The new resource has been added." });
       }
   
-      setIsResourceDialogOpen(false);
-      setEditingResource(null);
-      resourceForm.reset(defaultResourceValues);
+      closeResourceDialog();
       await fetchData();
     } catch (error) {
       console.error("Error saving resource:", error);
@@ -338,7 +342,7 @@ export default function ResourceCenterPage() {
                     <CardTitle>Resources</CardTitle>
                     <CardDescription>Add and manage your educational content.</CardDescription>
                 </div>
-                <Dialog open={isResourceDialogOpen} onOpenChange={(isOpen) => { setIsResourceDialogOpen(isOpen); if (!isOpen) setEditingResource(null); }}>
+                <Dialog open={isResourceDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) closeResourceDialog(); else setIsResourceDialogOpen(true); }}>
                     <DialogTrigger asChild>
                         <Button onClick={() => openResourceDialog(null)}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Resource
@@ -388,7 +392,7 @@ export default function ResourceCenterPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Content Type</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value} disabled={!!editingResource}>
+                                                <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl><SelectTrigger><SelectValue placeholder="Select content type" /></SelectTrigger></FormControl>
                                                     <SelectContent>
                                                         <SelectItem value="article">Article</SelectItem>
