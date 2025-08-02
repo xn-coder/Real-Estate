@@ -50,8 +50,8 @@ const messageFormSchema = z.object({
     message: "Please select an announcement type.",
     path: ["announcementType"],
 }).refine(data => {
-    if (data.messageType === 'to_partner' || data.messageType === 'to_seller') {
-        return !!data.recipientId && data.recipientId.trim().length > 0;
+    if ((data.messageType === 'to_partner' || data.messageType === 'to_seller') && !data.recipientId) {
+      return false;
     }
     return true;
 }, {
@@ -79,8 +79,9 @@ export default function SendMessagePage() {
 
   React.useEffect(() => {
     const recipientId = searchParams.get('recipientId');
-    const type = searchParams.get('type');
-    if (recipientId && (type === 'to_partner' || type === 'to_seller')) {
+    const type = searchParams.get('type') as 'to_partner' | 'to_seller' | null;
+
+    if (recipientId && type) {
       form.reset({
         recipientId: recipientId,
         messageType: type,
@@ -93,7 +94,8 @@ export default function SendMessagePage() {
         messageType: "announcement",
         subject: "",
         details: "",
-        recipientId: ""
+        recipientId: "",
+        announcementType: undefined,
       });
       setIsPrefilled(false);
     }
@@ -117,7 +119,6 @@ export default function SendMessagePage() {
       details: "",
       recipientId: ""
     })
-    setIsSubmitting(false);
     setIsPrefilled(false); // Reset prefill state
   }
 
