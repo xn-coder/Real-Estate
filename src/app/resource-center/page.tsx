@@ -56,8 +56,8 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from 'next/dynamic'
-import { db } from "@/lib/firebase"
-import { collection, doc, setDoc, getDocs, Timestamp, updateDoc, deleteDoc } from "firebase/firestore"
+import { db, deleteDoc } from "@/lib/firebase"
+import { collection, doc, setDoc, getDocs, Timestamp, updateDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { Resource, Category } from "@/types/resource"
 
@@ -150,6 +150,16 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
+const defaultResourceValues = {
+    title: "",
+    contentType: "article" as const,
+    categoryId: "",
+    faqs: [{ question: "", answer: "" }],
+    articleContent: "",
+    videoUrl: "",
+    featureImage: undefined,
+};
+
 export default function ResourceCenterPage() {
   const { toast } = useToast()
   const [resources, setResources] = React.useState<Resource[]>([])
@@ -163,13 +173,7 @@ export default function ResourceCenterPage() {
 
   const resourceForm = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
-    defaultValues: {
-      title: "",
-      contentType: "article",
-      faqs: [{ question: "", answer: "" }],
-      articleContent: "",
-      videoUrl: ""
-    },
+    defaultValues: defaultResourceValues,
     mode: "onChange"
   });
 
@@ -209,15 +213,7 @@ export default function ResourceCenterPage() {
             faqs: editingResource.faqs?.length ? editingResource.faqs : [{ question: "", answer: "" }]
         });
     } else {
-        resourceForm.reset({
-            title: "",
-            contentType: "article",
-            categoryId: "",
-            faqs: [{ question: "", answer: "" }],
-            articleContent: "",
-            videoUrl: "",
-            featureImage: undefined,
-        });
+        resourceForm.reset(defaultResourceValues);
     }
   }, [editingResource, resourceForm]);
 
@@ -269,6 +265,7 @@ export default function ResourceCenterPage() {
   
       setIsResourceDialogOpen(false);
       setEditingResource(null);
+      resourceForm.reset(defaultResourceValues);
       await fetchData();
     } catch (error) {
       console.error("Error saving resource:", error);
@@ -682,5 +679,3 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
-
-    
