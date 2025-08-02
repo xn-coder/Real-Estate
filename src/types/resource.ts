@@ -10,7 +10,7 @@ export type Resource = {
     id: string;
     title: string;
     categoryId: string;
-    contentType: "article" | "video" | "faq";
+    contentType: "article" | "video" | "faq" | "terms_condition";
     featureImage: string;
     articleContent: string | null;
     videoUrl: string | null;

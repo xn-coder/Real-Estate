@@ -56,8 +56,8 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from 'next/dynamic'
-import { db, deleteDoc } from "@/lib/firebase"
-import { collection, doc, setDoc, getDocs, Timestamp, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { collection, doc, setDoc, getDocs, Timestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { Resource, Category } from "@/types/resource"
 
@@ -69,7 +69,7 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
 const resourceFormSchema = z.object({
   title: z.string().min(1, "Title is required."),
   categoryId: z.string().min(1, "Please select a category."),
-  contentType: z.enum(["article", "video", "faq"]),
+  contentType: z.enum(["article", "video", "faq", "terms_condition"]),
   featureImage: z.any().refine(file => file, "Feature image is required."),
   articleContent: z.string().optional(),
   videoUrl: z.string().url().optional().or(z.literal('')),
@@ -78,7 +78,7 @@ const resourceFormSchema = z.object({
     answer: z.string(),
   })).optional(),
 }).superRefine((data, ctx) => {
-    if (data.contentType === "article" && (!data.articleContent || data.articleContent.length < 8)) {
+    if ((data.contentType === "article" || data.contentType === "terms_condition") && (!data.articleContent || data.articleContent.length < 8)) {
        ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Article content is required.",
@@ -230,12 +230,12 @@ export default function ResourceCenterPage() {
             featureImageUrl = await fileToDataUrl(values.featureImage);
         }
         
-        const resourceData = {
+        const resourceData: Omit<Resource, 'id' | 'createdAt'> = {
             title: values.title,
             categoryId: values.categoryId,
             contentType: values.contentType,
             featureImage: featureImageUrl,
-            articleContent: values.contentType === 'article' ? (values.articleContent ?? '') : null,
+            articleContent: (values.contentType === 'article' || values.contentType === 'terms_condition') ? (values.articleContent ?? '') : null,
             videoUrl: values.contentType === 'video' ? (values.videoUrl ?? '') : null,
             faqs: values.contentType === 'faq' ? (values.faqs ?? []) : null,
         };
@@ -312,6 +312,13 @@ export default function ResourceCenterPage() {
     return categories.find(c => c.id === categoryId)?.name || 'N/A';
   }
 
+  const contentTypeDisplay: Record<Resource['contentType'], string> = {
+    article: 'Article',
+    video: 'Video',
+    faq: 'FAQs',
+    terms_condition: 'Terms & Condition'
+  }
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -326,184 +333,189 @@ export default function ResourceCenterPage() {
         </TabsList>
         <TabsContent value="resources">
           <Card>
-            <CardHeader className="relative">
-              <CardTitle>Resources</CardTitle>
-              <CardDescription>Add and manage your educational content.</CardDescription>
-              <Dialog open={isResourceDialogOpen} onOpenChange={(isOpen) => { setIsResourceDialogOpen(isOpen); if (!isOpen) setEditingResource(null); }}>
-                <DialogTrigger asChild>
-                    <Button className="absolute top-6 right-6" onClick={() => setEditingResource(null)}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Resource
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>{editingResource ? "Edit Resource" : "Add New Resource"}</DialogTitle>
-                        <DialogDescription>Fill out the form to {editingResource ? "update the" : "add a new"} resource.</DialogDescription>
-                    </DialogHeader>
-                    <Form {...resourceForm}>
-                        <form onSubmit={resourceForm.handleSubmit(onResourceSubmit)} className="space-y-4">
-                             <FormField
-                                control={resourceForm.control}
-                                name="title"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Title</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., How to Close a Deal" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="grid grid-cols-2 gap-4">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Resources</CardTitle>
+                    <CardDescription>Add and manage your educational content.</CardDescription>
+                </div>
+                <Dialog open={isResourceDialogOpen} onOpenChange={(isOpen) => { setIsResourceDialogOpen(isOpen); if (!isOpen) setEditingResource(null); }}>
+                    <DialogTrigger asChild>
+                        <Button onClick={() => setEditingResource(null)}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Resource
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>{editingResource ? "Edit Resource" : "Add New Resource"}</DialogTitle>
+                            <DialogDescription>Fill out the form to {editingResource ? "update the" : "add a new"} resource.</DialogDescription>
+                        </DialogHeader>
+                        <Form {...resourceForm}>
+                            <form onSubmit={resourceForm.handleSubmit(onResourceSubmit)} className="space-y-4">
                                 <FormField
                                     control={resourceForm.control}
-                                    name="categoryId"
+                                    name="title"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Category</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
+                                        <FormLabel>Title</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., How to Close a Deal" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField
+                                        control={resourceForm.control}
+                                        name="categoryId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Category</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={resourceForm.control}
+                                        name="contentType"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Content Type</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select content type" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="article">Article</SelectItem>
+                                                        <SelectItem value="video">Video</SelectItem>
+                                                        <SelectItem value="faq">FAQs</SelectItem>
+                                                        <SelectItem value="terms_condition">Terms & Condition</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
                                 <FormField
                                     control={resourceForm.control}
-                                    name="contentType"
-                                    render={({ field }) => (
+                                    name="featureImage"
+                                    render={({ field: { onChange, value, ...rest }}) => (
                                         <FormItem>
-                                            <FormLabel>Content Type</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Select content type" /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="article">Article</SelectItem>
-                                                    <SelectItem value="video">Video</SelectItem>
-                                                    <SelectItem value="faq">FAQs</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
+                                        <FormLabel>Feature Image</FormLabel>
+                                            <div className="flex items-center gap-4">
+                                                {featureImage && (
+                                                    <Image 
+                                                        src={typeof featureImage === 'string' ? featureImage : URL.createObjectURL(featureImage)} 
+                                                        alt="Preview" 
+                                                        width={100} 
+                                                        height={100} 
+                                                        className="rounded-md object-cover"
+                                                    />
+                                                )}
+                                                <FormControl>
+                                                    <Input type="file" accept="image/*" onChange={e => onChange(e.target.files?.[0])} {...rest} />
+                                                </FormControl>
+                                            </div>
+                                        <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-
-                             <FormField
-                                control={resourceForm.control}
-                                name="featureImage"
-                                render={({ field: { onChange, value, ...rest }}) => (
-                                    <FormItem>
-                                    <FormLabel>Feature Image</FormLabel>
-                                        <div className="flex items-center gap-4">
-                                            {featureImage && (
-                                                <Image 
-                                                    src={typeof featureImage === 'string' ? featureImage : URL.createObjectURL(featureImage)} 
-                                                    alt="Preview" 
-                                                    width={100} 
-                                                    height={100} 
-                                                    className="rounded-md object-cover"
-                                                />
-                                            )}
+                                
+                                {(contentType === 'article' || contentType === 'terms_condition') && (
+                                    <FormField
+                                        control={resourceForm.control}
+                                        name="articleContent"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Content</FormLabel>
                                             <FormControl>
-                                                <Input type="file" accept="image/*" onChange={e => onChange(e.target.files?.[0])} {...rest} />
+                                                <RichTextEditor initialData={field.value || ''} onChange={field.onChange} />
                                             </FormControl>
-                                        </div>
-                                    <FormMessage />
-                                    </FormItem>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 )}
-                            />
-                            
-                            {contentType === 'article' && (
-                                <FormField
-                                    control={resourceForm.control}
-                                    name="articleContent"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Article Content</FormLabel>
-                                        <FormControl>
-                                            <RichTextEditor initialData={field.value || ''} onChange={field.onChange} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
 
-                            {contentType === 'video' && (
-                                <FormField
-                                    control={resourceForm.control}
-                                    name="videoUrl"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Video URL</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="https://youtube.com/watch?v=..." {...field} value={field.value ?? ''} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
+                                {contentType === 'video' && (
+                                    <FormField
+                                        control={resourceForm.control}
+                                        name="videoUrl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Video URL</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="https://youtube.com/watch?v=..." {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
 
-                             {contentType === 'faq' && (
-                                <div className="space-y-4">
-                                    <FormLabel>FAQs</FormLabel>
-                                    {fields.map((field, index) => (
-                                    <div key={field.id} className="flex items-start gap-2 p-3 border rounded-md relative">
-                                        <div className="flex-1 space-y-2">
-                                        <FormField
-                                            control={resourceForm.control}
-                                            name={`faqs.${index}.question`}
-                                            render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="sr-only">Question</FormLabel>
-                                                <FormControl>
-                                                <Input placeholder={`Question ${index + 1}`} {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={resourceForm.control}
-                                            name={`faqs.${index}.answer`}
-                                            render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="sr-only">Answer</FormLabel>
-                                                <FormControl>
-                                                <Input placeholder="Answer" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                            )}
-                                        />
+                                {contentType === 'faq' && (
+                                    <div className="space-y-4">
+                                        <FormLabel>FAQs</FormLabel>
+                                        {fields.map((field, index) => (
+                                        <div key={field.id} className="flex items-start gap-2 p-3 border rounded-md relative">
+                                            <div className="flex-1 space-y-2">
+                                            <FormField
+                                                control={resourceForm.control}
+                                                name={`faqs.${index}.question`}
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="sr-only">Question</FormLabel>
+                                                    <FormControl>
+                                                    <Input placeholder={`Question ${index + 1}`} {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={resourceForm.control}
+                                                name={`faqs.${index}.answer`}
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="sr-only">Answer</FormLabel>
+                                                    <FormControl>
+                                                    <Input placeholder="Answer" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
+                                            </div>
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-6">
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
                                         </div>
-                                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mt-6">
-                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        ))}
+                                        <Button type="button" variant="outline" size="sm" onClick={() => append({ question: "", answer: "" })}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Add FAQ
                                         </Button>
                                     </div>
-                                    ))}
-                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ question: "", answer: "" })}>
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Add FAQ
-                                    </Button>
-                                </div>
-                            )}
+                                )}
 
-                            <DialogFooter>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    {editingResource ? "Save Changes" : "Save Resource"}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-              </Dialog>
+                                <DialogFooter>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                        {editingResource ? "Save Changes" : "Save Resource"}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
                <Table>
@@ -525,7 +537,7 @@ export default function ResourceCenterPage() {
                             <TableRow key={resource.id}>
                                 <TableCell>{resource.title}</TableCell>
                                 <TableCell>{getCategoryName(resource.categoryId)}</TableCell>
-                                <TableCell className="capitalize">{resource.contentType}</TableCell>
+                                <TableCell className="capitalize">{contentTypeDisplay[resource.contentType]}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" onClick={() => { setEditingResource(resource); setIsResourceDialogOpen(true); }}>
                                         <Pencil className="h-4 w-4" />
@@ -558,46 +570,48 @@ export default function ResourceCenterPage() {
         </TabsContent>
         <TabsContent value="categories">
           <Card>
-            <CardHeader className="relative flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Categories</CardTitle>
-                <CardDescription>Organize your resources by category.</CardDescription>
-              </div>
-               <Dialog open={isCategoryDialogOpen} onOpenChange={(isOpen) => { setIsCategoryDialogOpen(isOpen); if (!isOpen) setEditingCategory(null); }}>
-                <DialogTrigger asChild>
-                    <Button onClick={() => setEditingCategory(null)}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Category
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                     <DialogHeader>
-                        <DialogTitle>{editingCategory ? "Edit Category" : "Add New Category"}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...categoryForm}>
-                        <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
-                            <FormField
-                                control={categoryForm.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Category Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., Sales Training" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <DialogFooter>
-                                <Button type="submit" disabled={isSubmitting}>
-                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    {editingCategory ? "Save Changes" : "Save Category"}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-              </Dialog>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Categories</CardTitle>
+                        <CardDescription>Organize your resources by category.</CardDescription>
+                    </div>
+                    <Dialog open={isCategoryDialogOpen} onOpenChange={(isOpen) => { setIsCategoryDialogOpen(isOpen); if (!isOpen) setEditingCategory(null); }}>
+                        <DialogTrigger asChild>
+                            <Button onClick={() => setEditingCategory(null)}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Category
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>{editingCategory ? "Edit Category" : "Add New Category"}</DialogTitle>
+                            </DialogHeader>
+                            <Form {...categoryForm}>
+                                <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
+                                    <FormField
+                                        control={categoryForm.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Category Name</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., Sales Training" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <DialogFooter>
+                                        <Button type="submit" disabled={isSubmitting}>
+                                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                            {editingCategory ? "Save Changes" : "Save Category"}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -650,5 +664,3 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
-
-    
