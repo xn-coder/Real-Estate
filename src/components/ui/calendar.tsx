@@ -7,13 +7,21 @@ import { DayPicker } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { Button } from "./button"
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+    showFooter?: boolean
+    onToday?: () => void
+    onClear?: () => void
+}
 
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
+  showFooter = false,
+  onToday,
+  onClear,
   ...props
 }: CalendarProps) {
   return (
@@ -59,6 +67,14 @@ function Calendar({
         IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
       }}
+      footer={
+          showFooter ? (
+            <div className="flex justify-between pt-2">
+                <Button variant="ghost" size="sm" onClick={onClear}>Clear</Button>
+                <Button variant="ghost" size="sm" onClick={onToday}>Today</Button>
+            </div>
+          ) : null
+      }
       {...props}
     />
   )
@@ -66,3 +82,4 @@ function Calendar({
 Calendar.displayName = "Calendar"
 
 export { Calendar }
+

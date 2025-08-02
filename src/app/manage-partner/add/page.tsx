@@ -421,7 +421,10 @@ export default function AddPartnerPage() {
                                                 fromYear={1950}
                                                 toYear={new Date().getFullYear()}
                                                 disabled={(date) => date > new Date() || date < new Date("1900-01-01")} 
-                                                initialFocus 
+                                                initialFocus
+                                                showFooter
+                                                onClear={() => field.onChange(undefined)}
+                                                onToday={() => field.onChange(new Date())}
                                             />
                                             </PopoverContent>
                                         </Popover>
