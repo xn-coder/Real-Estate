@@ -61,20 +61,32 @@ const resourceFormSchema = z.object({
   contentType: z.enum(["article", "video", "faq"], { required_error: "Content type is required." }),
   featureImage: z.any().refine(file => file, "Feature image is required."),
   articleContent: z.string().optional(),
-  videoUrl: z.string().url({ message: "Please enter a valid URL." }).optional(),
+  videoUrl: z.string().optional(),
   faqs: z.array(z.object({
     question: z.string().min(1, "Question cannot be empty."),
     answer: z.string().min(1, "Answer cannot be empty."),
   })).optional(),
 }).refine(data => {
-    if (data.contentType === "article") return !!data.articleContent && data.articleContent.length > 8; // CKEditor might add <p></p>
-    if (data.contentType === "video") return !!data.videoUrl;
-    if (data.contentType === "faq") return data.faqs && data.faqs.length > 0 && data.faqs.every(f => f.question && f.answer);
+    if (data.contentType === "article") {
+      return !!data.articleContent && data.articleContent.length > 8; // CKEditor might add <p></p>
+    }
+    if (data.contentType === "video") {
+        try {
+            z.string().url().parse(data.videoUrl);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+    if (data.contentType === "faq") {
+      return data.faqs && data.faqs.length > 0 && data.faqs.every(f => f.question && f.answer);
+    }
     return true;
 }, {
-    message: "Please provide content for the selected type.",
-    path: ["articleContent"], // Shows error under the first dynamic field
+    message: "Please provide valid content for the selected type.",
+    path: ["articleContent"], // This path is a bit of a hack, but it will show the error.
 });
+
 
 type ResourceFormValues = z.infer<typeof resourceFormSchema>;
 
@@ -489,5 +501,3 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
-
-    
