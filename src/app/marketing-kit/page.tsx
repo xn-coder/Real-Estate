@@ -74,10 +74,34 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
+const initialKits: Kit[] = [
+    {
+      id: 'kit1',
+      title: 'Modern Villa Showcase',
+      type: 'Brochure',
+      featureImage: 'https://placehold.co/600x400.png',
+      files: [{ name: 'brochure.pdf', url: 'https://placehold.co/600x400.png' }],
+    },
+    {
+      id: 'kit2',
+      title: 'Downtown Apartment Posters',
+      type: 'Poster',
+      featureImage: 'https://placehold.co/600x400.png',
+      files: [{ name: 'poster.pdf', url: 'https://placehold.co/600x400.png' }],
+    },
+    {
+      id: 'kit3',
+      title: 'Suburban Family Homes',
+      type: 'Brochure',
+      featureImage: 'https://placehold.co/600x400.png',
+      files: [{ name: 'family_homes.pdf', url: 'https://placehold.co/600x400.png' }],
+    },
+  ];
+
 export default function MarketingKitPage() {
   const { toast } = useToast()
   const { user } = useUser();
-  const [kits, setKits] = React.useState<Kit[]>([])
+  const [kits, setKits] = React.useState<Kit[]>(initialKits)
   const [isLoadingKits, setIsLoadingKits] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
@@ -99,7 +123,9 @@ export default function MarketingKitPage() {
       const kitsCollection = collection(db, "marketing_kits")
       const kitsSnapshot = await getDocs(kitsCollection)
       const kitsList = kitsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Kit))
-      setKits(kitsList)
+      if (kitsList.length > 0) {
+        setKits(kitsList)
+      }
     } catch (error) {
       console.error("Error fetching kits:", error)
       toast({
@@ -330,14 +356,14 @@ export default function MarketingKitPage() {
             {[...Array(3)].map((_, i) => (
                 <Card key={i}>
                     <CardHeader className="p-0">
-                        <div className="bg-muted rounded-t-lg aspect-video"></div>
+                        <div className="bg-muted rounded-t-lg aspect-video animate-pulse"></div>
                     </CardHeader>
                      <CardContent className="p-4">
-                        <div className="h-5 w-20 rounded-md bg-muted mb-2"></div>
-                        <div className="h-6 w-4/5 rounded-md bg-muted"></div>
+                        <div className="h-5 w-20 rounded-md bg-muted mb-2 animate-pulse"></div>
+                        <div className="h-6 w-4/5 rounded-md bg-muted animate-pulse"></div>
                     </CardContent>
                     <CardFooter className="p-4 pt-0">
-                        <div className="h-10 w-full rounded-md bg-muted"></div>
+                        <div className="h-10 w-full rounded-md bg-muted animate-pulse"></div>
                     </CardFooter>
                 </Card>
             ))}
