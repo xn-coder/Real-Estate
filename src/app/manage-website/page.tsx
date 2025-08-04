@@ -18,10 +18,11 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info } from "lucide-react"
+import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info, ExternalLink } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from "next/image"
 import { Textarea } from "@/components/ui/textarea"
+import Link from "next/link"
 
 // Schemas for forms
 const businessProfileSchema = z.object({
@@ -31,6 +32,7 @@ const businessProfileSchema = z.object({
 const slideshowSchema = z.object({
   title: z.string().min(1, "Title is required"),
   bannerImage: z.any().optional(),
+  linkUrl: z.string().url().optional().or(z.literal('')),
 })
 const contactDetailsSchema = z.object({
   contactName: z.string().min(1, "Contact name is required"),
@@ -56,7 +58,7 @@ const socialLinksSchema = z.object({
 // Mock data
 const mockData = {
   businessProfile: { businessName: 'Prestige Properties', businessLogo: 'https://placehold.co/100x100.png' },
-  slideshow: { title: 'Find Your Dream Home With Us', bannerImage: 'https://placehold.co/1200x400.png' },
+  slideshow: { title: 'Find Your Dream Home With Us', bannerImage: 'https://placehold.co/1200x400.png', linkUrl: 'https://example.com/listings' },
   contactDetails: { contactName: 'John Doe', phone: '123-456-7890', email: 'contact@prestigeproperties.com', address: '123 Luxury Ave, Suite 100, Realville, 12345' },
   aboutLegal: { aboutText: 'Your trusted partner in finding the perfect property. We specialize in luxury homes and commercial real estate, offering unparalleled service and expertise.' },
   socialLinks: { website: 'https://example.com', instagram: 'https://instagram.com', facebook: 'https://facebook.com', youtube: '', twitter: '', linkedin: 'https://linkedin.com' }
@@ -111,7 +113,7 @@ export default function ManageWebsitePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Website</h1>
       </div>
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="space-y-6">
 
         {/* Business Profile Card */}
         <Card>
@@ -120,19 +122,27 @@ export default function ManageWebsitePage() {
               <Building className="h-6 w-6 text-muted-foreground" />
               <CardTitle>Business Profile</CardTitle>
             </div>
-            <Dialog>
-              <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Edit Business Profile</DialogTitle></DialogHeader>
-                <Form {...businessProfileForm}>
-                  <form onSubmit={businessProfileForm.handleSubmit((values) => handleSave('businessProfile', values))} className="space-y-4">
-                    <FormField control={businessProfileForm.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={businessProfileForm.control} name="businessLogo" render={({ field }) => ( <FormItem><FormLabel>Business Logo</FormLabel><FormControl><Input type="file" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
-                    <DialogFooter><Button type="submit" disabled={businessProfileForm.formState.isSubmitting}>{businessProfileForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" asChild>
+                    <a href={data.socialLinks.website} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Preview
+                    </a>
+                </Button>
+                <Dialog>
+                <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Edit Business Profile</DialogTitle></DialogHeader>
+                    <Form {...businessProfileForm}>
+                    <form onSubmit={businessProfileForm.handleSubmit((values) => handleSave('businessProfile', values))} className="space-y-4">
+                        <FormField control={businessProfileForm.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={businessProfileForm.control} name="businessLogo" render={({ field }) => ( <FormItem><FormLabel>Business Logo</FormLabel><FormControl><Input type="file" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
+                        <DialogFooter><Button type="submit" disabled={businessProfileForm.formState.isSubmitting}>{businessProfileForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
+                    </form>
+                    </Form>
+                </DialogContent>
+                </Dialog>
+            </div>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
             <Avatar className="h-20 w-20"><AvatarImage src={data.businessProfile.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
@@ -155,6 +165,7 @@ export default function ManageWebsitePage() {
                   <form onSubmit={slideshowForm.handleSubmit((values) => handleSave('slideshow', values))} className="space-y-4">
                     <FormField control={slideshowForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                     <FormField control={slideshowForm.control} name="bannerImage" render={({ field }) => ( <FormItem><FormLabel>Banner Image</FormLabel><FormControl><Input type="file" onChange={(e) => field.onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={slideshowForm.control} name="linkUrl" render={({ field }) => ( <FormItem><FormLabel>Link URL</FormLabel><FormControl><Input placeholder="https://example.com/..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                     <DialogFooter><Button type="submit" disabled={slideshowForm.formState.isSubmitting}>{slideshowForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
                   </form>
                 </Form>
@@ -162,7 +173,9 @@ export default function ManageWebsitePage() {
             </Dialog>
           </CardHeader>
           <CardContent>
-             <Image src={data.slideshow.bannerImage} alt="Banner" width={500} height={150} className="w-full object-cover rounded-md" />
+            <Link href={data.slideshow.linkUrl || '#'} target="_blank" rel="noopener noreferrer">
+                <Image src={data.slideshow.bannerImage} alt="Banner" width={800} height={200} className="w-full object-cover rounded-md" />
+            </Link>
              <p className="mt-2 text-center font-medium">{data.slideshow.title}</p>
           </CardContent>
         </Card>
@@ -244,7 +257,7 @@ export default function ManageWebsitePage() {
         </Card>
 
         {/* Social Links Card */}
-        <Card className="md:col-span-2">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
              <div className="flex items-center gap-3">
               <Globe className="h-6 w-6 text-muted-foreground" />
