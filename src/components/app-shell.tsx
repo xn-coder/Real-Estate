@@ -135,12 +135,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 <span>Contact Book</span>
                             </Link>
                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                             <Link href="/updates">
-                                <History className="mr-2 h-4 w-4" />
-                                <span>Updates</span>
-                             </Link>
-                            </DropdownMenuItem>
                              <DropdownMenuItem asChild>
                             <Link href="/settings">
                                 <Settings className="mr-2 h-4 w-4" />
