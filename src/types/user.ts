@@ -37,10 +37,11 @@ export type User = {
   kycStatus?: 'verified' | 'pending' | 'rejected';
   website?: {
     slideshow?: {
+      id: string;
       title: string;
       bannerImage: string;
       linkUrl: string;
-    };
+    }[];
     aboutLegal?: {
       aboutText: string;
       termsLink: string;

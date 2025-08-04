@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isLoginPage = pathname === '/';
+  const isPublicPage = pathname === '/' || pathname.startsWith('/site/') || pathname.startsWith('/card/');
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -28,7 +28,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <UserProvider>
             <div className="flex min-h-screen flex-col">
-                {isLoginPage ? (
+                {isPublicPage ? (
                 children
                 ) : (
                 <AppShell>

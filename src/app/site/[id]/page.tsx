@@ -14,6 +14,7 @@ import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 
 
 const PartnerWebsitePage = () => {
@@ -48,7 +49,7 @@ const PartnerWebsitePage = () => {
 
     const socialLinks = partner?.website?.socialLinks;
     const aboutLegal = partner?.website?.aboutLegal;
-    const slideshow = partner?.website?.slideshow;
+    const slideshow = partner?.website?.slideshow || [];
 
     const socialComponents = [
         { Icon: Instagram, href: socialLinks?.instagram },
@@ -109,22 +110,54 @@ const PartnerWebsitePage = () => {
             {/* Main Content */}
             <main>
                 {/* Hero Section */}
-                <section className="relative h-96">
-                    <Image 
-                        src={slideshow?.bannerImage || 'https://placehold.co/1920x1080.png'} 
-                        alt={slideshow?.title || 'Banner Image'}
-                        layout="fill"
-                        objectFit="cover"
-                        className="brightness-50"
-                        data-ai-hint="office building"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <a href={slideshow?.linkUrl} target="_blank" rel="noopener noreferrer" className="text-center text-white">
-                            <h1 className="text-4xl md:text-6xl font-extrabold font-headline drop-shadow-lg">
-                                {slideshow?.title || 'Welcome to Our Website'}
-                            </h1>
-                        </a>
-                    </div>
+                 <section className="relative h-96">
+                    {slideshow.length > 0 ? (
+                        <Carousel className="w-full h-full" opts={{ loop: true }}>
+                            <CarouselContent>
+                                {slideshow.map((slide) => (
+                                    <CarouselItem key={slide.id}>
+                                        <div className="relative h-96">
+                                            <Image 
+                                                src={slide.bannerImage || 'https://placehold.co/1920x1080.png'} 
+                                                alt={slide.title || 'Banner Image'}
+                                                layout="fill"
+                                                objectFit="cover"
+                                                className="brightness-50"
+                                                data-ai-hint="office building"
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <a href={slide.linkUrl} target="_blank" rel="noopener noreferrer" className="text-center text-white">
+                                                    <h1 className="text-4xl md:text-6xl font-extrabold font-headline drop-shadow-lg">
+                                                        {slide.title || 'Welcome to Our Website'}
+                                                    </h1>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2" />
+                            <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2" />
+                        </Carousel>
+                    ) : (
+                         <div className="relative h-96">
+                            <Image 
+                                src={'https://placehold.co/1920x1080.png'} 
+                                alt={'Banner Image'}
+                                layout="fill"
+                                objectFit="cover"
+                                className="brightness-50"
+                                data-ai-hint="office building"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="text-center text-white">
+                                    <h1 className="text-4xl md:text-6xl font-extrabold font-headline drop-shadow-lg">
+                                        Welcome to Our Website
+                                    </h1>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {/* About Section */}
