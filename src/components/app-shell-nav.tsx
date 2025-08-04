@@ -77,27 +77,8 @@ const adminNavItems: NavItem[] = [
     { href: '/listings', icon: Building, label: 'Properties' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
     { href: '/onboarding', icon: Plane, label: 'Onboarding' },
-    { 
-      href: '/manage-partner', 
-      icon: Handshake, 
-      label: 'Manage Partner',
-      subItems: [
-          { href: '/manage-partner/list', label: 'Partner List' },
-          { href: '/manage-partner/activation', label: 'Partner Activation' },
-          { href: '/manage-partner/suspended', label: 'Suspended Partners' },
-          { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
-      ]
-    },
-    { 
-      href: '/manage-seller', 
-      icon: UserSquare, 
-      label: 'Manage Seller',
-      subItems: [
-          { href: '/manage-seller/list', label: 'Seller List' },
-          { href: '/manage-seller/activation', label: 'Seller Activation' },
-          { href: '/manage-seller/deactivated', label: 'Deactivated Sellers' },
-      ]
-    },
+    { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
+    { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
     { href: '/deals', icon: Handshake, label: 'Manage Deals' },
     { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
