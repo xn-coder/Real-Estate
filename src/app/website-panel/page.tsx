@@ -18,16 +18,13 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info, ExternalLink, PlusCircle, Trash2 } from "lucide-react"
+import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info, PlusCircle, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from "next/image"
 import { Textarea } from "@/components/ui/textarea"
-import Link from "next/link"
-import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { doc, updateDoc, getDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
-import type { User } from "@/types/user"
 
 // Schemas for forms
 const businessProfileSchema = z.object({
@@ -84,12 +81,20 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
+type WebsiteData = {
+    businessProfile: z.infer<typeof businessProfileSchema>;
+    slideshow: z.infer<typeof slideshowSchema>['slides'];
+    contactDetails: z.infer<typeof contactDetailsSchema>;
+    aboutLegal: z.infer<typeof aboutLegalSchema>;
+    socialLinks: z.infer<typeof socialLinksSchema>;
+}
 
-export default function ManageWebsitePage() {
+
+export default function WebsitePanelPage() {
   const { toast } = useToast()
-  const { user, isLoading: isUserLoading, fetchUser } = useUser()
   const [isSlideDialogOpen, setIsSlideDialogOpen] = React.useState(false);
-  const [isDataLoading, setIsDataLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [websiteData, setWebsiteData] = React.useState<Partial<WebsiteData>>({});
 
   const businessProfileForm = useForm<z.infer<typeof businessProfileSchema>>({
     resolver: zodResolver(businessProfileSchema),
@@ -114,91 +119,59 @@ export default function ManageWebsitePage() {
   const socialLinksForm = useForm<z.infer<typeof socialLinksSchema>>({
     resolver: zodResolver(socialLinksSchema),
   });
-
-  const loadData = React.useCallback(async () => {
-    if (!user) return;
-    setIsDataLoading(true);
+  
+  const fetchWebsiteData = React.useCallback(async () => {
+    setIsLoading(true);
     try {
-        const websiteDefaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
-        const defaults = websiteDefaultsDoc.exists() ? websiteDefaultsDoc.data() : {};
-
-        const partnerWebsiteData = user.website || {};
-
-        businessProfileForm.reset({ businessName: user.name, businessLogo: user.businessLogo || '' });
-
-        slideshowForm.reset({ slides: partnerWebsiteData.slideshow || defaults.slideshow || [] });
-
-        contactDetailsForm.reset({ 
-            name: user.name, 
-            phone: user.phone, 
-            email: user.email, 
-            address: user.address || '', 
-            city: user.city || '', 
-            state: user.state || '', 
-            pincode: user.pincode || '' 
-        });
-
-        aboutLegalForm.reset(partnerWebsiteData.aboutLegal || defaults.aboutLegal || { aboutText: '' });
-        
-        socialLinksForm.reset(partnerWebsiteData.socialLinks || defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
-
+        const docRef = doc(db, "app_settings", "website_defaults");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data() as WebsiteData;
+            setWebsiteData(data);
+            businessProfileForm.reset(data.businessProfile);
+            slideshowForm.reset({ slides: data.slideshow || [] });
+            contactDetailsForm.reset(data.contactDetails);
+            aboutLegalForm.reset(data.aboutLegal);
+            socialLinksForm.reset(data.socialLinks);
+        }
     } catch (error) {
-        console.error("Error loading website data:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to load website data." });
+        console.error("Error fetching website defaults:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not fetch website settings." });
     } finally {
-        setIsDataLoading(false);
+        setIsLoading(false);
     }
-  }, [user, businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm, toast]);
-
+  }, [businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm, toast]);
 
   React.useEffect(() => {
-    if (user) {
-        loadData();
-    }
-  }, [user, loadData])
+    fetchWebsiteData();
+  }, [fetchWebsiteData]);
 
-  const handleSave = async (section: string, values: any) => {
-    if (!user) return
-    const userDocRef = doc(db, "users", user.id)
-
+  const handleSave = async (section: keyof WebsiteData, values: any) => {
     try {
-      const dataToUpdate: any = {};
-      
-      if (section === 'businessProfile') {
-          let logoUrl = values.businessLogo;
-          if(logoUrl && typeof logoUrl !== 'string') {
-              logoUrl = await fileToDataUrl(logoUrl);
-          }
-          dataToUpdate.name = values.businessName;
-          dataToUpdate.businessLogo = logoUrl;
-      } else {
-          // Handle file uploads for other sections
-          if (values.termsLink && typeof values.termsLink !== 'string') {
-            values.termsLink = await fileToDataUrl(values.termsLink);
-          }
-          if (values.privacyLink && typeof values.privacyLink !== 'string') {
-            values.privacyLink = await fileToDataUrl(values.privacyLink);
-          }
-          if (values.disclaimerLink && typeof values.disclaimerLink !== 'string') {
-            values.disclaimerLink = await fileToDataUrl(values.disclaimerLink);
-          }
-          dataToUpdate[`website.${section}`] = values;
+      let dataToSave = { ...values };
+
+      if (section === 'businessProfile' && dataToSave.businessLogo && typeof dataToSave.businessLogo !== 'string') {
+        dataToSave.businessLogo = await fileToDataUrl(dataToSave.businessLogo);
+      }
+      if (section === 'aboutLegal') {
+        if (dataToSave.termsLink && typeof dataToSave.termsLink !== 'string') dataToSave.termsLink = await fileToDataUrl(dataToSave.termsLink);
+        if (dataToSave.privacyLink && typeof dataToSave.privacyLink !== 'string') dataToSave.privacyLink = await fileToDataUrl(dataToSave.privacyLink);
+        if (dataToSave.disclaimerLink && typeof dataToSave.disclaimerLink !== 'string') dataToSave.disclaimerLink = await fileToDataUrl(dataToSave.disclaimerLink);
       }
 
-      await updateDoc(userDocRef, dataToUpdate)
+      const docRef = doc(db, "app_settings", "website_defaults");
+      await setDoc(docRef, { [section]: dataToSave }, { merge: true });
 
-      await fetchUser() // Refresh user data
-      toast({ title: "Success", description: `${section.replace(/([A-Z])/g, ' $1')} updated successfully.` })
+      toast({ title: "Success", description: `${section.replace(/([A-Z])/g, ' $1')} updated successfully.` });
+      await fetchWebsiteData();
 
     } catch (error) {
-      console.error("Error updating user:", error)
+      console.error("Error updating settings:", error)
       toast({ variant: "destructive", title: "Update Failed", description: "There was an error saving your changes." })
     }
   }
 
   const handleSlideSubmit = async (values: z.infer<typeof slideshowSchema>) => {
-    if (!user) return;
-
     try {
         const processedSlides = await Promise.all(
             values.slides.map(async (slide) => {
@@ -215,10 +188,8 @@ export default function ManageWebsitePage() {
             })
         );
         
-        await handleSave('slideshow', { slides: processedSlides });
+        await handleSave('slideshow', processedSlides );
         toast({ title: "Slideshow Updated" });
-        
-        await fetchUser();
         closeSlideDialog();
 
     } catch (error) {
@@ -228,14 +199,13 @@ export default function ManageWebsitePage() {
   }
   
   const openSlideDialog = () => {
-      slideshowForm.reset({ slides: user?.website?.slideshow || [] });
+      slideshowForm.reset({ slides: websiteData.slideshow || [] });
       setIsSlideDialogOpen(true);
   }
 
   const closeSlideDialog = () => {
       setIsSlideDialogOpen(false);
   }
-
 
   const renderSocialLink = (label: string, url: string | undefined, Icon: React.ElementType) => (
     <div className="flex items-center gap-3">
@@ -244,7 +214,7 @@ export default function ManageWebsitePage() {
     </div>
   )
 
-  if (isUserLoading || isDataLoading) {
+  if (isLoading) {
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -252,19 +222,10 @@ export default function ManageWebsitePage() {
     )
   }
 
-  if (!user) {
-    return (
-        <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 flex items-center justify-center">
-            <p>Could not load user data.</p>
-        </div>
-    )
-  }
-
-
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Website</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Website Panel</h1>
       </div>
       <div className="space-y-6">
 
@@ -273,38 +234,30 @@ export default function ManageWebsitePage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <Building className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Business Profile</CardTitle>
+              <CardTitle>Default Business Profile</CardTitle>
             </div>
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" asChild>
-                    <a href={`/site/${user.id}`} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Preview
-                    </a>
-                </Button>
-                <Dialog>
-                <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
-                <DialogContent>
-                    <DialogHeader><DialogTitle>Edit Business Profile</DialogTitle></DialogHeader>
-                    <Form {...businessProfileForm}>
-                    <form onSubmit={businessProfileForm.handleSubmit((values) => handleSave('businessProfile', values))} className="space-y-4">
-                        <FormField control={businessProfileForm.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={businessProfileForm.control} name="businessLogo" render={({ field: { onChange, value, ...rest} }) => ( <FormItem><FormLabel>Business Logo</FormLabel>
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-20 w-20"><AvatarImage src={typeof value === 'string' ? value : (value ? URL.createObjectURL(value) : '')} /><AvatarFallback>Logo</AvatarFallback></Avatar>
-                            <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
-                        </div>
-                        <FormMessage /></FormItem> )} />
-                        <DialogFooter><Button type="submit" disabled={businessProfileForm.formState.isSubmitting}>{businessProfileForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
-                    </form>
-                    </Form>
-                </DialogContent>
-                </Dialog>
-            </div>
+            <Dialog>
+            <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+            <DialogContent>
+                <DialogHeader><DialogTitle>Edit Default Business Profile</DialogTitle></DialogHeader>
+                <Form {...businessProfileForm}>
+                <form onSubmit={businessProfileForm.handleSubmit((values) => handleSave('businessProfile', values))} className="space-y-4">
+                    <FormField control={businessProfileForm.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={businessProfileForm.control} name="businessLogo" render={({ field: { onChange, value, ...rest} }) => ( <FormItem><FormLabel>Business Logo</FormLabel>
+                    <div className="flex items-center gap-4">
+                        <Avatar className="h-20 w-20"><AvatarImage src={typeof value === 'string' ? value : (value ? URL.createObjectURL(value) : '')} /><AvatarFallback>Logo</AvatarFallback></Avatar>
+                        <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
+                    </div>
+                    <FormMessage /></FormItem> )} />
+                    <DialogFooter><Button type="submit" disabled={businessProfileForm.formState.isSubmitting}>{businessProfileForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
+                </form>
+                </Form>
+            </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
-            <Avatar className="h-20 w-20"><AvatarImage src={user.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
-            <p className="text-lg font-semibold">{user.name}</p>
+            <Avatar className="h-20 w-20"><AvatarImage src={websiteData.businessProfile?.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
+            <p className="text-lg font-semibold">{websiteData.businessProfile?.businessName || "Default Business Name"}</p>
           </CardContent>
         </Card>
         
@@ -313,15 +266,15 @@ export default function ManageWebsitePage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <ImageIcon className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Slideshow</CardTitle>
+              <CardTitle>Default Slideshow</CardTitle>
             </div>
              <Button size="sm" onClick={openSlideDialog}>
                 <Pencil className="mr-2 h-4 w-4" /> Edit Slideshow
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {user.website?.slideshow && user.website.slideshow.length > 0 ? (
-                user.website.slideshow.map(slide => (
+            {websiteData.slideshow && websiteData.slideshow.length > 0 ? (
+                websiteData.slideshow.map(slide => (
                     <div key={slide.id} className="flex items-center gap-4 p-2 border rounded-md">
                         <Image src={slide.bannerImage} alt={slide.title} width={120} height={68} className="rounded-md object-cover bg-muted" />
                         <div className="flex-1">
@@ -340,8 +293,8 @@ export default function ManageWebsitePage() {
         <Dialog open={isSlideDialogOpen} onOpenChange={closeSlideDialog}>
             <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-                <DialogTitle>Edit Slideshow</DialogTitle>
-                <DialogDescription>Manage your public website's slideshow images, titles, and links.</DialogDescription>
+                <DialogTitle>Edit Default Slideshow</DialogTitle>
+                <DialogDescription>Manage the default slideshow for partner websites.</DialogDescription>
             </DialogHeader>
                 <Form {...slideshowForm}>
                 <form onSubmit={slideshowForm.handleSubmit(handleSlideSubmit)} className="space-y-6">
@@ -419,12 +372,12 @@ export default function ManageWebsitePage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <Contact className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Contact Details</CardTitle>
+              <CardTitle>Default Contact Details</CardTitle>
             </div>
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
               <DialogContent>
-                <DialogHeader><DialogTitle>Edit Contact Details</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>Edit Default Contact Details</DialogTitle></DialogHeader>
                  <Form {...contactDetailsForm}>
                   <form onSubmit={contactDetailsForm.handleSubmit((values) => handleSave('contactDetails', values))} className="space-y-4">
                     <FormField control={contactDetailsForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Contact Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -443,10 +396,10 @@ export default function ManageWebsitePage() {
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><strong>Name:</strong> {user.name}</p>
-            <p><strong>Phone:</strong> {user.phone}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Address:</strong> {`${user.address}, ${user.city}, ${user.state} - ${user.pincode}`}</p>
+             <p><strong>Name:</strong> {websiteData.contactDetails?.name || 'Not set'}</p>
+            <p><strong>Phone:</strong> {websiteData.contactDetails?.phone || 'Not set'}</p>
+            <p><strong>Email:</strong> {websiteData.contactDetails?.email || 'Not set'}</p>
+            <p><strong>Address:</strong> {`${websiteData.contactDetails?.address || ''}, ${websiteData.contactDetails?.city || ''}, ${websiteData.contactDetails?.state || ''} - ${websiteData.contactDetails?.pincode || ''}`}</p>
           </CardContent>
         </Card>
 
@@ -455,7 +408,7 @@ export default function ManageWebsitePage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <Info className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>About & Legal</CardTitle>
+              <CardTitle>Default About & Legal</CardTitle>
             </div>
              <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
@@ -482,20 +435,20 @@ export default function ManageWebsitePage() {
           <CardContent className="space-y-4">
             <div>
               <h4 className="font-semibold mb-1">About Us</h4>
-              <p className="text-sm text-muted-foreground">{user.website?.aboutLegal?.aboutText || 'Not set'}</p>
+              <p className="text-sm text-muted-foreground">{websiteData.aboutLegal?.aboutText || 'Not set'}</p>
             </div>
             <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Terms & Conditions: {user.website?.aboutLegal?.termsLink ? <a href={user.website.aboutLegal.termsLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
+                    <span>Terms & Conditions: {websiteData.aboutLegal?.termsLink ? <a href={websiteData.aboutLegal.termsLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Privacy Policy: {user.website?.aboutLegal?.privacyLink ? <a href={user.website.aboutLegal.privacyLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
+                    <span>Privacy Policy: {websiteData.aboutLegal?.privacyLink ? <a href={websiteData.aboutLegal.privacyLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Disclaimer: {user.website?.aboutLegal?.disclaimerLink ? <a href={user.website.aboutLegal.disclaimerLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
+                    <span>Disclaimer: {websiteData.aboutLegal?.disclaimerLink ? <a href={websiteData.aboutLegal.disclaimerLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
                 </div>
             </div>
           </CardContent>
@@ -506,7 +459,7 @@ export default function ManageWebsitePage() {
           <CardHeader className="flex flex-row items-center justify-between">
              <div className="flex items-center gap-3">
               <Globe className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Social Links</CardTitle>
+              <CardTitle>Default Social Links</CardTitle>
             </div>
              <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
@@ -527,12 +480,12 @@ export default function ManageWebsitePage() {
             </Dialog>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
-            {renderSocialLink('Website', user.website?.socialLinks?.website, Globe)}
-            {renderSocialLink('Instagram', user.website?.socialLinks?.instagram, Instagram)}
-            {renderSocialLink('Facebook', user.website?.socialLinks?.facebook, Facebook)}
-            {renderSocialLink('YouTube', user.website?.socialLinks?.youtube, Youtube)}
-            {renderSocialLink('Twitter', user.website?.socialLinks?.twitter, Twitter)}
-            {renderSocialLink('LinkedIn', user.website?.socialLinks?.linkedin, Linkedin)}
+            {renderSocialLink('Website', websiteData.socialLinks?.website, Globe)}
+            {renderSocialLink('Instagram', websiteData.socialLinks?.instagram, Instagram)}
+            {renderSocialLink('Facebook', websiteData.socialLinks?.facebook, Facebook)}
+            {renderSocialLink('YouTube', websiteData.socialLinks?.youtube, Youtube)}
+            {renderSocialLink('Twitter', websiteData.socialLinks?.twitter, Twitter)}
+            {renderSocialLink('LinkedIn', websiteData.socialLinks?.linkedin, Linkedin)}
           </CardContent>
         </Card>
       </div>
