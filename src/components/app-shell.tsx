@@ -31,7 +31,7 @@ import { Skeleton } from "./ui/skeleton"
 import { useRouter } from "next/navigation"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-    const { user, isLoading, logout } = useUser();
+    const { user, isLoading, setUser } = useUser();
     const router = useRouter();
 
     const getInitials = () => {
@@ -45,7 +45,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     const handleLogout = () => {
-        logout();
+        localStorage.removeItem("userId");
+        setUser(null);
         router.push('/');
     }
 

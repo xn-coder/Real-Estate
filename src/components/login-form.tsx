@@ -21,9 +21,12 @@ import Link from "next/link"
 import { Separator } from "./ui/separator"
 import { Loader2 } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, addDoc, doc, setDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, setDoc } from "firebase/firestore"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
+import { useUser } from "@/hooks/use-user"
+import type { User } from "@/types/user"
+
 
 const formSchema = z.object({
   email: z.string().email({
@@ -38,6 +41,7 @@ export function LoginForm() {
   const { toast } = useToast()
   const router = useRouter()
   const [isLoading, setIsLoading] = React.useState(false)
+  const { setUser } = useUser()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -99,28 +103,41 @@ export function LoginForm() {
           title: "Login Failed",
           description: "Invalid email or password.",
         })
+        return;
+      } 
+      
+      const userDoc = querySnapshot.docs[0]
+      const user = userDoc.data() as User
+      
+      const isPasswordValid = await bcrypt.compare(values.password, user.password!)
+      
+      if (isPasswordValid) {
+        const userData = { id: userDoc.id, ...user };
+        localStorage.setItem('userId', userDoc.id);
+        setUser(userData); // Immediately update the user context
+
+        toast({
+            title: "Login Successful",
+            description: "Welcome back! Redirecting you now.",
+        })
+
+        // Redirect logic from page.tsx
+        let redirectPath = '/dashboard'; // Default
+        if (user.role === 'seller') redirectPath = '/listings';
+        if (user.role === 'user') redirectPath = '/listings'; // Assuming general user also goes to listings
+
+        router.push(redirectPath)
+
       } else {
-        const userDoc = querySnapshot.docs[0]
-        const user = userDoc.data()
-        
-        const isPasswordValid = await bcrypt.compare(values.password, user.password)
-        
-        if (isPasswordValid) {
-          localStorage.setItem('userId', userDoc.id);
-          toast({
-              title: "Login Successful",
-              description: "Welcome back! Redirecting you to the dashboard.",
-          })
-          router.push("/dashboard")
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Login Failed",
-            description: "Invalid email or password.",
-          })
-        }
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Invalid email or password.",
+        })
       }
+      
     } catch (error) {
+       console.error("Login error:", error);
        toast({
           variant: "destructive",
           title: "Login Error",
