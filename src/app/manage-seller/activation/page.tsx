@@ -67,7 +67,7 @@ export default function SellerActivationPage() {
             description: "Failed to update seller status.",
         });
     } finally {
-        setIsUpdating(false);
+        setIsUpdating(null);
     }
   }
 
