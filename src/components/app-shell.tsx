@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History } from "lucide-react"
+import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History, Globe, Contact, Wallet, LifeBuoy } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import Link from "next/link"
@@ -49,6 +49,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setUser(null);
         router.push('/');
     }
+
+    const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -133,12 +135,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 <span>Contact Book</span>
                                 </DropdownMenuItem>
                             </Link>
+                             <Link href="/updates">
+                                <DropdownMenuItem>
+                                <History className="mr-2 h-4 w-4" />
+                                <span>Updates</span>
+                                </DropdownMenuItem>
+                            </Link>
                             <Link href="/settings">
                                 <DropdownMenuItem>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Settings</span>
                                 </DropdownMenuItem>
                             </Link>
+                        </>
+                     )}
+                     {isPartner && (
+                        <>
+                            <DropdownMenuItem>
+                                <Globe className="mr-2 h-4 w-4" />
+                                <span>Manage Website</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem>
+                                <Contact className="mr-2 h-4 w-4" />
+                                <span>Manage Digital Card</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                                <Wallet className="mr-2 h-4 w-4" />
+                                <span>Earning & Wallet</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                                <LifeBuoy className="mr-2 h-4 w-4" />
+                                <span>Help & Support</span>
+                            </DropdownMenuItem>
                         </>
                      )}
                     <DropdownMenuSeparator />
