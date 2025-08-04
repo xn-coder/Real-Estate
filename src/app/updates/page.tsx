@@ -10,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardContent,
@@ -24,6 +23,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Eye, Loader2, PlusCircle } from "lucide-react"
@@ -38,6 +45,8 @@ export default function UpdatesPage() {
     const [receivedMessages, setReceivedMessages] = React.useState<Message[]>([]);
     const [sentMessages, setSentMessages] = React.useState<Message[]>([]);
     const [isLoadingMessages, setIsLoadingMessages] = React.useState(true);
+    const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
+    const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
 
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
     const isSeller = user?.role === 'seller';
@@ -49,21 +58,18 @@ export default function UpdatesPage() {
         try {
             const messagesCollection = collection(db, "messages");
             
-            // Fetch received messages
-            const recipientQueries = [where("recipientId", "==", user.id)];
-            if (isAdmin) {
-                recipientQueries.push(where("recipientId", "==", "ALL_ADMINS"));
-            }
+            const recipientQueries = [];
             if (isPartner) {
-                recipientQueries.push(where("recipientId", "==", "ALL_PARTNERS"));
-            }
-            if (isSeller) {
-                recipientQueries.push(where("recipientId", "==", "ALL_SELLERS"));
+                recipientQueries.push(where("recipientId", "in", [user.id, "ALL_PARTNERS"]));
+            } else if (isSeller) {
+                 recipientQueries.push(where("recipientId", "in", [user.id, "ALL_SELLERS"]));
+            } else if (isAdmin) {
+                 recipientQueries.push(where("recipientId", "in", [user.id, "ALL_ADMINS", "ALL_PARTNERS", "ALL_SELLERS"]));
             }
 
             const receivedMessagesList: Message[] = [];
-            for (const recipientQuery of recipientQueries) {
-                const q = query(messagesCollection, recipientQuery, orderBy("date", "desc"));
+             if(recipientQueries.length > 0) {
+                const q = query(messagesCollection, ...recipientQueries, orderBy("date", "desc"));
                 const querySnapshot = await getDocs(q);
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
@@ -73,12 +79,11 @@ export default function UpdatesPage() {
                         date: (data.date as Timestamp).toDate(),
                     } as Message);
                 });
-            }
-             // Deduplicate messages in case a user belongs to multiple groups that received the same message
+             }
+            
             const uniqueReceived = Array.from(new Map(receivedMessagesList.map(m => [m.id, m])).values());
             setReceivedMessages(uniqueReceived.sort((a,b) => b.date.getTime() - a.date.getTime()));
 
-            // Fetch sent messages (for admin)
             if (isAdmin) {
                 const sentQuery = query(messagesCollection, where("senderId", "==", user.id), orderBy("date", "desc"));
                 const sentSnapshot = await getDocs(sentQuery);
@@ -105,6 +110,11 @@ export default function UpdatesPage() {
             fetchMessages();
         }
     }, [user, fetchMessages]);
+
+    const handleViewMessage = (message: Message) => {
+        setSelectedMessage(message);
+        setIsViewDialogOpen(true);
+    };
 
     const renderTable = (messages: Message[], isSentTable = false) => (
         <Table>
@@ -136,7 +146,7 @@ export default function UpdatesPage() {
                             <TableCell>{message.subject}</TableCell>
                             <TableCell>{format(message.date, 'PP')}</TableCell>
                             <TableCell className="text-right">
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" onClick={() => handleViewMessage(message)}>
                                     <Eye className="h-4 w-4" />
                                     <span className="sr-only">View Message</span>
                                 </Button>
@@ -216,6 +226,25 @@ export default function UpdatesPage() {
                 </TabsContent>
             </Tabs>
         )}
+         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>{selectedMessage?.subject}</DialogTitle>
+                    <DialogDescription>
+                        From: {selectedMessage?.senderName} | To: {selectedMessage?.recipientName} | On: {selectedMessage?.date ? format(selectedMessage.date, 'PPP p') : ''}
+                    </DialogDescription>
+                </DialogHeader>
+                {selectedMessage && (
+                    <div 
+                        className="prose prose-sm dark:prose-invert max-w-none mt-4 max-h-[50vh] overflow-y-auto"
+                        dangerouslySetInnerHTML={{ __html: selectedMessage.body }} 
+                    />
+                )}
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+         </Dialog>
         </div>
     )
 }
