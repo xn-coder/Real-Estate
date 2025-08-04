@@ -90,6 +90,7 @@ export default function ManageWebsitePage() {
   const { user, isLoading: isUserLoading, fetchUser } = useUser()
   const [isSlideDialogOpen, setIsSlideDialogOpen] = React.useState(false);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
+  const [displayedData, setDisplayedData] = React.useState<Partial<User['website']>>({});
 
   const businessProfileForm = useForm<z.infer<typeof businessProfileSchema>>({
     resolver: zodResolver(businessProfileSchema),
@@ -124,9 +125,16 @@ export default function ManageWebsitePage() {
 
         const partnerWebsiteData = user.website || {};
 
-        businessProfileForm.reset({ businessName: user.name, businessLogo: user.businessLogo || '' });
+        const finalData = {
+            slideshow: partnerWebsiteData.slideshow || defaults.slideshow || [],
+            aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal || { aboutText: '' },
+            socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' },
+        };
+        setDisplayedData(finalData);
 
-        slideshowForm.reset({ slides: partnerWebsiteData.slideshow || defaults.slideshow || [] });
+        businessProfileForm.reset({ businessName: user.name, businessLogo: user.businessLogo || '' });
+        
+        slideshowForm.reset({ slides: finalData.slideshow });
 
         contactDetailsForm.reset({ 
             name: user.name, 
@@ -138,9 +146,8 @@ export default function ManageWebsitePage() {
             pincode: user.pincode || '' 
         });
 
-        aboutLegalForm.reset(partnerWebsiteData.aboutLegal || defaults.aboutLegal || { aboutText: '' });
-        
-        socialLinksForm.reset(partnerWebsiteData.socialLinks || defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
+        aboutLegalForm.reset(finalData.aboutLegal);
+        socialLinksForm.reset(finalData.socialLinks);
 
     } catch (error) {
         console.error("Error loading website data:", error);
@@ -205,7 +212,7 @@ export default function ManageWebsitePage() {
             })
         );
         
-        await handleSave('slideshow', { slides: processedSlides });
+        await handleSave('slideshow', processedSlides);
         toast({ title: "Slideshow Updated" });
         
         await fetchUser();
@@ -218,7 +225,7 @@ export default function ManageWebsitePage() {
   }
   
   const openSlideDialog = () => {
-      slideshowForm.reset({ slides: user?.website?.slideshow || [] });
+      slideshowForm.reset({ slides: displayedData.slideshow || [] });
       setIsSlideDialogOpen(true);
   }
 
@@ -310,8 +317,8 @@ export default function ManageWebsitePage() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {user.website?.slideshow && user.website.slideshow.length > 0 ? (
-                user.website.slideshow.map(slide => (
+            {displayedData.slideshow && displayedData.slideshow.length > 0 ? (
+                displayedData.slideshow.map(slide => (
                     <div key={slide.id} className="flex items-center gap-4 p-2 border rounded-md">
                         <Image src={slide.bannerImage} alt={slide.title} width={120} height={68} className="rounded-md object-cover bg-muted" />
                         <div className="flex-1">
@@ -374,7 +381,7 @@ export default function ManageWebsitePage() {
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
                                     <FormField control={slideshowForm.control} name={`slides.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Promotion Title" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={slideshowForm.control} name={`slides.${index}.linkUrl`} render={({ field }) => (<FormItem><FormLabel>Link</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={slideshowForm.control} name={`slides.${index}.linkUrl`} render={({ field }) => (<FormItem><FormLabel>Link</FormLabel><FormControl><Input placeholder="https://example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
                             </div>
                             <Button
@@ -466,20 +473,20 @@ export default function ManageWebsitePage() {
           <CardContent className="space-y-4">
             <div>
               <h4 className="font-semibold mb-1">About Us</h4>
-              <p className="text-sm text-muted-foreground">{user.website?.aboutLegal?.aboutText || 'Not set'}</p>
+              <p className="text-sm text-muted-foreground">{displayedData.aboutLegal?.aboutText || 'Not set'}</p>
             </div>
             <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Terms & Conditions: {user.website?.aboutLegal?.termsLink ? <a href={user.website.aboutLegal.termsLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Terms & Conditions: {displayedData.aboutLegal?.termsLink ? <a href={displayedData.aboutLegal.termsLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Privacy Policy: {user.website?.aboutLegal?.privacyLink ? <a href={user.website.aboutLegal.privacyLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Privacy Policy: {displayedData.aboutLegal?.privacyLink ? <a href={displayedData.aboutLegal.privacyLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Disclaimer: {user.website?.aboutLegal?.disclaimerLink ? <a href={user.website.aboutLegal.disclaimerLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Disclaimer: {displayedData.aboutLegal?.disclaimerLink ? <a href={displayedData.aboutLegal.disclaimerLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
             </div>
           </CardContent>
@@ -498,12 +505,12 @@ export default function ManageWebsitePage() {
                 <DialogHeader><DialogTitle>Edit Social Links</DialogTitle></DialogHeader>
                  <Form {...socialLinksForm}>
                   <form onSubmit={socialLinksForm.handleSubmit((values) => handleSave('socialLinks', values))} className="space-y-4">
-                    <FormField control={socialLinksForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel>Website URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel>Instagram URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>Facebook URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="twitter" render={({ field }) => ( <FormItem><FormLabel>Twitter URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="linkedin" render={({ field }) => ( <FormItem><FormLabel>LinkedIn URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel>Website URL</FormLabel><FormControl><Input placeholder="https://example.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel>Instagram URL</FormLabel><FormControl><Input placeholder="https://instagram.com/..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>Facebook URL</FormLabel><FormControl><Input placeholder="https://facebook.com/..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="twitter" render={({ field }) => ( <FormItem><FormLabel>Twitter URL</FormLabel><FormControl><Input placeholder="https://twitter.com/..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="linkedin" render={({ field }) => ( <FormItem><FormLabel>LinkedIn URL</FormLabel><FormControl><Input placeholder="https://linkedin.com/..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                     <DialogFooter><Button type="submit" disabled={socialLinksForm.formState.isSubmitting}>{socialLinksForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
                   </form>
                 </Form>
@@ -511,12 +518,12 @@ export default function ManageWebsitePage() {
             </Dialog>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
-            {renderSocialLink('Website', user.website?.socialLinks?.website, Globe)}
-            {renderSocialLink('Instagram', user.website?.socialLinks?.instagram, Instagram)}
-            {renderSocialLink('Facebook', user.website?.socialLinks?.facebook, Facebook)}
-            {renderSocialLink('YouTube', user.website?.socialLinks?.youtube, Youtube)}
-            {renderSocialLink('Twitter', user.website?.socialLinks?.twitter, Twitter)}
-            {renderSocialLink('LinkedIn', user.website?.socialLinks?.linkedin, Linkedin)}
+            {renderSocialLink('Website', displayedData.socialLinks?.website, Globe)}
+            {renderSocialLink('Instagram', displayedData.socialLinks?.instagram, Instagram)}
+            {renderSocialLink('Facebook', displayedData.socialLinks?.facebook, Facebook)}
+            {renderSocialLink('YouTube', displayedData.socialLinks?.youtube, Youtube)}
+            {renderSocialLink('Twitter', displayedData.socialLinks?.twitter, Twitter)}
+            {renderSocialLink('LinkedIn', displayedData.socialLinks?.linkedin, Linkedin)}
           </CardContent>
         </Card>
       </div>
