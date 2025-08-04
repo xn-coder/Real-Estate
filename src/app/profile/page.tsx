@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from 'date-fns'
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
+import { Label } from "@/components/ui/label"
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -419,3 +420,5 @@ export default function ProfilePage() {
     </div>
   )
 }
+
+    
