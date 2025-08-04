@@ -93,12 +93,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
             <div className="flex items-center gap-4">
-               <Link href="/updates">
-                <Button variant="ghost" size="icon">
+               <Button variant="ghost" size="icon">
                   <Bell className="h-5 w-5" />
                   <span className="sr-only">Toggle notifications</span>
-                </Button>
-               </Link>
+               </Button>
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -145,9 +143,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                      )}
                      {isPartner && (
                         <>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href="/manage-website">
                                 <Globe className="mr-2 h-4 w-4" />
                                 <span>Manage Website</span>
+                              </Link>
                             </DropdownMenuItem>
                              <DropdownMenuItem asChild>
                                 <Link href={`/card/${user.id}`}>
