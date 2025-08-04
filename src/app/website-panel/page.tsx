@@ -82,11 +82,11 @@ const fileToDataUrl = (file: File): Promise<string> => {
 };
 
 type WebsiteData = {
-    businessProfile: z.infer<typeof businessProfileSchema>;
-    slideshow: z.infer<typeof slideshowSchema>['slides'];
-    contactDetails: z.infer<typeof contactDetailsSchema>;
-    aboutLegal: z.infer<typeof aboutLegalSchema>;
-    socialLinks: z.infer<typeof socialLinksSchema>;
+    businessProfile?: z.infer<typeof businessProfileSchema>;
+    slideshow?: z.infer<typeof slideshowSchema>['slides'];
+    contactDetails?: z.infer<typeof contactDetailsSchema>;
+    aboutLegal?: z.infer<typeof aboutLegalSchema>;
+    socialLinks?: z.infer<typeof socialLinksSchema>;
 }
 
 
@@ -94,7 +94,7 @@ export default function WebsitePanelPage() {
   const { toast } = useToast()
   const [isSlideDialogOpen, setIsSlideDialogOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [websiteData, setWebsiteData] = React.useState<Partial<WebsiteData>>({});
+  const [websiteData, setWebsiteData] = React.useState<WebsiteData>({});
 
   const businessProfileForm = useForm<z.infer<typeof businessProfileSchema>>({
     resolver: zodResolver(businessProfileSchema),
@@ -131,12 +131,33 @@ export default function WebsitePanelPage() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
             const data = docSnap.data() as WebsiteData;
-            setWebsiteData(data);
-            businessProfileForm.reset(data.businessProfile || { businessName: '', businessLogo: '' });
-            slideshowForm.reset({ slides: data.slideshow || [] });
-            contactDetailsForm.reset(data.contactDetails || { name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' });
-            aboutLegalForm.reset(data.aboutLegal || { aboutText: '', termsLink: '', privacyLink: '', disclaimerLink: '' });
-            socialLinksForm.reset(data.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
+            
+            // Convert slideshow object to array if needed
+            let slidesArray: z.infer<typeof slideshowItemSchema>[] = [];
+            if (data.slideshow) {
+                if (Array.isArray(data.slideshow)) {
+                    slidesArray = data.slideshow;
+                } else if (typeof data.slideshow === 'object') {
+                    slidesArray = Object.values(data.slideshow);
+                }
+            }
+            
+            const processedData = { ...data, slideshow: slidesArray };
+            
+            setWebsiteData(processedData);
+            businessProfileForm.reset(processedData.businessProfile || { businessName: '', businessLogo: '' });
+            slideshowForm.reset({ slides: processedData.slideshow || [] });
+            contactDetailsForm.reset(processedData.contactDetails || { name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' });
+            aboutLegalForm.reset(processedData.aboutLegal || { aboutText: '', termsLink: '', privacyLink: '', disclaimerLink: '' });
+            socialLinksForm.reset(processedData.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
+        } else {
+            // Set empty defaults if document doesn't exist
+            setWebsiteData({});
+            businessProfileForm.reset({ businessName: '', businessLogo: '' });
+            slideshowForm.reset({ slides: [] });
+            contactDetailsForm.reset({ name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' });
+            aboutLegalForm.reset({ aboutText: '', termsLink: '', privacyLink: '', disclaimerLink: '' });
+            socialLinksForm.reset({ website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
         }
     } catch (error) {
         console.error("Error fetching website defaults:", error);
