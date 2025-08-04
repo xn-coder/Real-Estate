@@ -98,6 +98,7 @@ export default function WebsitePanelPage() {
 
   const businessProfileForm = useForm<z.infer<typeof businessProfileSchema>>({
     resolver: zodResolver(businessProfileSchema),
+    defaultValues: { businessName: '', businessLogo: '' },
   });
   
   const slideshowForm = useForm<z.infer<typeof slideshowSchema>>({
@@ -112,12 +113,15 @@ export default function WebsitePanelPage() {
 
   const contactDetailsForm = useForm<z.infer<typeof contactDetailsSchema>>({
     resolver: zodResolver(contactDetailsSchema),
+    defaultValues: { name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' },
   });
   const aboutLegalForm = useForm<z.infer<typeof aboutLegalSchema>>({
     resolver: zodResolver(aboutLegalSchema),
+    defaultValues: { aboutText: '', termsLink: '', privacyLink: '', disclaimerLink: '' },
   });
   const socialLinksForm = useForm<z.infer<typeof socialLinksSchema>>({
     resolver: zodResolver(socialLinksSchema),
+    defaultValues: { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' },
   });
   
   const fetchWebsiteData = React.useCallback(async () => {
@@ -128,11 +132,11 @@ export default function WebsitePanelPage() {
         if (docSnap.exists()) {
             const data = docSnap.data() as WebsiteData;
             setWebsiteData(data);
-            businessProfileForm.reset(data.businessProfile);
+            businessProfileForm.reset(data.businessProfile || { businessName: '', businessLogo: '' });
             slideshowForm.reset({ slides: data.slideshow || [] });
-            contactDetailsForm.reset(data.contactDetails);
-            aboutLegalForm.reset(data.aboutLegal);
-            socialLinksForm.reset(data.socialLinks);
+            contactDetailsForm.reset(data.contactDetails || { name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' });
+            aboutLegalForm.reset(data.aboutLegal || { aboutText: '', termsLink: '', privacyLink: '', disclaimerLink: '' });
+            socialLinksForm.reset(data.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
         }
     } catch (error) {
         console.error("Error fetching website defaults:", error);
@@ -492,3 +496,5 @@ export default function WebsitePanelPage() {
     </div>
   )
 }
+
+    
