@@ -5,8 +5,8 @@ import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import type { User } from "@/types/user"
 import { Loader2, ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function RedirectToSiteCard() {
   const params = useParams()

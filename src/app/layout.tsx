@@ -13,7 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isPublicPage = pathname === '/' || pathname.startsWith('/site/') || pathname.startsWith('/card/');
+  // The login page and the entire /site/... route group are public.
+  const isPublicPage = pathname === '/' || pathname.startsWith('/site');
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -29,11 +30,11 @@ export default function RootLayout({
         <UserProvider>
             <div className="flex min-h-screen flex-col">
                 {isPublicPage ? (
-                children
+                  children
                 ) : (
-                <AppShell>
-                    {children}
-                </AppShell>
+                  <AppShell>
+                      {children}
+                  </AppShell>
                 )}
                 <Toaster />
             </div>

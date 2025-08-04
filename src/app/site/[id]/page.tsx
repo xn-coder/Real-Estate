@@ -13,7 +13,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import Autoplay from "embla-carousel-autoplay"
 
@@ -52,6 +51,9 @@ const PartnerWebsitePage = () => {
         fetchPartner()
     }, [fetchPartner])
 
+    const partnerName = partner?.website?.businessProfile?.businessName || partner?.name || "Partner Name";
+    const partnerLogo = partner?.website?.businessProfile?.businessLogo || partner?.businessLogo || '';
+    const contactDetails = partner?.website?.contactDetails || partner;
     const socialLinks = partner?.website?.socialLinks;
     const aboutLegal = partner?.website?.aboutLegal;
     const slideshow = partner?.website?.slideshow || [];
@@ -93,12 +95,12 @@ const PartnerWebsitePage = () => {
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center gap-4">
                             <Avatar>
-                                <AvatarImage src={partner.businessLogo} alt={partner.name} />
+                                <AvatarImage src={partnerLogo} alt={partnerName} />
                                 <AvatarFallback>
-                                    {partner.name.split(' ').map(n => n[0]).join('')}
+                                    {partnerName.split(' ').map(n => n[0]).join('')}
                                 </AvatarFallback>
                             </Avatar>
-                            <span className="font-bold text-lg font-headline">{partner.name}</span>
+                            <span className="font-bold text-lg font-headline">{partnerName}</span>
                         </div>
                         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
                             <button onClick={() => scrollTo('catalog')} className="hover:text-primary transition-colors">Catalog</button>
@@ -233,21 +235,21 @@ const PartnerWebsitePage = () => {
                                     <Mail className="h-6 w-6 text-primary mt-1" />
                                     <div>
                                         <h4 className="font-semibold">Email</h4>
-                                        <a href={`mailto:${partner.email}`} className="text-muted-foreground hover:text-primary">{partner.email}</a>
+                                        <a href={`mailto:${contactDetails.email}`} className="text-muted-foreground hover:text-primary">{contactDetails.email}</a>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-4">
                                     <Phone className="h-6 w-6 text-primary mt-1" />
                                     <div>
                                         <h4 className="font-semibold">Phone</h4>
-                                        <a href={`tel:${partner.phone}`} className="text-muted-foreground hover:text-primary">{partner.phone}</a>
+                                        <a href={`tel:${contactDetails.phone}`} className="text-muted-foreground hover:text-primary">{contactDetails.phone}</a>
                                     </div>
                                 </div>
                                  <div className="flex items-start gap-4">
                                     <MapPin className="h-6 w-6 text-primary mt-1" />
                                     <div>
                                         <h4 className="font-semibold">Address</h4>
-                                        <p className="text-muted-foreground">{`${partner.address}, ${partner.city}, ${partner.state} - ${partner.pincode}`}</p>
+                                        <p className="text-muted-foreground">{`${contactDetails.address}, ${contactDetails.city}, ${contactDetails.state} - ${contactDetails.pincode}`}</p>
                                     </div>
                                 </div>
                             </div>
@@ -271,7 +273,7 @@ const PartnerWebsitePage = () => {
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
                         <div>
-                            <h4 className="font-bold text-lg mb-2">{partner.name}</h4>
+                            <h4 className="font-bold text-lg mb-2">{partnerName}</h4>
                             <p className="text-sm text-gray-400">
                                 {aboutLegal?.aboutText?.substring(0, 100) || 'Your trusted real estate partner.'}...
                             </p>
@@ -294,7 +296,7 @@ const PartnerWebsitePage = () => {
                         </div>
                     </div>
                     <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
-                        <p>&copy; {new Date().getFullYear()} {partner.name}. All Rights Reserved.</p>
+                        <p>&copy; {new Date().getFullYear()} {partnerName}. All Rights Reserved.</p>
                     </div>
                 </div>
             </footer>

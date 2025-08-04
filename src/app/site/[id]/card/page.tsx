@@ -75,8 +75,9 @@ export default function DigitalCardPage() {
     )
   }
 
-  const fullAddress = [partner.address, partner.city, partner.state, partner.pincode].filter(Boolean).join(', ');
-  const whatsappNumber = partner.phone?.replace(/\D/g, '');
+  const partnerContact = partner.website?.contactDetails || partner;
+  const fullAddress = [partnerContact.address, partnerContact.city, partnerContact.state, partnerContact.pincode].filter(Boolean).join(', ');
+  const whatsappNumber = partnerContact.phone?.replace(/\D/g, '');
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
@@ -91,17 +92,17 @@ export default function DigitalCardPage() {
           </div>
         </div>
         <div className="text-center pt-16 pb-6 px-6">
-          <h2 className="text-2xl font-bold font-headline">{partner.name}</h2>
+          <h2 className="text-2xl font-bold font-headline">{partnerContact.name}</h2>
           <p className="text-muted-foreground font-mono text-sm">{partner.id}</p>
         </div>
         <div className="px-6 pb-8 space-y-4">
           <div className="flex items-center gap-4">
             <Phone className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-            <span className="text-sm">{partner.phone}</span>
+            <span className="text-sm">{partnerContact.phone}</span>
           </div>
           <div className="flex items-center gap-4">
             <Mail className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-            <span className="text-sm">{partner.email}</span>
+            <span className="text-sm">{partnerContact.email}</span>
           </div>
            <div className="flex items-start gap-4">
             <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
@@ -130,4 +131,3 @@ export default function DigitalCardPage() {
     </div>
   )
 }
-
