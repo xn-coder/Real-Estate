@@ -78,7 +78,7 @@ export default function ManageSellerDashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Seller Management</h1>
         <Button asChild>
-          <Link href="/manage-seller/add">
+          <Link href="/register/seller" target="_blank">
             <UserPlus className="mr-2 h-4 w-4" /> Add Seller
           </Link>
         </Button>
