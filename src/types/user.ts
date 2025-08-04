@@ -6,6 +6,7 @@ export type User = {
   lastName?: string
   email: string
   phone: string
+  password?: string
   whatsappNumber?: string;
   role: string
   status?: 'active' | 'inactive' | 'pending_approval' | 'rejected' | 'suspended';
@@ -33,4 +34,5 @@ export type User = {
   deactivationReason?: string;
   reactivationReason?: string;
   rejectionReason?: string;
+  kycStatus?: 'verified' | 'pending' | 'rejected';
 }

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, ShieldCheck, BadgeCheck } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,6 +24,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import bcrypt from "bcryptjs"
 import { useUser } from "@/hooks/use-user"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { format } from 'date-fns'
+import { Badge } from "@/components/ui/badge"
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -31,6 +34,9 @@ const profileFormSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(10, { message: "Please enter a valid phone number." }),
   profileImage: z.string().url().optional().or(z.literal('')),
+  dob: z.string().optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
+  qualification: z.string().optional(),
 })
 
 type UserProfileForm = z.infer<typeof profileFormSchema>;
@@ -84,6 +90,9 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         profileImage: user.profileImage || '',
+        dob: user.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : '',
+        gender: user.gender,
+        qualification: user.qualification
       };
       profileForm.reset(profileData);
     }
@@ -113,6 +122,9 @@ export default function ProfilePage() {
         lastName: values.lastName,
         phone: values.phone,
         profileImage: values.profileImage,
+        dob: values.dob ? new Date(values.dob) : null,
+        gender: values.gender,
+        qualification: values.qualification,
       })
       toast({
         title: "Profile Updated",
@@ -187,201 +199,159 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="space-y-4">
-            <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
-                <Card>
-                    <CardHeader className="flex flex-row items-start justify-between">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-16 w-16">
-                                <AvatarImage src={user?.profileImage} alt="Profile" />
-                                <AvatarFallback>
-                                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div>
-                                <CardTitle className="text-2xl">{user?.firstName} {user?.lastName}</CardTitle>
-                                {user?.id && <CardDescription>{user.id}</CardDescription>}
-                            </div>
-                        </div>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <Pencil className="h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                    </CardHeader>
-                </Card>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Edit Profile</DialogTitle>
-                        <DialogDescription>
-                            Make changes to your profile here. Click save when you're done.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Form {...profileForm}>
-                        <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
-                            <div className="flex items-center gap-6">
-                                <Avatar className="h-24 w-24">
-                                    <AvatarImage src={profileForm.watch("profileImage")} alt="Profile" data-ai-hint="user avatar" />
-                                    <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="grid gap-2">
-                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                    <Upload className="mr-2 h-4 w-4"/>
-                                    Upload Image
-                                    </Button>
-                                    <Input 
-                                        type="file" 
-                                        className="hidden" 
-                                        ref={fileInputRef} 
-                                        onChange={handleImageUpload}
-                                        accept="image/*"
-                                    />
-                                    <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={profileForm.control}
-                                    name="firstName"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>First Name</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="John" {...field} disabled={isUpdating} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={profileForm.control}
-                                    name="lastName"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Last Name</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Doe" {...field} disabled={isUpdating} />
-                                        </FormControl>
-                                        <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                            <FormField
-                            control={profileForm.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                    <Input {...field} disabled />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            <FormField
-                            control={profileForm.control}
-                            name="phone"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Phone Number</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="(123) 456-7890" {...field} disabled={isUpdating} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            <DialogFooter>
-                                <Button type="submit" disabled={isUpdating}>
-                                    {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {isUpdating ? 'Saving...' : 'Save Changes'}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+      <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+        <Card>
+          <CardHeader className="flex flex-row items-center gap-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src={user?.profileImage} alt="Profile" />
+              <AvatarFallback>
+                {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <CardTitle className="text-2xl">{user?.name}</CardTitle>
+              {user?.id && <CardDescription>Partner ID: {user.id}</CardDescription>}
+            </div>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Pencil className="h-4 w-4" />
+                <span className="sr-only">Edit Profile</span>
+              </Button>
+            </DialogTrigger>
+          </CardHeader>
+        </Card>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Make changes to your profile here. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...profileForm}>
+            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+              <div className="flex items-center gap-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profileForm.watch("profileImage")} alt="Profile" data-ai-hint="user avatar" />
+                  <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="grid gap-2">
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Image
+                  </Button>
+                  <Input
+                    type="file"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/*"
+                  />
+                  <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={profileForm.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} disabled={isUpdating} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={profileForm.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} disabled={isUpdating} /></FormControl><FormMessage /></FormItem>)} />
+              </div>
+              <FormField control={profileForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} disabled /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={profileForm.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} disabled={isUpdating} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={profileForm.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Date of Birth</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={profileForm.control} name="gender" render={({ field }) => ( <FormItem> <FormLabel>Gender</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select gender"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="male">Male</SelectItem> <SelectItem value="female">Female</SelectItem> <SelectItem value="other">Other</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+              </div>
+              <FormField control={profileForm.control} name="qualification" render={({ field }) => ( <FormItem> <FormLabel>Qualification</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select qualification"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="post-graduate">Post Graduate</SelectItem> <SelectItem value="graduate">Graduate</SelectItem> <SelectItem value="undergraduate">Undergraduate</SelectItem> <SelectItem value="diploma">Diploma</SelectItem> <SelectItem value="12th">12th</SelectItem> <SelectItem value="10th">10th</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+              <DialogFooter>
+                <Button type="submit" disabled={isUpdating}>
+                  {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isUpdating ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center"><UserIcon className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.name || 'N/A'}</span></div>
+            <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(new Date(user.dob), 'PPP') : 'N/A'}</span></div>
+            <div className="flex items-center capitalize"><Info className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.gender || 'N/A'}</span></div>
+            <div className="flex items-center"><GraduationCap className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.qualification || 'N/A'}</span></div>
+          </CardContent>
+        </Card>
 
-            <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>Security Update</CardTitle>
-                            <CardDescription>Manage your account security settings.</CardDescription>
-                        </div>
-                        <KeyRound className="h-6 w-6 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium">Password</div>
-                             <DialogTrigger asChild>
-                                <Button variant="outline">Reset Password</Button>
-                             </DialogTrigger>
-                        </div>
-                    </CardContent>
-                </Card>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Reset Password</DialogTitle>
-                        <DialogDescription>
-                            Enter your current and new password below.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Form {...passwordForm}>
-                        <form onSubmit={passwordForm.handleSubmit(onPasswordResetSubmit)} className="space-y-4">
-                            <FormField
-                                control={passwordForm.control}
-                                name="currentPassword"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Current Password</FormLabel>
-                                    <FormControl>
-                                        <Input type="password" {...field} disabled={isPasswordUpdating} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={passwordForm.control}
-                                name="newPassword"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>New Password</FormLabel>
-                                    <FormControl>
-                                        <Input type="password" {...field} disabled={isPasswordUpdating} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={passwordForm.control}
-                                name="confirmPassword"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Confirm New Password</FormLabel>
-                                    <FormControl>
-                                        <Input type="password" {...field} disabled={isPasswordUpdating} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <DialogFooter>
-                                <Button type="submit" disabled={isPasswordUpdating}>
-                                    {isPasswordUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {isPasswordUpdating ? 'Saving...' : 'Save Changes'}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>KYC Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                    <Info className="h-5 w-5 mr-3 text-muted-foreground" />
+                    <span>Aadhar Card</span>
+                </div>
+                <span>{user?.aadharNumber ? '•••• •••• ' + user.aadharNumber.slice(-4) : 'N/A'}</span>
+            </div>
+             <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                    <Info className="h-5 w-5 mr-3 text-muted-foreground" />
+                    <span>PAN Card</span>
+                </div>
+                <span>{user?.panNumber || 'N/A'}</span>
+            </div>
+             <div className="flex items-center justify-between pt-2">
+                <span className="font-medium">Status</span>
+                <Badge variant={user?.kycStatus === 'verified' ? 'default' : 'secondary'} className="bg-green-100 text-green-800">
+                    <BadgeCheck className="mr-1 h-4 w-4"/>
+                    Verified
+                </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Security Update</CardTitle>
+            <CardDescription>Manage your account security settings.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium flex items-center"><KeyRound className="h-5 w-5 mr-3 text-muted-foreground" />Password</div>
+              <DialogTrigger asChild>
+                <Button variant="outline">Reset Password</Button>
+              </DialogTrigger>
+            </div>
+          </CardContent>
+        </Card>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Enter your current and new password below.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...passwordForm}>
+            <form onSubmit={passwordForm.handleSubmit(onPasswordResetSubmit)} className="space-y-4">
+              <FormField control={passwordForm.control} name="currentPassword" render={({ field }) => (<FormItem><FormLabel>Current Password</FormLabel><FormControl><Input type="password" {...field} disabled={isPasswordUpdating} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={passwordForm.control} name="newPassword" render={({ field }) => (<FormItem><FormLabel>New Password</FormLabel><FormControl><Input type="password" {...field} disabled={isPasswordUpdating} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={passwordForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Confirm New Password</FormLabel><FormControl><Input type="password" {...field} disabled={isPasswordUpdating} /></FormControl><FormMessage /></FormItem>)} />
+              <DialogFooter>
+                <Button type="submit" disabled={isPasswordUpdating}>
+                  {isPasswordUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isPasswordUpdating ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
