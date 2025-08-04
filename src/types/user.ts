@@ -35,4 +35,25 @@ export type User = {
   reactivationReason?: string;
   rejectionReason?: string;
   kycStatus?: 'verified' | 'pending' | 'rejected';
+  website?: {
+    slideshow?: {
+      title: string;
+      bannerImage: string;
+      linkUrl: string;
+    };
+    aboutLegal?: {
+      aboutText: string;
+      termsLink: string;
+      privacyLink: string;
+      disclaimerLink: string;
+    };
+    socialLinks?: {
+      website: string;
+      instagram: string;
+      facebook: string;
+      youtube: string;
+      twitter: string;
+      linkedin: string;
+    }
+  }
 }
