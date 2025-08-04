@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
   // The login page and the entire /site/... route group are public.
-  const isPublicPage = pathname === '/' || pathname.startsWith('/site');
+  const isPublicPage = pathname === '/' || pathname.startsWith('/site') || pathname.startsWith('/register');
 
   return (
     <html lang="en" suppressHydrationWarning>

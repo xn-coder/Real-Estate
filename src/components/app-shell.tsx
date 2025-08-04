@@ -150,7 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               </Link>
                             </DropdownMenuItem>
                              <DropdownMenuItem asChild>
-                                <Link href={`/site/${user.id}/card`}>
+                                <Link href={`/digital-card/${user.id}`}>
                                     <Contact className="mr-2 h-4 w-4" />
                                     <span>Digital Card</span>
                                 </Link>

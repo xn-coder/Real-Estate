@@ -20,10 +20,12 @@ export default function RedirectToSiteCard() {
     if (partnerId) {
         const checkPartnerAndRedirect = async () => {
              try {
+                // We just check for existence before redirecting, no need to fetch full data here.
                 const userDocRef = doc(db, "users", partnerId);
                 const userDoc = await getDoc(userDocRef);
                 if (userDoc.exists()) {
-                    router.replace(`/site/${partnerId}/card`);
+                    // Redirect to the new internal card preview page.
+                    router.replace(`/digital-card/${partnerId}`);
                 } else {
                     setError("Partner not found. Cannot redirect.");
                     setIsLoading(false);
@@ -45,7 +47,7 @@ export default function RedirectToSiteCard() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-4">Redirecting to digital card...</p>
+        <p className="ml-4">Loading digital card...</p>
       </div>
     )
   }
