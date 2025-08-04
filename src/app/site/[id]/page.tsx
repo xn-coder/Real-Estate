@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import Link from "next/link"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
 const PartnerWebsitePage = () => {
     const params = useParams()
@@ -156,8 +158,24 @@ const PartnerWebsitePage = () => {
                     </div>
                 </section>
 
+                {/* Enquiry Form Section */}
+                <section id="enquiry" className="py-12 md:py-20 bg-muted/50">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <h2 className="text-3xl font-bold font-headline text-center mb-12">Enquire Now</h2>
+                        <div className="max-w-xl mx-auto">
+                            <form className="space-y-4">
+                                <Input placeholder="Your Name" />
+                                <Input type="email" placeholder="Your Email" />
+                                <Input type="tel" placeholder="Your Phone Number" />
+                                <Textarea placeholder="Your Message" />
+                                <Button className="w-full">Submit Enquiry</Button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Contact Section */}
-                <section id="contact" className="py-12 md:py-20 bg-muted/50">
+                <section id="contact" className="py-12 md:py-20">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                         <h2 className="text-3xl font-bold font-headline text-center mb-12">Get In Touch</h2>
                         <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12">
@@ -200,13 +218,34 @@ const PartnerWebsitePage = () => {
             </main>
 
             {/* Footer */}
-            <footer className="bg-background border-t">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
-                    <p>&copy; {new Date().getFullYear()} {partner.name}. All Rights Reserved.</p>
-                    <div className="flex gap-4 mt-4 sm:mt-0">
-                        {aboutLegal?.termsLink && <a href={aboutLegal.termsLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary">Terms</a>}
-                        {aboutLegal?.privacyLink && <a href={aboutLegal.privacyLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary">Privacy</a>}
-                        {aboutLegal?.disclaimerLink && <a href={aboutLegal.disclaimerLink} target="_blank" rel="noopener noreferrer" className="hover:text-primary">Disclaimer</a>}
+            <footer className="bg-gray-800 text-white">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
+                        <div>
+                            <h4 className="font-bold text-lg mb-2">{partner.name}</h4>
+                            <p className="text-sm text-gray-400">
+                                {aboutLegal?.aboutText?.substring(0, 100) || 'Your trusted real estate partner.'}...
+                            </p>
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-lg mb-2">Quick Links</h4>
+                             <ul className="space-y-1 text-sm">
+                                <li><button onClick={() => scrollTo('catalog')} className="text-gray-400 hover:text-white">Catalog</button></li>
+                                <li><a href={`/card/${partner.id}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Digital Card</a></li>
+                                <li><button onClick={() => scrollTo('contact')} className="text-gray-400 hover:text-white">Contact Us</button></li>
+                            </ul>
+                        </div>
+                         <div>
+                            <h4 className="font-bold text-lg mb-2">Legal</h4>
+                             <ul className="space-y-1 text-sm">
+                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms</a></li>}
+                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy</a></li>}
+                                {aboutLegal?.disclaimerLink && <li><a href={aboutLegal.disclaimerLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Disclaimer</a></li>}
+                            </ul>
+                        </div>
+                    </div>
+                    <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
+                        <p>&copy; {new Date().getFullYear()} {partner.name}. All Rights Reserved.</p>
                     </div>
                 </div>
             </footer>

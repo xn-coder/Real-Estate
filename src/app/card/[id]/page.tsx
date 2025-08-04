@@ -9,6 +9,7 @@ import type { User } from "@/types/user"
 import { Loader2, Phone, Mail, MapPin, Briefcase, Globe } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -118,10 +119,12 @@ export default function DigitalCardPage() {
               WhatsApp
             </Button>
           </a>
-           <Button variant="ghost" className="rounded-none bg-card hover:bg-muted py-4">
-             <Globe className="h-5 w-5 mr-2" />
-            Website
-          </Button>
+           <Link href={`/site/${partner.id}`} target="_blank" rel="noopener noreferrer">
+            <Button variant="ghost" className="w-full rounded-none bg-card hover:bg-muted py-4">
+                <Globe className="h-5 w-5 mr-2" />
+                Website
+            </Button>
+           </Link>
         </div>
       </div>
     </div>
