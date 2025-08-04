@@ -27,6 +27,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import dynamic from 'next/dynamic';
 import { useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
+import { db } from "@/lib/firebase"
+import { collection, addDoc, doc, getDoc, Timestamp } from "firebase/firestore"
+import { useUser } from "@/hooks/use-user"
+import type { Message } from "@/types/message"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -62,6 +66,7 @@ type MessageForm = z.infer<typeof messageFormSchema>;
 export default function SendMessagePage() {
   const { toast } = useToast()
   const searchParams = useSearchParams()
+  const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const recipientId = searchParams.get('recipientId');
@@ -106,26 +111,75 @@ export default function SendMessagePage() {
   const isPrefilled = !!(recipientId && messageTypeParam);
 
   async function onSubmit(values: MessageForm) {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to send a message.' });
+        return;
+    }
     setIsSubmitting(true);
-    console.log(values)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Message Sent!",
-      description: "Your message has been successfully sent.",
-    })
-    
-    // Reset form to default state after submission
-    form.reset({
-      messageType: "announcement",
-      subject: "",
-      details: "",
-      recipientId: "",
-      announcementType: undefined,
-    });
-    // If you were to redirect, you would do it here.
-    // For this example, we'll just clear the form.
-    setIsSubmitting(false)
+
+    try {
+        let recipients: { id: string, name: string }[] = [];
+
+        if (values.messageType === 'announcement') {
+            if (values.announcementType === 'partner') {
+                recipients.push({ id: 'ALL_PARTNERS', name: 'All Partners' });
+            } else if (values.announcementType === 'seller') {
+                recipients.push({ id: 'ALL_SELLERS', name: 'All Sellers' });
+            } else if (values.announcementType === 'both') {
+                recipients.push({ id: 'ALL_PARTNERS', name: 'All Partners' });
+                recipients.push({ id: 'ALL_SELLERS', name: 'All Sellers' });
+            }
+        } else if ((values.messageType === 'to_partner' || values.messageType === 'to_seller') && values.recipientId) {
+            const userDoc = await getDoc(doc(db, 'users', values.recipientId));
+            if (userDoc.exists()) {
+                recipients.push({ id: userDoc.id, name: userDoc.data().name });
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: 'Recipient not found.' });
+                setIsSubmitting(false);
+                return;
+            }
+        }
+
+        const messagesCollection = collection(db, "messages");
+        
+        for (const recipient of recipients) {
+            const newMessage: Omit<Message, 'id'> = {
+                senderId: user.id,
+                senderName: user.name,
+                recipientId: recipient.id,
+                recipientName: recipient.name,
+                subject: values.subject,
+                body: values.details,
+                date: Timestamp.now().toDate(),
+                isAnnouncement: values.messageType === 'announcement',
+                readBy: {},
+            };
+            await addDoc(messagesCollection, newMessage);
+        }
+
+        toast({
+            title: "Message Sent!",
+            description: "Your message has been successfully sent.",
+        });
+
+        form.reset({
+            messageType: "announcement",
+            subject: "",
+            details: "",
+            recipientId: "",
+            announcementType: undefined,
+        });
+
+    } catch (error) {
+        console.error("Error sending message:", error);
+        toast({
+            variant: "destructive",
+            title: "Send Error",
+            description: "An unexpected error occurred. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
