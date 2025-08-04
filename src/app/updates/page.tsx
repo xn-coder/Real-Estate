@@ -26,7 +26,8 @@ import {
 } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
-import { Eye } from "lucide-react"
+import { Eye, Loader2 } from "lucide-react"
+import { useUser } from "@/hooks/use-user"
 
 const receivedMessages = [
   { id: 'msg1', senderId: 'PARTNER001', from: 'John Doe (Partner)', subject: 'New Lead Submission', date: new Date(), read: false },
@@ -42,28 +43,34 @@ const sentMessages = [
 
 
 export default function UpdatesPage() {
+    const { user, isLoading } = useUser();
+    const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+
+    if (isLoading) {
+        return (
+            <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+  
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">Updates</h1>
-      <Tabs defaultValue="received">
-        <TabsList>
-          <TabsTrigger value="received">Received Messages</TabsTrigger>
-          <TabsTrigger value="sent">Sent History</TabsTrigger>
-        </TabsList>
-        <TabsContent value="received">
+      
+      {isPartner ? (
           <Card>
             <CardHeader>
               <CardTitle>Inbox</CardTitle>
               <CardDescription>
-                Messages you have received from partners, sellers, and the system.
+                Messages you have received from the system.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Sender ID</TableHead>
-                    <TableHead>Sender Name</TableHead>
+                    <TableHead>Sender</TableHead>
                     <TableHead>Subject</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -72,9 +79,6 @@ export default function UpdatesPage() {
                 <TableBody>
                   {receivedMessages.map((message) => (
                     <TableRow key={message.id} className={!message.read ? 'bg-muted/50 font-bold' : ''}>
-                      <TableCell>
-                        <Badge variant="outline">{message.senderId}</Badge>
-                      </TableCell>
                       <TableCell>{message.from}</TableCell>
                       <TableCell>{message.subject}</TableCell>
                       <TableCell>{format(message.date, 'PP')}</TableCell>
@@ -90,49 +94,96 @@ export default function UpdatesPage() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-        <TabsContent value="sent">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sent Messages</CardTitle>
-              <CardDescription>
-                A history of all messages and announcements you have sent.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+      ) : (
+        <Tabs defaultValue="received">
+            <TabsList>
+            <TabsTrigger value="received">Received Messages</TabsTrigger>
+            <TabsTrigger value="sent">Sent History</TabsTrigger>
+            </TabsList>
+            <TabsContent value="received">
+            <Card>
+                <CardHeader>
+                <CardTitle>Inbox</CardTitle>
+                <CardDescription>
+                    Messages you have received from partners, sellers, and the system.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
                 <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>Recipient ID</TableHead>
-                        <TableHead>Recipient Name</TableHead>
+                        <TableHead>Sender ID</TableHead>
+                        <TableHead>Sender Name</TableHead>
                         <TableHead>Subject</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {sentMessages.map((message) => (
-                        <TableRow key={message.id}>
-                          <TableCell>
-                            <Badge variant="outline">{message.recipientId}</Badge>
-                          </TableCell>
-                          <TableCell>{message.recipientName}</TableCell>
-                          <TableCell>{message.subject}</TableCell>
-                          <TableCell>{format(message.date, 'PP')}</TableCell>
-                          <TableCell className="text-right">
+                    {receivedMessages.map((message) => (
+                        <TableRow key={message.id} className={!message.read ? 'bg-muted/50 font-bold' : ''}>
+                        <TableCell>
+                            <Badge variant="outline">{message.senderId}</Badge>
+                        </TableCell>
+                        <TableCell>{message.from}</TableCell>
+                        <TableCell>{message.subject}</TableCell>
+                        <TableCell>{format(message.date, 'PP')}</TableCell>
+                        <TableCell className="text-right">
                             <Button variant="ghost" size="icon">
                                 <Eye className="h-4 w-4" />
                                 <span className="sr-only">View Message</span>
                             </Button>
-                          </TableCell>
+                        </TableCell>
                         </TableRow>
                     ))}
                     </TableBody>
                 </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </CardContent>
+            </Card>
+            </TabsContent>
+            <TabsContent value="sent">
+            <Card>
+                <CardHeader>
+                <CardTitle>Sent Messages</CardTitle>
+                <CardDescription>
+                    A history of all messages and announcements you have sent.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>Recipient ID</TableHead>
+                            <TableHead>Recipient Name</TableHead>
+                            <TableHead>Subject</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {sentMessages.map((message) => (
+                            <TableRow key={message.id}>
+                            <TableCell>
+                                <Badge variant="outline">{message.recipientId}</Badge>
+                            </TableCell>
+                            <TableCell>{message.recipientName}</TableCell>
+                            <TableCell>{message.subject}</TableCell>
+                            <TableCell>{format(message.date, 'PP')}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="icon">
+                                    <Eye className="h-4 w-4" />
+                                    <span className="sr-only">View Message</span>
+                                </Button>
+                            </TableCell>
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+            </TabsContent>
+        </Tabs>
+      )}
     </div>
   )
 }
