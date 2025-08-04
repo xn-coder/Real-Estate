@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History, Globe, Contact, Wallet, LifeBuoy } from "lucide-react"
+import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History, Globe, Contact, Wallet, LifeBuoy, Headset } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import Link from "next/link"
@@ -51,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+    const isSeller = user?.role === 'seller';
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -165,6 +166,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             </DropdownMenuItem>
                         </>
                      )}
+                    {isSeller && (
+                        <>
+                            <DropdownMenuItem asChild>
+                                <Link href="/wallet-billing">
+                                    <Wallet className="mr-2 h-4 w-4" />
+                                    <span>Manage Wallet</span>
+                                </Link>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href="/support">
+                                    <Headset className="mr-2 h-4 w-4" />
+                                    <span>Help & Support</span>
+                                </Link>
+                            </DropdownMenuItem>
+                        </>
+                    )}
                     <DropdownMenuSeparator />
                      <DropdownMenuItem onSelect={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
