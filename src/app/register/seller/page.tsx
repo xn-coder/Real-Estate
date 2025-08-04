@@ -77,15 +77,18 @@ export default function SellerRegistrationPage() {
       await setDoc(doc(db, "users", userId), {
         id: userId,
         name: `${values.firstName} ${values.lastName}`,
+        firstName: values.firstName,
+        lastName: values.lastName,
         email: values.email,
         phone: values.phone,
         password: hashedPassword,
         role: 'seller',
+        status: 'pending'
       })
 
       toast({
-        title: "Registration Successful",
-        description: "Your seller account has been created. Please log in.",
+        title: "Registration Submitted",
+        description: "Your seller account is under review. You will be notified upon activation.",
       })
       router.push("/")
 
@@ -190,7 +193,7 @@ export default function SellerRegistrationPage() {
             />
             <Button type="submit" className="w-full mt-4" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? 'Creating Account...' : 'Create Account'}
+              {isLoading ? 'Submitting...' : 'Create Account'}
             </Button>
           </form>
         </Form>

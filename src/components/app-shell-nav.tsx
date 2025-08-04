@@ -86,7 +86,16 @@ const adminNavItems: NavItem[] = [
           { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
       ]
     },
-    { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
+    { 
+      href: '/manage-seller', 
+      icon: UserSquare, 
+      label: 'Manage Seller',
+      subItems: [
+          { href: '/manage-seller', label: 'Manage Seller' },
+          { href: '/manage-seller/activation', label: 'Seller Activation' },
+          { href: '/manage-seller/deactivated', label: 'Deactivated Sellers' },
+      ]
+    },
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
     { href: '/deals', icon: Handshake, label: 'Manage Deals' },
     { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
