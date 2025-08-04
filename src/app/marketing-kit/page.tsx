@@ -33,13 +33,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, Upload, Paperclip, Download } from "lucide-react"
+import { Loader2, PlusCircle, Upload, Paperclip, Download, Search } from "lucide-react"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { db } from "@/lib/firebase"
 import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure"], {
@@ -105,6 +106,9 @@ export default function MarketingKitPage() {
   const [isLoadingKits, setIsLoadingKits] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [searchTerm, setSearchTerm] = React.useState("")
+  const [activeFilter, setActiveFilter] = React.useState("all")
+
   const featureImageRef = React.useRef<HTMLInputElement>(null)
   const filesRef = React.useRef<HTMLInputElement>(null)
 
@@ -125,13 +129,16 @@ export default function MarketingKitPage() {
       const kitsList = kitsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Kit))
       if (kitsList.length > 0) {
         setKits(kitsList)
+      } else {
+        setKits(initialKits);
       }
     } catch (error) {
       console.error("Error fetching kits:", error)
+      setKits(initialKits);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to fetch marketing kits.",
+        description: "Failed to fetch marketing kits. Showing sample data.",
       })
     } finally {
       setIsLoadingKits(false)
@@ -207,6 +214,17 @@ export default function MarketingKitPage() {
       document.body.removeChild(link);
     });
   };
+
+  const filteredKits = React.useMemo(() => {
+    return kits
+      .filter(kit => {
+        if (activeFilter === 'all') return true;
+        return kit.type.toLowerCase() === activeFilter;
+      })
+      .filter(kit =>
+        kit.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [kits, activeFilter, searchTerm]);
 
   const featureImage = form.watch("featureImage")
   const uploadedFiles = form.watch("files")
@@ -350,6 +368,26 @@ export default function MarketingKitPage() {
             </Dialog>
         )}
       </div>
+
+       <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by title..."
+            className="pl-8 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Tabs value={activeFilter} onValueChange={setActiveFilter} className="w-auto">
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="brochure">Brochures</TabsTrigger>
+            <TabsTrigger value="poster">Posters</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
       
       {isLoadingKits ? (
          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -368,9 +406,13 @@ export default function MarketingKitPage() {
                 </Card>
             ))}
         </div>
+      ) : filteredKits.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+            <p>No marketing kits found.</p>
+        </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {kits.map((kit) => (
+            {filteredKits.map((kit) => (
             <Card key={kit.id}>
                 <CardHeader className="p-0">
                 <Image
