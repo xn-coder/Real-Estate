@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,12 +34,17 @@ const businessProfileSchema = z.object({
   businessLogo: z.any().optional(),
 })
 
+const slideshowItemSchema = z.object({
+    id: z.string().optional(),
+    title: z.string().min(1, "Title is required"),
+    bannerImage: z.any().refine(val => val, "Banner image is required"),
+    linkUrl: z.string().url().optional().or(z.literal('')),
+});
+
 const slideshowSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, "Title is required"),
-  bannerImage: z.any().refine(val => val, "Banner image is required"),
-  linkUrl: z.string().url().optional().or(z.literal('')),
-})
+    slides: z.array(slideshowItemSchema)
+});
+
 
 const contactDetailsSchema = z.object({
   name: z.string().min(1, "Contact name is required"),
@@ -78,21 +83,26 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
-type SlideshowFormValues = z.infer<typeof slideshowSchema>;
 
 export default function ManageWebsitePage() {
   const { toast } = useToast()
   const { user, isLoading, fetchUser } = useUser()
   const [isSlideDialogOpen, setIsSlideDialogOpen] = React.useState(false);
-  const [editingSlide, setEditingSlide] = React.useState<SlideshowFormValues | null>(null);
 
-  
   const businessProfileForm = useForm<z.infer<typeof businessProfileSchema>>({
     resolver: zodResolver(businessProfileSchema),
   });
-  const slideshowForm = useForm<SlideshowFormValues>({
+  
+  const slideshowForm = useForm<z.infer<typeof slideshowSchema>>({
     resolver: zodResolver(slideshowSchema),
+    defaultValues: { slides: [] },
   });
+
+  const { fields: slideFields, append: appendSlide, remove: removeSlide } = useFieldArray({
+    control: slideshowForm.control,
+    name: "slides"
+  });
+
   const contactDetailsForm = useForm<z.infer<typeof contactDetailsSchema>>({
     resolver: zodResolver(contactDetailsSchema),
   });
@@ -106,11 +116,12 @@ export default function ManageWebsitePage() {
   React.useEffect(() => {
     if (user) {
       businessProfileForm.reset({ businessName: user.name, businessLogo: user.businessLogo || '' })
+      slideshowForm.reset({ slides: user.website?.slideshow || [] })
       contactDetailsForm.reset({ name: user.name, phone: user.phone, email: user.email, address: user.address || '', city: user.city || '', state: user.state || '', pincode: user.pincode || '' })
       aboutLegalForm.reset({ aboutText: user.website?.aboutLegal?.aboutText || '', termsLink: user.website?.aboutLegal?.termsLink || '', privacyLink: user.website?.aboutLegal?.privacyLink || '', disclaimerLink: user.website?.aboutLegal?.disclaimerLink || '' })
       socialLinksForm.reset(user.website?.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' })
     }
-  }, [user, businessProfileForm, contactDetailsForm, aboutLegalForm, socialLinksForm])
+  }, [user, businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm])
 
   const handleSave = async (section: string, values: any) => {
     if (!user) return
@@ -151,78 +162,45 @@ export default function ManageWebsitePage() {
     }
   }
 
-  const handleSlideSubmit = async (values: SlideshowFormValues) => {
+  const handleSlideSubmit = async (values: z.infer<typeof slideshowSchema>) => {
     if (!user) return;
     const userDocRef = doc(db, "users", user.id);
 
     try {
-        let bannerImageUrl = values.bannerImage;
-        if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
-            bannerImageUrl = await fileToDataUrl(bannerImageUrl);
-        }
-
-        const newSlideData = {
-            id: values.id || generateUserId("SLD"),
-            title: values.title,
-            bannerImage: bannerImageUrl,
-            linkUrl: values.linkUrl || '',
-        };
-
-        if (editingSlide) {
-            // To update an item in an array, we remove the old one and add the new one.
-            const oldSlide = user.website?.slideshow?.find(s => s.id === editingSlide.id);
-            if (oldSlide) {
-                await updateDoc(userDocRef, { 'website.slideshow': arrayRemove(oldSlide) });
-            }
-             await updateDoc(userDocRef, { 'website.slideshow': arrayUnion(newSlideData) });
-             toast({ title: "Slide Updated" });
-        } else {
-            await updateDoc(userDocRef, { 'website.slideshow': arrayUnion(newSlideData) });
-            toast({ title: "Slide Added" });
-        }
-
+        const processedSlides = await Promise.all(
+            values.slides.map(async (slide) => {
+                let bannerImageUrl = slide.bannerImage;
+                if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
+                    bannerImageUrl = await fileToDataUrl(bannerImageUrl);
+                }
+                return {
+                    id: slide.id || generateUserId("SLD"),
+                    title: slide.title,
+                    bannerImage: bannerImageUrl,
+                    linkUrl: slide.linkUrl || '',
+                };
+            })
+        );
+        
+        await updateDoc(userDocRef, { 'website.slideshow': processedSlides });
+        toast({ title: "Slideshow Updated" });
+        
         await fetchUser();
         closeSlideDialog();
 
     } catch (error) {
         console.error("Error saving slide:", error);
-        toast({ variant: "destructive", title: "Save Failed", description: "Could not save slide." });
-    }
-  }
-
-  const handleDeleteSlide = async (slideId: string) => {
-    if (!user || !user.website?.slideshow) return;
-    const userDocRef = doc(db, "users", user.id);
-    const slideToDelete = user.website.slideshow.find(s => s.id === slideId);
-
-    if (slideToDelete) {
-        try {
-            await updateDoc(userDocRef, {
-                'website.slideshow': arrayRemove(slideToDelete)
-            });
-            await fetchUser();
-            toast({ title: "Slide Deleted" });
-        } catch (error) {
-            console.error("Error deleting slide:", error);
-            toast({ variant: "destructive", title: "Delete Failed" });
-        }
+        toast({ variant: "destructive", title: "Save Failed", description: "Could not save slideshow." });
     }
   }
   
-  const openSlideDialog = (slide: SlideshowFormValues | null) => {
-      setEditingSlide(slide);
-      if(slide) {
-        slideshowForm.reset(slide);
-      } else {
-        slideshowForm.reset({id: '', title: '', bannerImage: null, linkUrl: ''});
-      }
+  const openSlideDialog = () => {
+      slideshowForm.reset({ slides: user?.website?.slideshow || [] });
       setIsSlideDialogOpen(true);
   }
 
   const closeSlideDialog = () => {
       setIsSlideDialogOpen(false);
-      setEditingSlide(null);
-      slideshowForm.reset({id: '', title: '', bannerImage: null, linkUrl: ''});
   }
 
 
@@ -248,8 +226,6 @@ export default function ManageWebsitePage() {
         </div>
     )
   }
-
-  const bannerImagePreview = slideshowForm.watch("bannerImage");
 
 
   return (
@@ -306,8 +282,8 @@ export default function ManageWebsitePage() {
               <ImageIcon className="h-6 w-6 text-muted-foreground" />
               <CardTitle>Slideshow</CardTitle>
             </div>
-             <Button size="sm" onClick={() => openSlideDialog(null)}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Slide
+             <Button size="sm" onClick={openSlideDialog}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit Slideshow
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -319,10 +295,6 @@ export default function ManageWebsitePage() {
                             <p className="font-semibold">{slide.title}</p>
                             <a href={slide.linkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline truncate">{slide.linkUrl}</a>
                         </div>
-                        <div>
-                            <Button variant="ghost" size="icon" onClick={() => openSlideDialog(slide)}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSlide(slide.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
                     </div>
                 ))
             ) : (
@@ -333,27 +305,76 @@ export default function ManageWebsitePage() {
 
         {/* Slideshow Dialog */}
         <Dialog open={isSlideDialogOpen} onOpenChange={closeSlideDialog}>
-            <DialogContent>
-            <DialogHeader><DialogTitle>{editingSlide ? 'Edit Slide' : 'Add New Slide'}</DialogTitle></DialogHeader>
+            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+                <DialogTitle>Edit Slideshow</DialogTitle>
+                <DialogDescription>Manage your public website's slideshow images, titles, and links.</DialogDescription>
+            </DialogHeader>
                 <Form {...slideshowForm}>
-                <form onSubmit={slideshowForm.handleSubmit(handleSlideSubmit)} className="space-y-4">
-                    <FormField control={slideshowForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={slideshowForm.control} name="bannerImage" render={({ field: { onChange, value, ...rest} }) => ( <FormItem><FormLabel>Banner Image</FormLabel>
-                        <div className="flex items-center gap-4">
-                           {bannerImagePreview && (
-                             <Image 
-                                src={typeof bannerImagePreview === 'string' ? bannerImagePreview : URL.createObjectURL(bannerImagePreview)} 
-                                alt="Banner Preview" 
-                                width={100} 
-                                height={56} 
-                                className="rounded-md object-cover bg-muted" 
-                             />
-                            )}
-                            <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
+                <form onSubmit={slideshowForm.handleSubmit(handleSlideSubmit)} className="space-y-6">
+                   <div className="space-y-4 max-h-[60vh] overflow-y-auto p-1">
+                    {slideFields.map((field, index) => {
+                        const imagePreview = slideshowForm.watch(`slides.${index}.bannerImage`);
+                        return (
+                        <div key={field.id} className="border rounded-lg p-4 relative">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                     <FormField
+                                        control={slideshowForm.control}
+                                        name={`slides.${index}.bannerImage`}
+                                        render={({ field: { onChange, value, ...rest } }) => (
+                                            <FormItem>
+                                                <FormLabel>Image</FormLabel>
+                                                <div className="w-full aspect-[3/1] bg-muted rounded-md flex items-center justify-center overflow-hidden">
+                                                   {imagePreview ? (
+                                                        <Image
+                                                            src={typeof imagePreview === 'string' ? imagePreview : URL.createObjectURL(imagePreview)}
+                                                            alt="Banner Preview"
+                                                            width={1200}
+                                                            height={400}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-sm">1200 x 400</span>
+                                                    )}
+                                                </div>
+                                                <FormControl>
+                                                    <Input className="hidden" id={`banner-upload-${index}`} type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
+                                                </FormControl>
+                                                <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => document.getElementById(`banner-upload-${index}`)?.click()}>
+                                                    <Upload className="mr-2 h-4 w-4" /> Upload
+                                                </Button>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="md:col-span-2 space-y-2">
+                                    <FormField control={slideshowForm.control} name={`slides.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Promotion Title" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={slideshowForm.control} name={`slides.${index}.linkUrl`} render={({ field }) => (<FormItem><FormLabel>Link</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-2 right-2"
+                                onClick={() => removeSlide(index)}
+                            >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                         </div>
-                        <FormMessage /></FormItem> )} />
-                    <FormField control={slideshowForm.control} name="linkUrl" render={({ field }) => ( <FormItem><FormLabel>Link URL</FormLabel><FormControl><Input placeholder="https://example.com/..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <DialogFooter><Button type="submit" disabled={slideshowForm.formState.isSubmitting}>{slideshowForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
+                    )})}
+                    </div>
+
+                    <Button type="button" variant="outline" onClick={() => appendSlide({ title: '', bannerImage: null, linkUrl: ''})}>
+                        <PlusCircle className="mr-2 h-4 w-4"/> Add More Slideshows
+                    </Button>
+                    
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={closeSlideDialog}>Cancel</Button>
+                        <Button type="submit" disabled={slideshowForm.formState.isSubmitting}>{slideshowForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save Changes</Button>
+                    </DialogFooter>
                 </form>
             </Form>
             </DialogContent>
