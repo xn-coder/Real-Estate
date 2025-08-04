@@ -2,7 +2,7 @@
 'use client'
 
 import * as React from "react"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { User } from "@/types/user"
 
@@ -33,7 +33,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists()) {
         const data = userDoc.data();
-        if (data.dob && data.dob.toDate) {
+        // Ensure dob is a Date object
+        if (data.dob && data.dob instanceof Timestamp) {
             data.dob = data.dob.toDate();
         }
         setUser({ id: userDoc.id, ...data } as User)
