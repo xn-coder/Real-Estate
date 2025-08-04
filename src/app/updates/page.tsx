@@ -26,11 +26,12 @@ import {
 } from "@/components/ui/tabs"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
-import { Eye, Loader2 } from "lucide-react"
+import { Eye, Loader2, PlusCircle } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, orderBy, Timestamp } from "firebase/firestore"
 import type { Message } from "@/types/message"
+import Link from "next/link"
 
 export default function UpdatesPage() {
     const { user, isLoading: isUserLoading } = useUser();
@@ -157,7 +158,17 @@ export default function UpdatesPage() {
   
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Updates</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Updates</h1>
+                {isAdmin && (
+                    <Button asChild>
+                        <Link href="/send-message">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Send Message
+                        </Link>
+                    </Button>
+                )}
+            </div>
         
         {isPartner || isSeller ? (
             <Card>
