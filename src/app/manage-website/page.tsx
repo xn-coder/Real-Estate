@@ -187,7 +187,7 @@ export default function ManageWebsitePage() {
             </div>
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" asChild>
-                    <a href={user.website?.socialLinks?.website} target="_blank" rel="noopener noreferrer">
+                    <a href={`/site/${user.id}`} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Preview
                     </a>
@@ -375,4 +375,3 @@ export default function ManageWebsitePage() {
     </div>
   )
 }
-

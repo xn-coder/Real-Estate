@@ -149,6 +149,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 <span>Manage Website</span>
                               </Link>
                             </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <a href={`/site/${user.id}`} target="_blank" rel="noopener noreferrer">
+                                    <Globe className="mr-2 h-4 w-4" />
+                                    <span>Preview Website</span>
+                                </a>
+                            </DropdownMenuItem>
                              <DropdownMenuItem asChild>
                                 <Link href={`/card/${user.id}`}>
                                     <Contact className="mr-2 h-4 w-4" />
