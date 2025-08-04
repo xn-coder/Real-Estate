@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX, Upload, User } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +50,8 @@ import {
 import { Input } from "@/components/ui/input"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
+import { Textarea } from "@/components/ui/textarea"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const statusColors: { [key: string]: "default" | "secondary" | "destructive" } = {
   active: 'default',
@@ -57,17 +59,51 @@ const statusColors: { [key: string]: "default" | "secondary" | "destructive" } =
   suspended: 'destructive'
 };
 
-const addSellerFormSchema = z.object({
-  firstName: z.string().min(1, { message: "First name is required." }),
-  lastName: z.string().min(1, { message: "Last name is required." }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  phone: z.string().min(10, { message: "Please enter a valid phone number." }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }),
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+const step1Schema = z.object({
+  fullName: z.string().min(1, { message: "Full name is required." }),
+  email: z.string().email(),
+  phone: z.string().min(10, "Please enter a valid phone number."),
+  dob: z.string().min(1, "Date of birth is required."),
+  password: z.string().min(6, "Password must be at least 6 characters."),
+  confirmPassword: z.string(),
+  address: z.string().min(1, "Address is required."),
+  city: z.string().min(1, "City is required."),
+  state: z.string().min(1, "State is required."),
+  pincode: z.string().min(6, "Please enter a valid pincode."),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match.",
+  path: ["confirmPassword"],
+});
+
+const step2Schema = z.object({
+    businessLogo: z.any().optional(),
+    businessName: z.string().min(1, "Business name is required."),
+    businessType: z.string().min(1, "Business type is required."),
+    gstn: z.string().optional(),
 })
+
+const step3Schema = z.object({
+    aadharNumber: z.string().min(12, "Enter a valid Aadhar number."),
+    aadharFile: z.any().refine(file => file, "Aadhar card is required."),
+    panNumber: z.string().min(10, "Enter a valid PAN number."),
+    panFile: z.any().refine(file => file, "PAN card is required."),
+    reraCertificate: z.any().optional(),
+})
+
+const addSellerFormSchema = step1Schema.merge(step2Schema).merge(step3Schema);
 
 type AddSellerForm = z.infer<typeof addSellerFormSchema>;
 
@@ -77,8 +113,10 @@ export default function ManageSellerListPage() {
   const router = useRouter();
   const [sellers, setSellers] = React.useState<SellerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [isDeactivating, setIsDeactivating] = React.useState(false)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
+  const [currentStep, setCurrentStep] = React.useState(1);
+  const stepSchemas = [step1Schema, step2Schema, step3Schema];
 
   const fetchSellers = React.useCallback(async () => {
     setIsLoading(true)
@@ -128,16 +166,45 @@ export default function ManageSellerListPage() {
   const form = useForm<AddSellerForm>({
     resolver: zodResolver(addSellerFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
+      fullName: "",
       email: "",
       phone: "",
+      dob: "",
       password: "",
+      confirmPassword: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      businessName: "",
+      businessType: "",
+      gstn: "",
+      aadharNumber: "",
+      panNumber: "",
     },
+    mode: "onChange",
   })
+  
+  const handleNextStep = async () => {
+    const currentStepSchema = stepSchemas[currentStep - 1];
+    const fieldsToValidate = Object.keys(currentStepSchema.shape) as (keyof AddSellerForm)[];
+    const isValid = await form.trigger(fieldsToValidate);
+    
+    if (isValid) {
+        if (currentStep === 3) {
+            await form.handleSubmit(onAddSellerSubmit)();
+        } else {
+            setCurrentStep(prev => prev + 1);
+        }
+    }
+  }
+
+  const handlePrevStep = () => {
+    setCurrentStep(prev => prev - 1);
+  }
 
   async function onAddSellerSubmit(values: AddSellerForm) {
-    setIsDeactivating(true)
+    setIsSubmitting(true)
     try {
       const usersRef = collection(db, "users")
       const q = query(usersRef, where("email", "==", values.email))
@@ -149,6 +216,7 @@ export default function ManageSellerListPage() {
           title: "Creation Failed",
           description: "An account with this email already exists.",
         })
+        setIsSubmitting(false)
         return;
       }
 
@@ -156,14 +224,31 @@ export default function ManageSellerListPage() {
       const hashedPassword = await bcrypt.hash(values.password, salt)
       const userId = generateUserId("SEL")
 
+      const [firstName, ...lastNameParts] = values.fullName.split(' ');
+      const lastName = lastNameParts.join(' ');
+
       await setDoc(doc(db, "users", userId), {
         id: userId,
-        name: `${values.firstName} ${values.lastName}`,
-        firstName: values.firstName,
-        lastName: values.lastName,
+        name: values.fullName,
+        firstName: firstName,
+        lastName: lastName,
         email: values.email,
         phone: values.phone,
         password: hashedPassword,
+        dob: new Date(values.dob),
+        address: values.address,
+        city: values.city,
+        state: values.state,
+        pincode: values.pincode,
+        businessName: values.businessName,
+        businessType: values.businessType,
+        gstn: values.gstn,
+        businessLogo: values.businessLogo ? await fileToDataUrl(values.businessLogo) : '',
+        aadharNumber: values.aadharNumber,
+        panNumber: values.panNumber,
+        aadharFile: values.aadharFile ? await fileToDataUrl(values.aadharFile) : '',
+        panFile: values.panFile ? await fileToDataUrl(values.panFile) : '',
+        reraCertificate: values.reraCertificate ? await fileToDataUrl(values.reraCertificate) : '',
         role: 'seller',
         status: 'active'
       })
@@ -184,7 +269,7 @@ export default function ManageSellerListPage() {
         description: "An unexpected error occurred. Please try again.",
       })
     } finally {
-      setIsDeactivating(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -193,93 +278,144 @@ export default function ManageSellerListPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Active Sellers</h1>
-         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+         <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open)
+            if (!open) {
+                form.reset();
+                setCurrentStep(1);
+            }
+         }}>
             <DialogTrigger asChild>
                 <Button>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Seller
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-2xl">
                  <DialogHeader>
                     <DialogTitle>Add New Seller</DialogTitle>
                     <DialogDescription>
-                        Create a new seller account. They will be activated immediately.
+                        Step {currentStep} of 3: {
+                            currentStep === 1 ? "Personal Details" :
+                            currentStep === 2 ? "Business Details" :
+                            "Document Upload"
+                        }
                     </DialogDescription>
                 </DialogHeader>
                  <Form {...form}>
-                <form onSubmit={form.handleSubmit(onAddSellerSubmit)} className="grid gap-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="John" {...field} disabled={isDeactivating} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Doe" {...field} disabled={isDeactivating} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </div>
-                    <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                            <Input placeholder="seller@example.com" {...field} disabled={isDeactivating} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                <form onSubmit={(e) => { e.preventDefault(); handleNextStep(); }} className="space-y-4">
+                     {currentStep === 1 && (
+                        <div className="space-y-4">
+                            <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem> <FormLabel>Full Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="you@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone Number</FormLabel> <FormControl><Input placeholder="(123) 456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            </div>
+                            <FormField control={form.control} name="dob" render={({ field }) => ( <FormItem> <FormLabel>Date of Birth</FormLabel> <FormControl><Input type="date" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField control={form.control} name="password" render={({ field }) => ( <FormItem> <FormLabel>Password</FormLabel> <FormControl><Input type="password" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="confirmPassword" render={({ field }) => ( <FormItem> <FormLabel>Confirm Password</FormLabel> <FormControl><Input type="password" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            </div>
+                            <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Address</FormLabel> <FormControl><Textarea placeholder="123 Main St..." {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <div className="grid grid-cols-3 gap-4">
+                                <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>City</FormLabel> <FormControl><Input placeholder="New York" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="state" render={({ field }) => ( <FormItem> <FormLabel>State</FormLabel> <FormControl><Input placeholder="NY" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="pincode" render={({ field }) => ( <FormItem> <FormLabel>Pincode</FormLabel> <FormControl><Input placeholder="10001" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            </div>
+                        </div>
                     )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                            <Input placeholder="(123) 456-7890" {...field} disabled={isDeactivating} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                    {currentStep === 2 && (
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="businessLogo"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Business Logo</FormLabel>
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-20 w-20">
+                                                <AvatarImage src={
+                                                    field.value
+                                                    ? typeof field.value === 'string'
+                                                      ? field.value
+                                                      : URL.createObjectURL(field.value)
+                                                    : undefined
+                                                } />
+                                                <AvatarFallback>Logo</AvatarFallback>
+                                            </Avatar>
+                                            <FormControl>
+                                                <Input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                           field.onChange(file);
+                                                        }
+                                                    }}
+                                                    className="hidden"
+                                                    id="businessLogo-upload"
+                                                />
+                                            </FormControl>
+                                            <Button type="button" onClick={() => document.getElementById('businessLogo-upload')?.click()}>
+                                                <Upload className="mr-2 h-4 w-4" /> Upload
+                                            </Button>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem> <FormLabel>Business Name</FormLabel> <FormControl><Input placeholder="e.g., Acme Real Estate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem> <FormLabel>Business Type</FormLabel> <FormControl><Input placeholder="e.g., Real Estate Agency" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="gstn" render={({ field }) => ( <FormItem> <FormLabel>GSTN (Optional)</FormLabel> <FormControl><Input placeholder="Your GST Number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                        </div>
                     )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                            <Input type="password" {...field} disabled={isDeactivating} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                    {currentStep === 3 && (
+                         <div className="space-y-4">
+                            <FormField control={form.control} name="aadharNumber" render={({ field }) => ( <FormItem> <FormLabel>Aadhar Card Number</FormLabel> <FormControl><Input placeholder="XXXX XXXX XXXX" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="aadharFile" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Upload Aadhar Card (PDF/Image)</FormLabel>
+                                    <FormControl>
+                                        <Input type="file" accept="image/*,application/pdf" onChange={(e) => field.onChange(e.target.files?.[0])} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="panNumber" render={({ field }) => ( <FormItem> <FormLabel>PAN Card Number</FormLabel> <FormControl><Input placeholder="ABCDE1234F" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="panFile" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Upload PAN Card (PDF/Image)</FormLabel>
+                                    <FormControl>
+                                        <Input type="file" accept="image/*,application/pdf" onChange={(e) => field.onChange(e.target.files?.[0])} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="reraCertificate" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>RERA Certificate (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Input type="file" accept="image/*,application/pdf" onChange={(e) => field.onChange(e.target.files?.[0])} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
                     )}
-                    />
-                     <DialogFooter>
-                        <Button type="submit" disabled={isDeactivating}>
-                        {isDeactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isDeactivating ? 'Creating Account...' : 'Create Account'}
-                        </Button>
+                     <DialogFooter className="pt-4">
+                        <div className="flex justify-between w-full">
+                            {currentStep > 1 ? (
+                                <Button type="button" variant="outline" onClick={handlePrevStep} disabled={isSubmitting}>
+                                    Previous
+                                </Button>
+                            ) : (
+                                <div></div>
+                            )}
+                            <Button type="button" onClick={handleNextStep} disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                {currentStep === 3 ? 'Create Seller' : 'Next'}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </form>
                 </Form>
@@ -357,3 +493,5 @@ export default function ManageSellerListPage() {
     </div>
   )
 }
+
+    
