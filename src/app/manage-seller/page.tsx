@@ -5,16 +5,13 @@ import * as React from "react"
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ArrowRight, UserCheck, UserPlus, UserX, Loader2 } from "lucide-react"
+import { ArrowRight, UserCheck, UserPlus, UserX, Loader2, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 export default function ManageSellerDashboardPage() {
   const { toast } = useToast()
@@ -64,25 +61,24 @@ export default function ManageSellerDashboardPage() {
 
   const dashboardItems = [
     {
-      title: "Active Sellers",
-      count: counts.active,
-      description: "View and manage all active sellers.",
-      icon: UserCheck,
+      name: "Add New Seller",
+      href: "/manage-seller/add",
+      count: null,
+    },
+    {
+      name: "Active Sellers",
       href: "/manage-seller/list",
+      count: counts.active,
     },
     {
-      title: "Seller Activation",
-      count: counts.pending,
-      description: "Approve or reject new seller registrations.",
-      icon: UserPlus,
+      name: "Seller Activation",
       href: "/manage-seller/activation",
+      count: counts.pending,
     },
     {
-      title: "Deactivated Sellers",
-      count: counts.inactive,
-      description: "View and reactivate deactivated sellers.",
-      icon: UserX,
+      name: "Deactivated Sellers",
       href: "/manage-seller/deactivated",
+      count: counts.inactive,
     },
   ]
 
@@ -91,29 +87,29 @@ export default function ManageSellerDashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Seller Management</h1>
       </div>
-       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {dashboardItems.map((item) => (
-          <Card key={item.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-              <item.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : item.count}
-              </div>
-              <p className="text-xs text-muted-foreground pt-1">{item.description}</p>
-            </CardContent>
-             <div className="p-4 pt-0">
-                <Button asChild variant="outline" size="sm" className="w-full">
-                    <Link href={item.href}>
-                        Manage <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="divide-y divide-border">
+            {dashboardItems.map((option) => (
+              <Link href={option.href} key={option.name}>
+                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+                  <span className="font-medium">{option.name}</span>
+                   <div className="flex items-center gap-4">
+                    {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/>
+                    ) : (
+                        option.count !== null && (
+                            <Badge variant="secondary">{option.count}</Badge>
+                        )
+                    )}
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -10,11 +10,12 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, UserCheck, UserPlus, UserX, Ban, Loader2 } from "lucide-react"
+import { ArrowRight, UserCheck, UserPlus, UserX, Ban, Loader2, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
 
@@ -70,32 +71,29 @@ export default function ManagePartnerDashboardPage() {
 
   const dashboardItems = [
     {
-      title: "Active Partners",
-      count: counts.active,
-      description: "View and manage all active partners.",
-      icon: UserCheck,
-      href: "/manage-partner/list",
+      name: "Add New Partner",
+      href: "/manage-partner/add",
+      count: null,
     },
     {
-      title: "Partner Activation",
-      count: counts.activation,
-      description: "Approve or reject new partner registrations.",
-      icon: UserPlus,
+      name: "Active Partners",
+      href: "/manage-partner/list",
+      count: counts.active,
+    },
+    {
+      name: "Partner Activation",
       href: "/manage-partner/activation",
+      count: counts.activation,
     },
      {
-      title: "Suspended Partners",
-      count: counts.suspended,
-      description: "Manage partners who are temporarily suspended.",
-      icon: Ban,
+      name: "Suspended Partners",
       href: "/manage-partner/suspended",
+      count: counts.suspended,
     },
     {
-      title: "Deactivated Partners",
-      count: counts.deactivated,
-      description: "View and reactivate deactivated partners.",
-      icon: UserX,
+      name: "Deactivated Partners",
       href: "/manage-partner/deactivated",
+      count: counts.deactivated,
     },
   ]
 
@@ -104,29 +102,29 @@ export default function ManagePartnerDashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Partner Management</h1>
       </div>
-       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {dashboardItems.map((item) => (
-          <Card key={item.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-              <item.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : item.count}
-              </div>
-              <p className="text-xs text-muted-foreground pt-1">{item.description}</p>
-            </CardContent>
-             <div className="p-4 pt-0">
-                <Button asChild variant="outline" size="sm" className="w-full">
-                    <Link href={item.href}>
-                        Manage <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="divide-y divide-border">
+            {dashboardItems.map((option) => (
+              <Link href={option.href} key={option.name}>
+                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+                  <span className="font-medium">{option.name}</span>
+                  <div className="flex items-center gap-4">
+                    {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/>
+                    ) : (
+                        option.count !== null && (
+                            <Badge variant="secondary">{option.count}</Badge>
+                        )
+                    )}
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
