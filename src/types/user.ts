@@ -9,7 +9,7 @@ export type User = {
   password?: string
   whatsappNumber?: string;
   role: string
-  status?: 'active' | 'inactive' | 'pending_approval' | 'rejected' | 'suspended';
+  status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended';
   profileImage?: string;
   dob?: Date;
   gender?: "male" | "female" | "other";
@@ -28,6 +28,7 @@ export type User = {
   aadharFile?: string;
   panNumber?: string;
   panFile?: string;
+  reraCertificate?: string;
   permissions?: string[];
   paymentStatus?: 'paid' | 'pending' | 'pending_approval' | 'not_required' | 'failed';
   paymentProof?: string;
