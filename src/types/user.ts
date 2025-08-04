@@ -18,6 +18,7 @@ export type User = {
   city?: string;
   state?: string;
   pincode?: string;
+  businessName?: string;
   businessLogo?: string;
   businessType?: string;
   gstn?: string;

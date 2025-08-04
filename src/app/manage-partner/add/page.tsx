@@ -63,6 +63,7 @@ const addPartnerFormStep1Schema = z.object({
 });
 
 const addPartnerFormStep2Schema = z.object({
+    businessName: z.string().min(1, "Business name is required."),
     businessLogo: z.any().optional(),
     businessType: z.string().min(1, "Business type is required."),
     role: z.enum(Object.keys(partnerRoles) as [PartnerRole, ...PartnerRole[]], {
@@ -150,6 +151,7 @@ export default function AddPartnerPage() {
       city: "",
       state: "",
       pincode: "",
+      businessName: "",
       businessType: "",
       gstn: "",
       businessAge: 0,
@@ -237,6 +239,7 @@ export default function AddPartnerPage() {
             city: values.city,
             state: values.state,
             pincode: values.pincode,
+            businessName: values.businessName,
             businessLogo: values.businessLogo ? (typeof values.businessLogo === 'string' ? values.businessLogo : await fileToDataUrl(values.businessLogo)) : '',
             businessType: values.businessType,
             gstn: values.gstn,
@@ -471,6 +474,7 @@ export default function AddPartnerPage() {
                                     </FormItem>
                                 )}
                             />
+                             <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem> <FormLabel>Business Name</FormLabel> <FormControl><Input placeholder="e.g., Acme Real Estate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem> <FormLabel>Business Type</FormLabel> <FormControl><Input placeholder="e.g., Real Estate Agency" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="role" render={({ field }) => ( <FormItem> <FormLabel>Partner Category</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select a partner category"/></SelectTrigger></FormControl> <SelectContent> {Object.entries(partnerRoles).map(([key, value]) => ( <SelectItem key={key} value={key}>{value}</SelectItem> ))} </SelectContent> </Select> {selectedRole && fees && registrationFee > 0 && <FormDescription>Registration Fee: ${fees[selectedRole].toLocaleString()}</FormDescription>} <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="gstn" render={({ field }) => ( <FormItem> <FormLabel>GSTN (Optional)</FormLabel> <FormControl><Input placeholder="Your GST Number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
