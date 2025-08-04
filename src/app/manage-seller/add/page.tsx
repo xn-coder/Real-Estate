@@ -169,14 +169,14 @@ export default function AddSellerPage() {
         panFile: values.panFile ? await fileToDataUrl(values.panFile) : '',
         reraCertificate: values.reraCertificate ? await fileToDataUrl(values.reraCertificate) : '',
         role: 'seller',
-        status: 'active'
+        status: 'pending'
       })
 
       toast({
-        title: "Seller Created",
-        description: "New seller account has been created successfully.",
+        title: "Registration Submitted",
+        description: "Your seller account is under review and will be activated shortly.",
       })
-      router.push("/manage-seller/list");
+      router.push("/");
 
     } catch (error) {
       console.error("Error creating seller:", error)
@@ -192,14 +192,9 @@ export default function AddSellerPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <Button variant="outline" size="icon" className="mb-4" asChild>
-            <Link href="/manage-seller/list">
-                <ArrowLeft className="h-4 w-4" />
-            </Link>
-        </Button>
         <Card className="max-w-3xl mx-auto">
             <CardHeader>
-              <CardTitle>Add New Seller</CardTitle>
+              <CardTitle>Seller Registration</CardTitle>
               <CardDescription>
                 Step {currentStep} of 3: {
                     currentStep === 1 ? "Personal Details" :
@@ -320,7 +315,7 @@ export default function AddSellerPage() {
                         )}
                         <Button type="button" onClick={handleNextStep} disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {currentStep === 3 ? 'Create Seller' : 'Next'}
+                            {currentStep === 3 ? 'Submit for Review' : 'Next'}
                         </Button>
                     </div>
                 </form>
