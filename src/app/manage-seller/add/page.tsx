@@ -51,9 +51,6 @@ const step1Schema = z.object({
   city: z.string().min(1, "City is required."),
   state: z.string().min(1, "State is required."),
   pincode: z.string().min(6, "Please enter a valid pincode."),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match.",
-  path: ["confirmPassword"],
 });
 
 const step2Schema = z.object({
@@ -71,7 +68,13 @@ const step3Schema = z.object({
     reraCertificate: z.any().optional(),
 })
 
-const addSellerFormSchema = step1Schema.merge(step2Schema).merge(step3Schema);
+const addSellerFormSchema = step1Schema
+    .merge(step2Schema)
+    .merge(step3Schema)
+    .refine((data) => data.password === data.confirmPassword, {
+        message: "Passwords do not match.",
+        path: ["confirmPassword"],
+    });
 
 type AddSellerForm = z.infer<typeof addSellerFormSchema>;
 
