@@ -63,15 +63,17 @@ type NavItem = {
   icon: React.ElementType;
   label: string;
   subItems?: SubNavItem[];
+  exact?: boolean;
 }
 
 type SubNavItem = {
     href: string;
     label: string;
+    exact?: boolean;
 }
 
 const adminNavItems: NavItem[] = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
     { href: '/listings', icon: Building, label: 'Properties' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
     { href: '/onboarding', icon: Plane, label: 'Onboarding' },
@@ -80,7 +82,7 @@ const adminNavItems: NavItem[] = [
       icon: Handshake, 
       label: 'Manage Partner',
       subItems: [
-          { href: '/manage-partner', label: 'Manage Partner' },
+          { href: '/manage-partner/list', label: 'Partner List' },
           { href: '/manage-partner/activation', label: 'Partner Activation' },
           { href: '/manage-partner/suspended', label: 'Suspended Partners' },
           { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
@@ -91,7 +93,7 @@ const adminNavItems: NavItem[] = [
       icon: UserSquare, 
       label: 'Manage Seller',
       subItems: [
-          { href: '/manage-seller', label: 'Manage Seller' },
+          { href: '/manage-seller/list', label: 'Seller List' },
           { href: '/manage-seller/activation', label: 'Seller Activation' },
           { href: '/manage-seller/deactivated', label: 'Deactivated Sellers' },
       ]
@@ -144,7 +146,7 @@ const NavList = ({ items }: { items: NavItem[] }) => {
         <SidebarMenu>
             {items.map((item) => (
                 item.subItems ? (
-                    <Collapsible key={`${item.href}-${item.label}`} className="w-full">
+                    <Collapsible key={`${item.href}-${item.label}`} className="w-full" defaultOpen={pathname.startsWith(item.href)}>
                         <SidebarMenuItem>
                             <CollapsibleTrigger asChild>
                                 <SidebarMenuButton
@@ -177,7 +179,7 @@ const NavList = ({ items }: { items: NavItem[] }) => {
                     <SidebarMenuItem key={`${item.href}-${item.label}`}>
                         <Link href={item.href} className="block">
                             <SidebarMenuButton
-                                isActive={pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/')}
+                                isActive={item.exact ? pathname === item.href : pathname.startsWith(item.href)}
                                 tooltip={item.label}
                                 className="justify-start group-data-[collapsible=icon]:justify-center"
                             >
