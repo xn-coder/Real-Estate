@@ -300,8 +300,8 @@ const PartnerWebsitePage = () => {
                          <div>
                             <h4 className="font-bold text-lg mb-2">Legal</h4>
                              <ul className="space-y-1 text-sm">
-                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms</a></li>}
-                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy</a></li>}
+                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms & Conditions</a></li>}
+                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy Policy</a></li>}
                                 {aboutLegal?.disclaimerLink && <li><a href={aboutLegal.disclaimerLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Disclaimer</a></li>}
                             </ul>
                         </div>
