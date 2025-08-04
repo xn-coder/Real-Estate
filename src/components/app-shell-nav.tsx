@@ -74,7 +74,7 @@ const adminNavItems: NavItem[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/listings', icon: Building, label: 'Properties' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
-    // { href: '/onboarding', icon: Plane, label: 'Onboarding' },
+    { href: '/onboarding', icon: Plane, label: 'Onboarding' },
     { 
       href: '/manage-partner', 
       icon: Handshake, 
@@ -86,16 +86,16 @@ const adminNavItems: NavItem[] = [
           { href: '/manage-partner/deactivated', label: 'Deactivated Partners' },
       ]
     },
-    // { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
+    { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
     { href: '/deals', icon: Handshake, label: 'Manage Deals' },
-    // { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
-    // { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
-    // { href: '/support-ticket', icon: Headset, label: 'Manage Support' },
+    { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
+    { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
+    { href: '/support-ticket', icon: Headset, label: 'Manage Support' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/website-panel', icon: PanelTop, label: 'Website Panel' },
     { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
-    // { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
+    { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
 ];
 
 
