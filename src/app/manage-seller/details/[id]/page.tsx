@@ -5,7 +5,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, ArrowLeft, Building, Briefcase, FileText, User, Phone, Mail, CheckCircle, XCircle } from "lucide-react"
-import { db } from "@/lib/firebase"
+import { db, deleteDoc } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -63,23 +63,46 @@ export default function SellerDetailsPage() {
     fetchSeller()
   }, [fetchSeller])
   
-  const handleUpdateStatus = async (status: 'active' | 'inactive') => {
+  const handleApprove = async () => {
     if (!sellerId) return;
     setIsUpdating(true);
     try {
         const sellerDocRef = doc(db, "users", sellerId);
-        await updateDoc(sellerDocRef, { status });
+        await updateDoc(sellerDocRef, { status: 'active' });
         toast({
-            title: `Seller ${status === 'active' ? 'Approved' : 'Rejected'}`,
-            description: `The seller has been successfully ${status === 'active' ? 'approved' : 'rejected'}.`,
+            title: `Seller Approved`,
+            description: `The seller has been successfully approved and is now active.`,
         });
-        router.push('/manage-seller/activation');
+        router.push('/manage-seller/list');
     } catch (error) {
-        console.error("Error updating seller status:", error);
+        console.error("Error approving seller:", error);
         toast({
             variant: "destructive",
             title: "Error",
-            description: "Failed to update seller status.",
+            description: "Failed to approve seller.",
+        });
+    } finally {
+        setIsUpdating(false);
+    }
+  }
+
+  const handleReject = async () => {
+    if (!sellerId) return;
+    setIsUpdating(true);
+    try {
+        const sellerDocRef = doc(db, "users", sellerId);
+        await deleteDoc(sellerDocRef);
+        toast({
+            title: `Seller Rejected`,
+            description: `The seller application has been rejected and removed.`,
+        });
+        router.push('/manage-seller/activation');
+    } catch (error) {
+        console.error("Error rejecting seller:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to reject seller.",
         });
     } finally {
         setIsUpdating(false);
@@ -113,11 +136,11 @@ export default function SellerDetailsPage() {
         </div>
 
         <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => handleUpdateStatus('active')} disabled={isUpdating}>
+            <Button variant="outline" onClick={handleApprove} disabled={isUpdating}>
                 {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                 Approve
             </Button>
-            <Button variant="destructive" onClick={() => handleUpdateStatus('inactive')} disabled={isUpdating}>
+            <Button variant="destructive" onClick={handleReject} disabled={isUpdating}>
                 {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
                 Reject
             </Button>

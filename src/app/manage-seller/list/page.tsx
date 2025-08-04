@@ -27,6 +27,9 @@ import { collection, getDocs, query, where, doc, updateDoc } from "firebase/fire
 import type { User as SellerUser } from "@/types/user"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 const statusColors: { [key: string]: "default" | "secondary" | "destructive" } = {
   active: 'default',
@@ -39,6 +42,10 @@ export default function ManageSellerListPage() {
   const router = useRouter();
   const [sellers, setSellers] = React.useState<SellerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [selectedSeller, setSelectedSeller] = React.useState<SellerUser | null>(null);
+  const [isDeactivating, setIsDeactivating] = React.useState(false);
+  const [deactivationReason, setDeactivationReason] = React.useState("");
+  const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = React.useState(false);
 
   const fetchSellers = React.useCallback(async () => {
     setIsLoading(true)
@@ -64,17 +71,36 @@ export default function ManageSellerListPage() {
     fetchSellers()
   }, [fetchSellers])
 
-  const handleDeactivate = async (sellerId: string) => {
+  const handleDeactivateClick = (seller: SellerUser) => {
+    setSelectedSeller(seller);
+    setIsDeactivationDialogOpen(true);
+  };
+
+  const handleDeactivate = async () => {
+    if (!selectedSeller || !deactivationReason.trim()) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "A reason for deactivation is required.",
+        });
+        return;
+    }
+
+    setIsDeactivating(true);
     try {
-        const sellerDocRef = doc(db, "users", sellerId);
+        const sellerDocRef = doc(db, "users", selectedSeller.id);
         await updateDoc(sellerDocRef, {
-            status: 'inactive'
+            status: 'inactive',
+            deactivationReason: deactivationReason.trim(),
         });
         toast({
             title: "Seller Deactivated",
             description: "The seller has been moved to the deactivated list.",
         });
         fetchSellers();
+        setIsDeactivationDialogOpen(false);
+        setDeactivationReason("");
+        setSelectedSeller(null);
     } catch (error) {
         console.error("Error deactivating seller:", error);
         toast({
@@ -82,6 +108,8 @@ export default function ManageSellerListPage() {
             title: "Error",
             description: "Failed to deactivate seller.",
         });
+    } finally {
+        setIsDeactivating(false);
     }
   };
 
@@ -143,7 +171,7 @@ export default function ManageSellerListPage() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => alert('View Profile page to be implemented')}>
+                      <DropdownMenuItem onSelect={() => router.push(`/manage-seller/details/${seller.id}`)}>
                         <Eye className="mr-2 h-4 w-4" />
                         View Profile
                       </DropdownMenuItem>
@@ -152,7 +180,7 @@ export default function ManageSellerListPage() {
                         Send Message
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => handleDeactivate(seller.id)} className="text-destructive">
+                      <DropdownMenuItem onSelect={() => handleDeactivateClick(seller)} className="text-destructive">
                         <UserX className="mr-2 h-4 w-4" />
                         Deactivate
                       </DropdownMenuItem>
@@ -164,6 +192,41 @@ export default function ManageSellerListPage() {
           </TableBody>
         </Table>
       </div>
+
+       <Dialog open={isDeactivationDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsDeactivationDialogOpen(false);
+            setSelectedSeller(null);
+            setDeactivationReason("");
+          }
+        }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate Seller</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for deactivating {selectedSeller?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="reason">Reason for Deactivation</Label>
+              <Textarea
+                id="reason"
+                placeholder="Type reason here..."
+                value={deactivationReason}
+                onChange={(e) => setDeactivationReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeactivationDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleDeactivate} disabled={isDeactivating} variant="destructive">
+                {isDeactivating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Deactivate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
