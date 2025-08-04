@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, ShieldCheck, BadgeCheck } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, BadgeCheck } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -198,6 +198,8 @@ export default function ProfilePage() {
     )
   }
 
+  const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
@@ -211,7 +213,7 @@ export default function ProfilePage() {
             </Avatar>
             <div className="flex-1">
               <CardTitle className="text-2xl">{user?.name}</CardTitle>
-              {user?.id && <CardDescription>Partner ID: {user.id}</CardDescription>}
+              {user?.id && <CardDescription>User ID: {user.id}</CardDescription>}
             </div>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon">
@@ -256,11 +258,15 @@ export default function ProfilePage() {
               </div>
               <FormField control={profileForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} disabled /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={profileForm.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} disabled={isUpdating} /></FormControl><FormMessage /></FormItem>)} />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={profileForm.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Date of Birth</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={profileForm.control} name="gender" render={({ field }) => ( <FormItem> <FormLabel>Gender</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select gender"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="male">Male</SelectItem> <SelectItem value="female">Female</SelectItem> <SelectItem value="other">Other</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
-              </div>
-              <FormField control={profileForm.control} name="qualification" render={({ field }) => ( <FormItem> <FormLabel>Qualification</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select qualification"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="post-graduate">Post Graduate</SelectItem> <SelectItem value="graduate">Graduate</SelectItem> <SelectItem value="undergraduate">Undergraduate</SelectItem> <SelectItem value="diploma">Diploma</SelectItem> <SelectItem value="12th">12th</SelectItem> <SelectItem value="10th">10th</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+              {isPartner && (
+                <>
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={profileForm.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Date of Birth</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={profileForm.control} name="gender" render={({ field }) => ( <FormItem> <FormLabel>Gender</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select gender"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="male">Male</SelectItem> <SelectItem value="female">Female</SelectItem> <SelectItem value="other">Other</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                </div>
+                <FormField control={profileForm.control} name="qualification" render={({ field }) => ( <FormItem> <FormLabel>Qualification</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select qualification"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="post-graduate">Post Graduate</SelectItem> <SelectItem value="graduate">Graduate</SelectItem> <SelectItem value="undergraduate">Undergraduate</SelectItem> <SelectItem value="diploma">Diploma</SelectItem> <SelectItem value="12th">12th</SelectItem> <SelectItem value="10th">10th</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                </>
+              )}
               <DialogFooter>
                 <Button type="submit" disabled={isUpdating}>
                   {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -272,48 +278,51 @@ export default function ProfilePage() {
         </DialogContent>
       </Dialog>
       
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center"><UserIcon className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.name || 'N/A'}</span></div>
-            <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(new Date(user.dob), 'PPP') : 'N/A'}</span></div>
-            <div className="flex items-center capitalize"><Info className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.gender || 'N/A'}</span></div>
-            <div className="flex items-center"><GraduationCap className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.qualification || 'N/A'}</span></div>
-          </CardContent>
-        </Card>
+      {isPartner ? (
+        <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Personal Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center"><UserIcon className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.name || 'N/A'}</span></div>
+                    <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(new Date(user.dob), 'PPP') : 'N/A'}</span></div>
+                    <div className="flex items-center capitalize"><Info className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.gender || 'N/A'}</span></div>
+                    <div className="flex items-center"><GraduationCap className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.qualification || 'N/A'}</span></div>
+                </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>KYC Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                    <Info className="h-5 w-5 mr-3 text-muted-foreground" />
-                    <span>Aadhar Card</span>
-                </div>
-                <span>{user?.aadharNumber ? '•••• •••• ' + user.aadharNumber.slice(-4) : 'N/A'}</span>
-            </div>
-             <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                    <Info className="h-5 w-5 mr-3 text-muted-foreground" />
-                    <span>PAN Card</span>
-                </div>
-                <span>{user?.panNumber || 'N/A'}</span>
-            </div>
-             <div className="flex items-center justify-between pt-2">
-                <span className="font-medium">Status</span>
-                <Badge variant={user?.kycStatus === 'verified' ? 'default' : 'secondary'} className="bg-green-100 text-green-800">
-                    <BadgeCheck className="mr-1 h-4 w-4"/>
-                    Verified
-                </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>KYC Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <Info className="h-5 w-5 mr-3 text-muted-foreground" />
+                            <span>Aadhar Card</span>
+                        </div>
+                        <span>{user?.aadharNumber ? '•••• •••• ' + user.aadharNumber.slice(-4) : 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <Info className="h-5 w-5 mr-3 text-muted-foreground" />
+                            <span>PAN Card</span>
+                        </div>
+                        <span>{user?.panNumber || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                        <span className="font-medium">Status</span>
+                        <Badge variant={user?.kycStatus === 'verified' ? 'default' : 'secondary'} className="bg-green-100 text-green-800">
+                            <BadgeCheck className="mr-1 h-4 w-4"/>
+                            Verified
+                        </Badge>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+      ) : null}
+
 
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
         <Card>

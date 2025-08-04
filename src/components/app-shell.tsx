@@ -115,38 +115,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <DropdownMenuContent className="w-56" align="end">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <Link href="/profile">
-                        <DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">
                         <User className="mr-2 h-4 w-4" />
                         <span>My Profile</span>
-                        </DropdownMenuItem>
-                    </Link>
+                      </Link>
+                    </DropdownMenuItem>
                      {user?.role === 'admin' && (
                         <>
+                           <DropdownMenuItem asChild>
                             <Link href="/send-message">
-                                <DropdownMenuItem>
                                 <MessageSquare className="mr-2 h-4 w-4" />
                                 <span>Send Message</span>
-                                </DropdownMenuItem>
                             </Link>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
                             <Link href="/contact-book">
-                                <DropdownMenuItem>
                                 <BookUser className="mr-2 h-4 w-4" />
                                 <span>Contact Book</span>
-                                </DropdownMenuItem>
                             </Link>
+                             </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                              <Link href="/updates">
-                                <DropdownMenuItem>
                                 <History className="mr-2 h-4 w-4" />
                                 <span>Updates</span>
-                                </DropdownMenuItem>
-                            </Link>
+                             </Link>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
                             <Link href="/settings">
-                                <DropdownMenuItem>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Settings</span>
-                                </DropdownMenuItem>
                             </Link>
+                            </DropdownMenuItem>
                         </>
                      )}
                      {isPartner && (
