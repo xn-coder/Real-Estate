@@ -5,13 +5,15 @@ import * as React from "react"
 import {
   Card,
   CardContent,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card"
-import { ArrowRight, UserCheck, UserPlus, UserX, Loader2, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { UserCheck, UserPlus, UserX, Loader2, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
 
 export default function ManageSellerDashboardPage() {
   const { toast } = useToast()
@@ -60,33 +62,44 @@ export default function ManageSellerDashboardPage() {
   }, [fetchCounts])
 
   const dashboardItems = [
-    {
-      name: "Add New Seller",
-      href: "/manage-seller/add",
-      count: null,
-    },
-    {
-      name: "Active Sellers",
-      href: "/manage-seller/list",
-      count: counts.active,
-    },
-    {
-      name: "Seller Activation",
-      href: "/manage-seller/activation",
-      count: counts.pending,
-    },
-    {
-      name: "Deactivated Sellers",
-      href: "/manage-seller/deactivated",
-      count: counts.inactive,
-    },
+    { name: "Active Sellers", href: "/manage-seller/list" },
+    { name: "Seller Activation", href: "/manage-seller/activation" },
+    { name: "Deactivated Sellers", href: "/manage-seller/deactivated" },
   ]
+  
+  const statCards = [
+    { title: "Active Sellers", count: counts.active, icon: UserCheck, color: "text-green-500" },
+    { title: "Pending Activation", count: counts.pending, icon: UserPlus, color: "text-yellow-500" },
+    { title: "Deactivated Sellers", count: counts.inactive, icon: UserX, color: "text-red-500" },
+  ];
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Seller Management</h1>
+        <Button asChild>
+          <Link href="/manage-seller/add">
+            <UserPlus className="mr-2 h-4 w-4" /> Add Seller
+          </Link>
+        </Button>
       </div>
+
+       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {statCards.map((stat) => (
+            <Card key={stat.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/> : <stat.icon className={`h-4 w-4 text-muted-foreground ${stat.color}`} />}
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">
+                        {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : stat.count}
+                    </div>
+                </CardContent>
+            </Card>
+        ))}
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
@@ -95,13 +108,6 @@ export default function ManageSellerDashboardPage() {
                 <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
                   <span className="font-medium">{option.name}</span>
                    <div className="flex items-center gap-4">
-                    {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/>
-                    ) : (
-                        option.count !== null && (
-                            <Badge variant="secondary">{option.count}</Badge>
-                        )
-                    )}
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </div>
                 </div>
