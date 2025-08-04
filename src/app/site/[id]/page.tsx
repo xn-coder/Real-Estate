@@ -13,6 +13,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+
 
 const PartnerWebsitePage = () => {
     const params = useParams()
@@ -94,7 +96,7 @@ const PartnerWebsitePage = () => {
                         </div>
                         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
                             <button onClick={() => scrollTo('catalog')} className="hover:text-primary transition-colors">Catalog</button>
-                            <Link href={`/card/${partner.id}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Digital Card</Link>
+                            <Link href={`/site/${partner.id}/card`} className="hover:text-primary transition-colors">Digital Card</Link>
                             <button onClick={() => scrollTo('contact')} className="hover:text-primary transition-colors">Contact Us</button>
                         </nav>
                         <div className="md:hidden">
@@ -160,17 +162,33 @@ const PartnerWebsitePage = () => {
 
                 {/* Enquiry Form Section */}
                 <section id="enquiry" className="py-12 md:py-20 bg-muted/50">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <h2 className="text-3xl font-bold font-headline text-center mb-12">Enquire Now</h2>
-                        <div className="max-w-xl mx-auto">
-                            <form className="space-y-4">
-                                <Input placeholder="Your Name" />
-                                <Input type="email" placeholder="Your Email" />
-                                <Input type="tel" placeholder="Your Phone Number" />
-                                <Textarea placeholder="Your Message" />
-                                <Button className="w-full">Submit Enquiry</Button>
-                            </form>
-                        </div>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <h2 className="text-3xl font-bold font-headline mb-4">Enquire Now</h2>
+                        <p className="text-muted-foreground max-w-xl mx-auto mb-8">
+                            Have questions or want to get started? Fill out the form below and we'll get in touch with you shortly.
+                        </p>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button size="lg">Send us a message</Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Enquiry Form</DialogTitle>
+                                    <DialogDescription>
+                                       Please fill out your details and we will contact you.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form className="space-y-4">
+                                    <Input placeholder="Your Name" />
+                                    <Input type="email" placeholder="Your Email" />
+                                    <Input type="tel" placeholder="Your Phone Number" />
+                                    <Textarea placeholder="Your Message" />
+                                    <DialogFooter>
+                                        <Button type="submit" className="w-full">Submit Enquiry</Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </section>
 
@@ -231,7 +249,7 @@ const PartnerWebsitePage = () => {
                             <h4 className="font-bold text-lg mb-2">Quick Links</h4>
                              <ul className="space-y-1 text-sm">
                                 <li><button onClick={() => scrollTo('catalog')} className="text-gray-400 hover:text-white">Catalog</button></li>
-                                <li><a href={`/card/${partner.id}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Digital Card</a></li>
+                                <li><a href={`/site/${partner.id}/card`} className="text-gray-400 hover:text-white">Digital Card</a></li>
                                 <li><button onClick={() => scrollTo('contact')} className="text-gray-400 hover:text-white">Contact Us</button></li>
                             </ul>
                         </div>
