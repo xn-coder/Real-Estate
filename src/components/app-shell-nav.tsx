@@ -106,6 +106,7 @@ const partnerNavItems: NavItem[] = [
   { href: '/reports-analytics', icon: BarChart2, label: 'Reports & Analytics' },
   { href: '/team-management', icon: Users, label: 'Team Management' },
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
+  { href: '/updates', icon: History, label: 'Notifications' },
   { href: '/support-ticket', icon: Ticket, label: 'Support Ticket' },
   { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { href: '/upgrade', icon: Award, label: 'Upgrade' },
