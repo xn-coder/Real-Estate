@@ -14,9 +14,11 @@ import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function ManageSellerDashboardPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [counts, setCounts] = React.useState({
     active: 0,
     pending: 0,
@@ -77,10 +79,8 @@ export default function ManageSellerDashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Seller Management</h1>
-        <Button asChild>
-          <Link href="/register/seller" target="_blank">
-            <UserPlus className="mr-2 h-4 w-4" /> Add Seller
-          </Link>
+        <Button onClick={() => router.push('/manage-seller/list')}>
+          <UserPlus className="mr-2 h-4 w-4" /> Add Seller
         </Button>
       </div>
 
