@@ -23,7 +23,6 @@ export default function SellerActivationPage() {
   const router = useRouter()
   const [pendingSellers, setPendingSellers] = React.useState<SellerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [isUpdating, setIsUpdating] = React.useState<string | null>(null)
 
   const fetchPendingSellers = React.useCallback(async () => {
     setIsLoading(true)
@@ -49,29 +48,6 @@ export default function SellerActivationPage() {
     fetchPendingSellers()
   }, [fetchPendingSellers])
 
-  const handleUpdateStatus = async (sellerId: string, status: 'active' | 'inactive') => {
-    setIsUpdating(sellerId);
-    try {
-        const sellerDocRef = doc(db, "users", sellerId);
-        await updateDoc(sellerDocRef, {
-            status: status
-        });
-        toast({
-            title: `Seller ${status === 'active' ? 'Activated' : 'Rejected'}`,
-            description: `The seller has been successfully ${status === 'active' ? 'activated' : 'rejected'}.`,
-        });
-        fetchPendingSellers();
-    } catch (error) {
-        console.error("Error updating seller status:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to update seller status.",
-        });
-    } finally {
-        setIsUpdating(null);
-    }
-  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -110,28 +86,10 @@ export default function SellerActivationPage() {
                    <div className="flex gap-2 justify-end">
                       <Button 
                         size="sm" 
-                        variant="ghost" 
+                        variant="outline" 
                         onClick={() => router.push(`/manage-seller/details/${seller.id}`)}
                       >
-                        <Eye className="mr-2 h-4 w-4" /> View
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleUpdateStatus(seller.id, 'active')}
-                        disabled={!!isUpdating}
-                      >
-                          {isUpdating === seller.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />}
-                          Approve
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive" 
-                        onClick={() => handleUpdateStatus(seller.id, 'inactive')}
-                        disabled={!!isUpdating}
-                      >
-                          {isUpdating === seller.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4" />}
-                          Reject
+                        <Eye className="mr-2 h-4 w-4" /> View & Approve
                       </Button>
                    </div>
                 </TableCell>
@@ -143,5 +101,3 @@ export default function SellerActivationPage() {
     </div>
   )
 }
-
-    
