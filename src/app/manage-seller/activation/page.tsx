@@ -11,14 +11,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle, XCircle } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
 import type { User as SellerUser } from "@/types/user"
+import { useRouter } from "next/navigation"
 
 export default function SellerActivationPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [pendingSellers, setPendingSellers] = React.useState<SellerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdating, setIsUpdating] = React.useState<string | null>(null)
@@ -108,6 +110,13 @@ export default function SellerActivationPage() {
                    <div className="flex gap-2 justify-end">
                       <Button 
                         size="sm" 
+                        variant="ghost" 
+                        onClick={() => router.push(`/manage-seller/details/${seller.id}`)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" /> View
+                      </Button>
+                      <Button 
+                        size="sm" 
                         variant="outline" 
                         onClick={() => handleUpdateStatus(seller.id, 'active')}
                         disabled={!!isUpdating}
@@ -134,3 +143,5 @@ export default function SellerActivationPage() {
     </div>
   )
 }
+
+    

@@ -174,9 +174,9 @@ export default function AddSellerPage() {
 
       toast({
         title: "Registration Submitted",
-        description: "Your seller account is under review and will be activated shortly.",
+        description: "Redirecting to the activation panel.",
       })
-      router.push("/");
+      router.push("/manage-seller/activation");
 
     } catch (error) {
       console.error("Error creating seller:", error)
@@ -325,3 +325,5 @@ export default function AddSellerPage() {
     </div>
   )
 }
+
+    
