@@ -190,18 +190,6 @@ export function LoginForm() {
           </Button>
         </form>
       </Form>
-      <div className="mt-6 text-center text-sm">
-        Don&apos;t have an account?
-        <div className="flex items-center justify-center gap-4 mt-2">
-            <Link href="/register/seller" className="font-semibold text-primary hover:underline">
-              Register as Seller
-            </Link>
-            <Separator orientation="vertical" className="h-4" />
-            <Link href="/register/partner" className="font-semibold text-primary hover:underline">
-              Register as Partner
-            </Link>
-        </div>
-      </div>
     </div>
   )
 }
