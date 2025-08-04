@@ -79,8 +79,10 @@ export default function ManageSellerDashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Seller Management</h1>
-        <Button onClick={() => router.push('/manage-seller/list')}>
-          <UserPlus className="mr-2 h-4 w-4" /> Add Seller
+        <Button asChild>
+            <Link href="/manage-seller/add">
+              <UserPlus className="mr-2 h-4 w-4" /> Add Seller
+            </Link>
         </Button>
       </div>
 
