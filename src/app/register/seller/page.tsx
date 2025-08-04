@@ -139,8 +139,8 @@ export default function SellerRegistrationPage() {
         pincode: values.pincode,
         aadharNumber: values.aadharNumber,
         panNumber: values.panNumber,
-        aadharFile: await fileToDataUrl(values.aadharFile),
-        panFile: await fileToDataUrl(values.panFile),
+        aadharFile: values.aadharFile ? await fileToDataUrl(values.aadharFile) : '',
+        panFile: values.panFile ? await fileToDataUrl(values.panFile) : '',
         reraCertificate: values.reraCertificate ? await fileToDataUrl(values.reraCertificate) : '',
         role: 'seller',
         status: 'pending'
@@ -257,12 +257,13 @@ export default function SellerRegistrationPage() {
                     </div>
                 )}
                 <div className="flex justify-between items-center pt-4">
-                    {currentStep > 1 && (
+                    {currentStep > 1 ? (
                         <Button type="button" variant="outline" onClick={handlePrevStep} disabled={isLoading}>
                             Previous
                         </Button>
+                    ) : (
+                        <div></div>
                     )}
-                    <div className="flex-grow" />
                     <Button type="button" onClick={handleNextStep} disabled={isLoading}>
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         {currentStep === 1 ? 'Next' : 'Submit for Review'}
@@ -281,3 +282,5 @@ export default function SellerRegistrationPage() {
     </div>
   )
 }
+
+    
