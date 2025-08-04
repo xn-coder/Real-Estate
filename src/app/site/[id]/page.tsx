@@ -6,7 +6,7 @@ import { useParams } from "next/navigation"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { User } from "@/types/user"
-import { Loader2, Phone, Mail, MapPin, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Home, Contact, Newspaper } from "lucide-react"
+import { Loader2, Phone, Mail, MapPin, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Home, Contact, Newspaper, ArrowRight } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
@@ -135,10 +135,10 @@ const PartnerWebsitePage = () => {
             {/* Main Content */}
             <main>
                 {/* Hero Section */}
-                 <section className="relative h-96">
+                 <section className="relative bg-muted/40">
                     {slideshow.length > 0 ? (
                         <Carousel 
-                            className="w-full h-full" 
+                            className="w-full" 
                             opts={{ loop: true }}
                             plugins={[plugin.current]}
                             onMouseEnter={plugin.current.stop}
@@ -147,41 +147,48 @@ const PartnerWebsitePage = () => {
                             <CarouselContent>
                                 {slideshow.map((slide) => (
                                     <CarouselItem key={slide.id}>
-                                        <div className="relative h-96">
+                                        <div className="relative aspect-[16/9] md:aspect-[2.4/1] bg-gradient-to-r from-teal-500 to-cyan-600">
                                             <Image 
-                                                src={slide.bannerImage || 'https://placehold.co/1920x1080.png'} 
+                                                src={slide.bannerImage || 'https://placehold.co/1920x800.png'} 
                                                 alt={slide.title || 'Banner Image'}
                                                 layout="fill"
                                                 objectFit="cover"
-                                                className="brightness-50"
-                                                data-ai-hint="office building"
+                                                className="opacity-20"
+                                                data-ai-hint="office building abstract"
                                             />
                                             <div className="absolute inset-0 flex items-center justify-center">
-                                                <a href={slide.linkUrl} target="_blank" rel="noopener noreferrer" className="text-center text-white">
-                                                    <h1 className="text-4xl md:text-6xl font-extrabold font-headline drop-shadow-lg">
+                                                <div className="text-center text-white px-4">
+                                                    <h1 className="text-4xl md:text-6xl font-extrabold font-headline drop-shadow-lg mb-4">
                                                         {slide.title || 'Welcome to Our Website'}
                                                     </h1>
-                                                </a>
+                                                    {slide.linkUrl && (
+                                                        <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90">
+                                                            <a href={slide.linkUrl} target="_blank" rel="noopener noreferrer">
+                                                                Learn More <ArrowRight className="ml-2 h-5 w-5"/>
+                                                            </a>
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
-                            <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2" />
-                            <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2" />
+                            <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 hidden md:inline-flex" />
+                            <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:inline-flex" />
                         </Carousel>
                     ) : (
-                         <div className="relative h-96">
+                         <div className="relative aspect-[16/9] md:aspect-[2.4/1] bg-gradient-to-r from-gray-800 to-gray-900">
                             <Image 
-                                src={'https://placehold.co/1920x1080.png'} 
-                                alt={'Banner Image'}
+                                src={'https://placehold.co/1920x800.png'} 
+                                alt={'Default Banner Image'}
                                 layout="fill"
                                 objectFit="cover"
-                                className="brightness-50"
-                                data-ai-hint="office building"
+                                className="opacity-20"
+                                data-ai-hint="office building abstract"
                             />
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="text-center text-white">
+                                <div className="text-center text-white px-4">
                                     <h1 className="text-4xl md:text-6xl font-extrabold font-headline drop-shadow-lg">
                                         Welcome to Our Website
                                     </h1>
@@ -323,4 +330,3 @@ const PartnerWebsitePage = () => {
 }
 
 export default PartnerWebsitePage;
-
