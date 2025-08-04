@@ -206,33 +206,20 @@ const PartnerWebsitePage = () => {
 
                 {/* Enquiry Form Section */}
                 <section id="enquiry" className="py-12 md:py-20 bg-muted/50">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                        <h2 className="text-3xl font-bold font-headline mb-4">Enquire Now</h2>
-                        <p className="text-muted-foreground max-w-xl mx-auto mb-8">
-                            Have questions or want to get started? Fill out the form below and we'll get in touch with you shortly.
-                        </p>
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button size="lg">Send us a message</Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle>Enquiry Form</DialogTitle>
-                                    <DialogDescription>
-                                       Please fill out your details and we will contact you.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <form className="space-y-4">
-                                    <Input placeholder="Your Name" />
-                                    <Input type="email" placeholder="Your Email" />
-                                    <Input type="tel" placeholder="Your Phone Number" />
-                                    <Textarea placeholder="Your Message" />
-                                    <DialogFooter>
-                                        <Button type="submit" className="w-full">Submit Enquiry</Button>
-                                    </DialogFooter>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="max-w-2xl mx-auto">
+                            <h2 className="text-3xl font-bold font-headline text-center mb-4">Enquire Now</h2>
+                            <p className="text-muted-foreground text-center mb-8">
+                                Have questions or want to get started? Fill out the form below and we'll get in touch with you shortly.
+                            </p>
+                            <form className="space-y-4 border rounded-lg p-8 bg-card">
+                                <Input placeholder="Your Name" />
+                                <Input type="email" placeholder="Your Email" />
+                                <Input type="tel" placeholder="Your Phone Number" />
+                                <Textarea placeholder="Your Message" />
+                                <Button type="submit" className="w-full">Submit Enquiry</Button>
+                            </form>
+                        </div>
                     </div>
                 </section>
 
@@ -293,7 +280,7 @@ const PartnerWebsitePage = () => {
                             <h4 className="font-bold text-lg mb-2">Quick Links</h4>
                              <ul className="space-y-1 text-sm">
                                 <li><button onClick={() => scrollTo('catalog')} className="text-gray-400 hover:text-white">Catalog</button></li>
-                                <li><a href={`/site/${partner.id}/card`} className="text-gray-400 hover:text-white">Digital Card</a></li>
+                                <li><Link href={`/site/${partner.id}/card`} className="text-gray-400 hover:text-white">Digital Card</Link></li>
                                 <li><button onClick={() => scrollTo('contact')} className="text-gray-400 hover:text-white">Contact Us</button></li>
                             </ul>
                         </div>

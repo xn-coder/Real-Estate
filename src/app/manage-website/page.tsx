@@ -58,9 +58,9 @@ const contactDetailsSchema = z.object({
 })
 const aboutLegalSchema = z.object({
   aboutText: z.string().min(1, "About text is required"),
-  termsLink: z.any().optional(),
-  privacyLink: z.any().optional(),
-  disclaimerLink: z.any().optional(),
+  termsLink: z.string().url().optional().or(z.literal('')),
+  privacyLink: z.string().url().optional().or(z.literal('')),
+  disclaimerLink: z.string().url().optional().or(z.literal('')),
 })
 const socialLinksSchema = z.object({
   website: z.string().url().optional().or(z.literal('')),
@@ -172,16 +172,6 @@ export default function ManageWebsitePage() {
           dataToUpdate.name = values.businessName;
           dataToUpdate.businessLogo = logoUrl;
       } else {
-          // Handle file uploads for other sections
-          if (values.termsLink && typeof values.termsLink !== 'string') {
-            values.termsLink = await fileToDataUrl(values.termsLink);
-          }
-          if (values.privacyLink && typeof values.privacyLink !== 'string') {
-            values.privacyLink = await fileToDataUrl(values.privacyLink);
-          }
-          if (values.disclaimerLink && typeof values.disclaimerLink !== 'string') {
-            values.disclaimerLink = await fileToDataUrl(values.disclaimerLink);
-          }
           dataToUpdate[`website.${section}`] = values;
       }
 
@@ -464,15 +454,9 @@ export default function ManageWebsitePage() {
                  <Form {...aboutLegalForm}>
                   <form onSubmit={aboutLegalForm.handleSubmit((values) => handleSave('aboutLegal', values))} className="space-y-4">
                     <FormField control={aboutLegalForm.control} name="aboutText" render={({ field }) => ( <FormItem><FormLabel>About Text</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={aboutLegalForm.control} name="termsLink" render={({ field: { onChange, value, ...rest } }) => ( <FormItem><FormLabel>Terms & Conditions (PDF)</FormLabel>
-                        {typeof value === 'string' && value && <a href={value} className="text-primary underline text-sm block mb-2" target="_blank" rel="noopener noreferrer">View current file</a>}
-                        <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={aboutLegalForm.control} name="privacyLink" render={({ field: { onChange, value, ...rest } }) => ( <FormItem><FormLabel>Privacy Policy (PDF)</FormLabel>
-                        {typeof value === 'string' && value && <a href={value} className="text-primary underline text-sm block mb-2" target="_blank" rel="noopener noreferrer">View current file</a>}
-                        <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={aboutLegalForm.control} name="disclaimerLink" render={({ field: { onChange, value, ...rest } }) => ( <FormItem><FormLabel>Disclaimer (PDF)</FormLabel>
-                        {typeof value === 'string' && value && <a href={value} className="text-primary underline text-sm block mb-2" target="_blank" rel="noopener noreferrer">View current file</a>}
-                        <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={aboutLegalForm.control} name="termsLink" render={({ field }) => ( <FormItem><FormLabel>Terms & Conditions Link</FormLabel><FormControl><Input placeholder="https://example.com/terms" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={aboutLegalForm.control} name="privacyLink" render={({ field }) => ( <FormItem><FormLabel>Privacy Policy Link</FormLabel><FormControl><Input placeholder="https://example.com/privacy" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={aboutLegalForm.control} name="disclaimerLink" render={({ field }) => ( <FormItem><FormLabel>Disclaimer Link</FormLabel><FormControl><Input placeholder="https://example.com/disclaimer" {...field} /></FormControl><FormMessage /></FormItem> )} />
                     <DialogFooter><Button type="submit" disabled={aboutLegalForm.formState.isSubmitting}>{aboutLegalForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
                   </form>
                 </Form>
@@ -487,15 +471,15 @@ export default function ManageWebsitePage() {
             <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Terms & Conditions: {user.website?.aboutLegal?.termsLink ? <a href={user.website.aboutLegal.termsLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
+                    <span>Terms & Conditions: {user.website?.aboutLegal?.termsLink ? <a href={user.website.aboutLegal.termsLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Privacy Policy: {user.website?.aboutLegal?.privacyLink ? <a href={user.website.aboutLegal.privacyLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
+                    <span>Privacy Policy: {user.website?.aboutLegal?.privacyLink ? <a href={user.website.aboutLegal.privacyLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Disclaimer: {user.website?.aboutLegal?.disclaimerLink ? <a href={user.website.aboutLegal.disclaimerLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View File</a> : 'Not set'}</span>
+                    <span>Disclaimer: {user.website?.aboutLegal?.disclaimerLink ? <a href={user.website.aboutLegal.disclaimerLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
             </div>
           </CardContent>
