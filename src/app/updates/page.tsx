@@ -39,6 +39,7 @@ import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, orderBy, Timestamp } from "firebase/firestore"
 import type { Message } from "@/types/message"
 import Link from "next/link"
+import { Separator } from "@/components/ui/separator"
 
 export default function UpdatesPage() {
     const { user, isLoading: isUserLoading } = useUser();
@@ -231,15 +232,28 @@ export default function UpdatesPage() {
                 <DialogHeader>
                     <DialogTitle>{selectedMessage?.subject}</DialogTitle>
                     <DialogDescription>
-                        From: {selectedMessage?.senderName} | To: {selectedMessage?.recipientName} | On: {selectedMessage?.date ? format(selectedMessage.date, 'PPP p') : ''}
+                        Sent on {selectedMessage?.date ? format(selectedMessage.date, 'PPP p') : ''}
                     </DialogDescription>
                 </DialogHeader>
-                {selectedMessage && (
-                    <div 
-                        className="prose prose-sm dark:prose-invert max-w-none mt-4 max-h-[50vh] overflow-y-auto"
-                        dangerouslySetInnerHTML={{ __html: selectedMessage.body }} 
-                    />
-                )}
+                <div className="space-y-4 py-4">
+                    <div className="flex gap-4 text-sm">
+                        <div className="w-1/2">
+                            <p className="font-semibold">From</p>
+                            <p className="text-muted-foreground">{selectedMessage?.senderName}</p>
+                        </div>
+                         <div className="w-1/2">
+                            <p className="font-semibold">To</p>
+                            <p className="text-muted-foreground">{selectedMessage?.recipientName}</p>
+                        </div>
+                    </div>
+                    <Separator />
+                    {selectedMessage && (
+                        <div 
+                            className="prose prose-sm dark:prose-invert max-w-none p-2 border rounded-md max-h-[50vh] overflow-y-auto"
+                            dangerouslySetInnerHTML={{ __html: selectedMessage.body }} 
+                        />
+                    )}
+                </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
                 </DialogFooter>
