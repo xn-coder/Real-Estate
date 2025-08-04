@@ -55,6 +55,8 @@ import {
   Plane,
   Headset,
   PanelTop,
+  PlusCircle,
+  MapPin,
 } from 'lucide-react'
 import { useUser } from '@/hooks/use-user'
 
@@ -110,9 +112,18 @@ const partnerNavItems: NavItem[] = [
 ];
 
 const sellerNavItems: NavItem[] = [
-    { href: '/listings', icon: Building, label: 'My Listings' },
-    { href: '/leads', icon: UserRound, label: 'My Leads' },
-    { href: '/schedule', icon: Calendar, label: 'Appointments' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/listings', icon: Building, label: 'Manage Properties' },
+    { href: '/listings/add', icon: PlusCircle, label: 'Add Properties' },
+    { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
+    { href: '/manage-customer', icon: Users, label: 'Manage Customer' },
+    { href: '/marketing-kit', icon: ShoppingBag, label: 'Manage Marketing Kits' },
+    { href: '/site-visit', icon: MapPin, label: 'Site Visit Management' },
+    { href: '/negotiation', icon: Handshake, label: 'Negotiation Manage' },
+    { href: '/manage-partner', icon: Handshake, label: 'Partner Manage' },
+    { href: '/booking-quotation', icon: FileText, label: 'Booking & Quotation' },
+    { href: '/document-management', icon: FileText, label: 'Document Manage' },
+    { href: '/support', icon: Headset, label: 'Help & Support' },
 ];
 
 const userNavItems: NavItem[] = [
