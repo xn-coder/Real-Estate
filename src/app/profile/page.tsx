@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, BadgeCheck } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, BadgeCheck, FileText } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -27,6 +27,7 @@ import { useUser } from "@/hooks/use-user"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from 'date-fns'
 import { Badge } from "@/components/ui/badge"
+import Image from "next/image"
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -52,6 +53,12 @@ const passwordFormSchema = z.object({
 
 type PasswordForm = z.infer<typeof passwordFormSchema>;
 
+type KycDocument = {
+    type: 'Aadhar' | 'PAN';
+    number: string;
+    fileUrl: string;
+};
+
 
 export default function ProfilePage() {
   const { toast } = useToast()
@@ -60,6 +67,8 @@ export default function ProfilePage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
+  const [isKycDialogOpen, setIsKycDialogOpen] = React.useState(false);
+  const [selectedKycDoc, setSelectedKycDoc] = React.useState<KycDocument | null>(null);
   const [isPasswordUpdating, setIsPasswordUpdating] = React.useState(false)
 
   const profileForm = useForm<UserProfileForm>({
@@ -190,6 +199,17 @@ export default function ProfilePage() {
     }
   }
 
+  const handleViewKyc = (docType: 'Aadhar' | 'PAN') => {
+    if (!user) return;
+    const docData: KycDocument = {
+        type: docType,
+        number: (docType === 'Aadhar' ? user.aadharNumber : user.panNumber) || 'N/A',
+        fileUrl: (docType === 'Aadhar' ? user.aadharFile : user.panFile) || '',
+    };
+    setSelectedKycDoc(docData);
+    setIsKycDialogOpen(true);
+  }
+
   if (isUserLoading) {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -223,7 +243,7 @@ export default function ProfilePage() {
             </DialogTrigger>
           </CardHeader>
         </Card>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
             <DialogDescription>
@@ -298,18 +318,18 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <Info className="h-5 w-5 mr-3 text-muted-foreground" />
+                        <div className="flex items-center gap-3">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
                             <span>Aadhar Card</span>
                         </div>
-                        <span>{user?.aadharNumber ? '•••• •••• ' + user.aadharNumber.slice(-4) : 'N/A'}</span>
+                        <Button variant="outline" size="sm" onClick={() => handleViewKyc('Aadhar')}>View</Button>
                     </div>
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <Info className="h-5 w-5 mr-3 text-muted-foreground" />
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <FileText className="h-5 w-5 text-muted-foreground" />
                             <span>PAN Card</span>
                         </div>
-                        <span>{user?.panNumber || 'N/A'}</span>
+                        <Button variant="outline" size="sm" onClick={() => handleViewKyc('PAN')}>View</Button>
                     </div>
                     <div className="flex items-center justify-between pt-2">
                         <span className="font-medium">Status</span>
@@ -359,6 +379,41 @@ export default function ProfilePage() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isKycDialogOpen} onOpenChange={setIsKycDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>{selectedKycDoc?.type} Card Details</DialogTitle>
+            </DialogHeader>
+            {selectedKycDoc && (
+                <div className="space-y-4">
+                    <div>
+                        <Label>Document Number</Label>
+                        <p className="text-sm font-mono p-2 bg-muted rounded-md">{selectedKycDoc.number}</p>
+                    </div>
+                    <div>
+                        <Label>Uploaded Document</Label>
+                        <div className="mt-2 border rounded-md p-2">
+                            {selectedKycDoc.fileUrl ? (
+                                <Image 
+                                    src={selectedKycDoc.fileUrl} 
+                                    alt={`${selectedKycDoc.type} Document`}
+                                    width={400} 
+                                    height={250} 
+                                    className="rounded-md w-full object-contain"
+                                />
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No document uploaded.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsKycDialogOpen(false)}>Close</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
