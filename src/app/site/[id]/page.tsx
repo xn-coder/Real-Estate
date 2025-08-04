@@ -147,30 +147,25 @@ const PartnerWebsitePage = () => {
                             <CarouselContent>
                                 {slideshow.map((slide) => (
                                     <CarouselItem key={slide.id}>
-                                        <div className="relative aspect-[16/9] md:aspect-[2.4/1] bg-gradient-to-r from-teal-500 to-cyan-600">
-                                            <Image 
-                                                src={slide.bannerImage || 'https://placehold.co/1920x800.png'} 
-                                                alt={slide.title || 'Banner Image'}
-                                                layout="fill"
-                                                objectFit="cover"
-                                                className="opacity-20"
-                                                data-ai-hint="office building abstract"
-                                            />
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <div className="text-center text-white px-4">
-                                                    <h1 className="text-4xl md:text-6xl font-extrabold font-headline drop-shadow-lg mb-4">
-                                                        {slide.title || 'Welcome to Our Website'}
-                                                    </h1>
-                                                    {slide.linkUrl && (
-                                                        <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90">
-                                                            <a href={slide.linkUrl} target="_blank" rel="noopener noreferrer">
-                                                                Learn More <ArrowRight className="ml-2 h-5 w-5"/>
-                                                            </a>
-                                                        </Button>
-                                                    )}
+                                         <a href={slide.linkUrl || '#'} target={slide.linkUrl ? '_blank' : '_self'} rel="noopener noreferrer" className="block w-full h-full">
+                                            <div className="relative aspect-[16/9] md:aspect-[2.4/1] bg-gradient-to-t from-black/50 to-transparent">
+                                                <Image 
+                                                    src={slide.bannerImage || 'https://placehold.co/1920x800.png'} 
+                                                    alt={slide.title || 'Banner Image'}
+                                                    layout="fill"
+                                                    objectFit="cover"
+                                                    className="-z-10"
+                                                    data-ai-hint="office building abstract"
+                                                />
+                                                <div className="absolute inset-0 flex items-end justify-center pb-8 md:pb-12">
+                                                    <div className="text-center text-white px-4">
+                                                        <h1 className="text-2xl md:text-4xl font-bold font-headline drop-shadow-lg">
+                                                            {slide.title || 'Welcome to Our Website'}
+                                                        </h1>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </a>
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
