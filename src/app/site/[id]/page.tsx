@@ -23,6 +23,7 @@ const PartnerWebsitePage = () => {
 
     const [partner, setPartner] = React.useState<User | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
+    const [websiteData, setWebsiteData] = React.useState<User['website']>({});
     
     const plugin = React.useRef(
         Autoplay({ delay: 3000, stopOnInteraction: true })
@@ -34,8 +35,25 @@ const PartnerWebsitePage = () => {
         try {
             const userDocRef = doc(db, "users", partnerId)
             const userDoc = await getDoc(userDocRef)
+            
             if (userDoc.exists()) {
-                setPartner({ id: userDoc.id, ...userDoc.data() } as User)
+                const partnerData = { id: userDoc.id, ...userDoc.data() } as User;
+                setPartner(partnerData);
+                
+                const websiteDefaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
+                const defaults = websiteDefaultsDoc.exists() ? websiteDefaultsDoc.data() : {};
+
+                const partnerWebsiteData = partnerData.website || {};
+                
+                const finalWebsiteData = {
+                    businessProfile: partnerWebsiteData.businessProfile || defaults.businessProfile,
+                    slideshow: partnerWebsiteData.slideshow || defaults.slideshow || [],
+                    contactDetails: partnerWebsiteData.contactDetails || defaults.contactDetails,
+                    aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal,
+                    socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks,
+                };
+                setWebsiteData(finalWebsiteData);
+
             } else {
                 console.error("No such partner!")
                 setPartner(null)
@@ -51,12 +69,12 @@ const PartnerWebsitePage = () => {
         fetchPartner()
     }, [fetchPartner])
 
-    const partnerName = partner?.website?.businessProfile?.businessName || partner?.name || "Partner Name";
-    const partnerLogo = partner?.website?.businessProfile?.businessLogo || partner?.businessLogo || '';
-    const contactDetails = partner?.website?.contactDetails || partner;
-    const socialLinks = partner?.website?.socialLinks;
-    const aboutLegal = partner?.website?.aboutLegal;
-    const slideshow = partner?.website?.slideshow || [];
+    const partnerName = websiteData?.businessProfile?.businessName || partner?.name || "Partner Name";
+    const partnerLogo = websiteData?.businessProfile?.businessLogo || partner?.businessLogo || '';
+    const contactDetails = websiteData?.contactDetails || partner;
+    const socialLinks = websiteData?.socialLinks;
+    const aboutLegal = websiteData?.aboutLegal;
+    const slideshow = websiteData?.slideshow || [];
 
     const socialComponents = [
         { Icon: Instagram, href: socialLinks?.instagram },
@@ -305,3 +323,4 @@ const PartnerWebsitePage = () => {
 }
 
 export default PartnerWebsitePage;
+
