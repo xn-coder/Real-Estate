@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import Autoplay from "embla-carousel-autoplay"
 
 
 const PartnerWebsitePage = () => {
@@ -23,6 +24,10 @@ const PartnerWebsitePage = () => {
 
     const [partner, setPartner] = React.useState<User | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
+    
+    const plugin = React.useRef(
+        Autoplay({ delay: 3000, stopOnInteraction: true })
+    )
 
     const fetchPartner = React.useCallback(async () => {
         if (!partnerId) return
@@ -112,7 +117,13 @@ const PartnerWebsitePage = () => {
                 {/* Hero Section */}
                  <section className="relative h-96">
                     {slideshow.length > 0 ? (
-                        <Carousel className="w-full h-full" opts={{ loop: true }}>
+                        <Carousel 
+                            className="w-full h-full" 
+                            opts={{ loop: true }}
+                            plugins={[plugin.current]}
+                            onMouseEnter={plugin.current.stop}
+                            onMouseLeave={plugin.current.reset}
+                        >
                             <CarouselContent>
                                 {slideshow.map((slide) => (
                                     <CarouselItem key={slide.id}>
