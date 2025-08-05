@@ -5,7 +5,7 @@ import React from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Loader2 } from "lucide-react"
+import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
@@ -14,10 +14,17 @@ import type { Property } from "@/types/property"
 import Image from "next/image"
 import { format } from "date-fns"
 import dynamic from "next/dynamic"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
-    loading: () => <div className="h-[200px] w-full rounded-md bg-muted flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
+    loading: () => <div className="h-[400px] w-full rounded-md bg-muted flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
 });
 
 type DetailedAppointment = Appointment & {
@@ -29,6 +36,8 @@ export default function SchedulePage() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [appointments, setAppointments] = React.useState<DetailedAppointment[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null)
+  const [isMapOpen, setIsMapOpen] = React.useState(false)
 
   React.useEffect(() => {
     const fetchAppointments = async () => {
@@ -47,7 +56,6 @@ export default function SchedulePage() {
         const appointmentsData = await Promise.all(snapshot.docs.map(async (docData) => {
             const appointment = { id: docData.id, ...docData.data() } as Appointment;
             
-            // Fetch property details for each appointment
             const propDocRef = doc(db, "properties", appointment.propertyId);
             const propDoc = await getDoc(propDocRef);
             let propertyData: Property | undefined = undefined;
@@ -84,6 +92,11 @@ export default function SchedulePage() {
     (appointment) =>
       date && new Date(appointment.visitDate as Date).toDateString() === date.toDateString()
   )
+
+  const handleMapView = (property: Property) => {
+    setSelectedProperty(property);
+    setIsMapOpen(true);
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -129,29 +142,32 @@ export default function SchedulePage() {
               ) : selectedDayAppointments.length > 0 ? (
                 selectedDayAppointments.map((appointment) => (
                   <Card key={appointment.id}>
-                    <CardHeader className="flex flex-row gap-4 p-4">
+                    <CardContent className="p-4 flex flex-col md:flex-row gap-4">
                         <Image 
-                            src={appointment.property?.featureImage || 'https://placehold.co/100x100.png'} 
+                            src={appointment.property?.featureImage || 'https://placehold.co/150x150.png'} 
                             alt={appointment.property?.catalogTitle || 'Property'}
-                            width={100}
-                            height={100}
-                            className="rounded-md object-cover"
+                            width={150}
+                            height={150}
+                            className="rounded-md object-cover aspect-square"
                             data-ai-hint="house exterior"
                         />
-                        <div className="flex-1">
-                            <p className="font-semibold">{appointment.property?.catalogTitle}</p>
+                        <div className="flex-1 space-y-2">
+                            <p className="font-semibold text-lg">{appointment.property?.catalogTitle}</p>
                             <p className="text-sm text-muted-foreground">{appointment.property?.addressLine}</p>
-                            <p className="text-sm font-medium mt-2">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
+                            <p className="text-sm font-medium">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
                         </div>
-                    </CardHeader>
-                    {appointment.property?.latitude && appointment.property?.longitude && (
-                        <CardContent className="p-0">
-                           <LocationPicker 
-                                onLocationChange={() => {}} 
-                                position={[parseFloat(appointment.property.latitude), parseFloat(appointment.property.longitude)]}
-                            />
-                        </CardContent>
-                    )}
+                         <div className="flex flex-col gap-2 justify-center">
+                            <Button variant="outline" size="sm" onClick={() => appointment.property && handleMapView(appointment.property)}>
+                                <Map className="mr-2 h-4 w-4" /> Map View
+                            </Button>
+                            <Button variant="outline" size="sm">
+                               <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
+                            </Button>
+                             <Button variant="destructive" size="sm">
+                               <X className="mr-2 h-4 w-4" /> Cancel
+                            </Button>
+                        </div>
+                    </CardContent>
                   </Card>
                 ))
               ) : (
@@ -163,6 +179,19 @@ export default function SchedulePage() {
           </Card>
         </div>
       </div>
+        <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>{selectedProperty?.catalogTitle}</DialogTitle>
+                </DialogHeader>
+                {selectedProperty?.latitude && selectedProperty?.longitude && (
+                     <LocationPicker 
+                        onLocationChange={() => {}} 
+                        position={[parseFloat(selectedProperty.latitude), parseFloat(selectedProperty.longitude)]}
+                    />
+                )}
+            </DialogContent>
+        </Dialog>
     </div>
   )
 }
