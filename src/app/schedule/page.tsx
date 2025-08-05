@@ -1,19 +1,88 @@
+
 'use client'
 
 import React from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle } from "lucide-react"
-import { appointments } from "@/lib/data"
-import { Badge } from "@/components/ui/badge"
+import { PlusCircle, Loader2 } from "lucide-react"
+import { useUser } from "@/hooks/use-user"
+import { db } from "@/lib/firebase"
+import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
+import type { Appointment } from "@/types/appointment"
+import type { Property } from "@/types/property"
+import Image from "next/image"
+import { format } from "date-fns"
+import dynamic from "next/dynamic"
+
+const LocationPicker = dynamic(() => import('@/components/location-picker'), {
+    ssr: false,
+    loading: () => <div className="h-[200px] w-full rounded-md bg-muted flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
+});
+
+type DetailedAppointment = Appointment & {
+  property?: Property;
+};
 
 export default function SchedulePage() {
+  const { user } = useUser()
   const [date, setDate] = React.useState<Date | undefined>(new Date())
+  const [appointments, setAppointments] = React.useState<DetailedAppointment[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    const fetchAppointments = async () => {
+      if (!user) return
+      setIsLoading(true)
+      try {
+        const appointmentsCollection = collection(db, "appointments")
+        let q;
+        if (user.role === 'admin' || user.role === 'seller') {
+            q = query(appointmentsCollection)
+        } else {
+            q = query(appointmentsCollection, where("partnerId", "==", user.id))
+        }
+
+        const snapshot = await getDocs(q)
+        const appointmentsData = await Promise.all(snapshot.docs.map(async (docData) => {
+            const appointment = { id: docData.id, ...docData.data() } as Appointment;
+            
+            // Fetch property details for each appointment
+            const propDocRef = doc(db, "properties", appointment.propertyId);
+            const propDoc = await getDoc(propDocRef);
+            let propertyData: Property | undefined = undefined;
+            if (propDoc.exists()) {
+                const data = propDoc.data() as Property;
+                let featureImageUrl = 'https://placehold.co/400x225.png';
+                if (data.featureImageId) {
+                    const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
+                    if (fileDoc.exists()) {
+                        featureImageUrl = fileDoc.data()?.data;
+                    }
+                }
+                propertyData = { ...data, id: propDoc.id, featureImage: featureImageUrl };
+            }
+
+            return { 
+                ...appointment,
+                visitDate: (appointment.visitDate as Timestamp).toDate(),
+                property: propertyData
+            } as DetailedAppointment;
+        }));
+        
+        setAppointments(appointmentsData);
+      } catch (error) {
+        console.error("Error fetching appointments:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchAppointments()
+  }, [user])
 
   const selectedDayAppointments = appointments.filter(
     (appointment) =>
-      date && new Date(appointment.date).toDateString() === date.toDateString()
+      date && new Date(appointment.visitDate as Date).toDateString() === date.toDateString()
   )
 
   return (
@@ -46,25 +115,44 @@ export default function SchedulePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                Appointments for {date ? date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'today'}
+                Appointments for {date ? format(date, "PPP") : 'today'}
               </CardTitle>
               <CardDescription>
                 You have {selectedDayAppointments.length} appointments scheduled.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selectedDayAppointments.length > 0 ? (
-                selectedDayAppointments.map((appointment) => (
-                  <div key={appointment.id} className="flex items-center p-3 rounded-lg border bg-card">
-                    <div className="flex-1">
-                      <p className="font-semibold">{appointment.client}</p>
-                      <p className="text-sm text-muted-foreground">{appointment.property}</p>
-                    </div>
-                    <div className="text-right">
-                       <Badge variant="outline">{appointment.type}</Badge>
-                       <p className="text-sm mt-1">{appointment.time}</p>
-                    </div>
+              {isLoading ? (
+                  <div className="flex justify-center py-8">
+                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
+              ) : selectedDayAppointments.length > 0 ? (
+                selectedDayAppointments.map((appointment) => (
+                  <Card key={appointment.id}>
+                    <CardHeader className="flex flex-row gap-4 p-4">
+                        <Image 
+                            src={appointment.property?.featureImage || 'https://placehold.co/100x100.png'} 
+                            alt={appointment.property?.catalogTitle || 'Property'}
+                            width={100}
+                            height={100}
+                            className="rounded-md object-cover"
+                            data-ai-hint="house exterior"
+                        />
+                        <div className="flex-1">
+                            <p className="font-semibold">{appointment.property?.catalogTitle}</p>
+                            <p className="text-sm text-muted-foreground">{appointment.property?.addressLine}</p>
+                            <p className="text-sm font-medium mt-2">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
+                        </div>
+                    </CardHeader>
+                    {appointment.property?.latitude && appointment.property?.longitude && (
+                        <CardContent className="p-0">
+                           <LocationPicker 
+                                onLocationChange={() => {}} 
+                                position={[parseFloat(appointment.property.latitude), parseFloat(appointment.property.longitude)]}
+                            />
+                        </CardContent>
+                    )}
+                  </Card>
                 ))
               ) : (
                 <div className="text-center text-muted-foreground py-8">
