@@ -15,6 +15,9 @@ import { Badge } from "@/components/ui/badge"
 import dynamic from "next/dynamic"
 import { useUser } from "@/hooks/use-user"
 import { Separator } from "@/components/ui/separator"
+import Autoplay from "embla-carousel-autoplay"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -55,6 +58,10 @@ export default function PropertyDetailsPage() {
 
     const isOwner = user?.role === 'admin' || user?.role === 'seller';
 
+    const plugin = React.useRef(
+        Autoplay({ delay: 3000, stopOnInteraction: true })
+    )
+
     React.useEffect(() => {
         if (!propertyId) return;
         
@@ -75,10 +82,12 @@ export default function PropertyDetailsPage() {
                          if(fileDoc.exists()) urls.push(fileDoc.data()?.data);
                     }
                     // Fetch slide images
-                    for (const slide of data.slides) {
-                        if(slide.image) {
-                            const fileDoc = await getDoc(doc(db, 'files', slide.image));
-                            if(fileDoc.exists()) urls.push(fileDoc.data()?.data);
+                    if (data.slides) {
+                        for (const slide of data.slides) {
+                            if(slide.image) {
+                                const fileDoc = await getDoc(doc(db, 'files', slide.image));
+                                if(fileDoc.exists()) urls.push(fileDoc.data()?.data);
+                            }
                         }
                     }
                     setImageUrls(urls);
@@ -133,7 +142,13 @@ export default function PropertyDetailsPage() {
                     {/* Image Carousel */}
                     <Card>
                         <CardContent className="p-0">
-                           <Carousel className="w-full">
+                           <Carousel 
+                                className="w-full"
+                                plugins={[plugin.current]}
+                                onMouseEnter={plugin.current.stop}
+                                onMouseLeave={plugin.current.reset}
+                                opts={{loop: true}}
+                            >
                                 <CarouselContent>
                                     {imageUrls.length > 0 ? imageUrls.map((url, index) => (
                                         <CarouselItem key={index}>
@@ -223,8 +238,46 @@ export default function PropertyDetailsPage() {
                                 <div className="flex items-center gap-2"><Car className="h-5 w-5 text-muted-foreground"/><p>{property.parkingSpaces || 'N/A'} parking</p></div>
                                 <div className="flex items-center gap-2"><Ruler className="h-5 w-5 text-muted-foreground"/><p>{property.builtUpArea || 'N/A'} {property.unitOfMeasurement}</p></div>
                             </div>
-                            <Separator />
-                            <Button className="w-full">Contact Agent</Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* Enquiry Form */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Enquiry Form</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="propertyId">Property ID</Label>
+                                <Input id="propertyId" defaultValue={propertyId} disabled />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="name">Full Name</Label>
+                                <Input id="name" placeholder="John Doe" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="phone">Phone Number</Label>
+                                <Input id="phone" type="tel" placeholder="(123) 456-7890" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="email">Email</Label>
+                                <Input id="email" type="email" placeholder="you@example.com" />
+                            </div>
+                             <div className="grid grid-cols-3 gap-2">
+                                 <div className="space-y-2 col-span-1">
+                                    <Label htmlFor="city">City</Label>
+                                    <Input id="city" placeholder="City" />
+                                </div>
+                                 <div className="space-y-2 col-span-1">
+                                    <Label htmlFor="state">State</Label>
+                                    <Input id="state" placeholder="State" />
+                                </div>
+                                <div className="space-y-2 col-span-1">
+                                    <Label htmlFor="country">Country</Label>
+                                    <Input id="country" placeholder="Country" />
+                                </div>
+                            </div>
+                            <Button className="w-full">Submit Enquiry</Button>
                         </CardContent>
                     </Card>
 
