@@ -249,15 +249,15 @@ export default function AddPropertyPage() {
             isBathroomsEnabled: true,
             isBalconiesEnabled: true,
             isParkingSpacesEnabled: true,
-            builtUpArea: undefined,
-            carpetArea: undefined,
-            superBuiltUpArea: undefined,
-            totalFloors: undefined,
-            floorNumber: undefined,
-            bedrooms: undefined,
-            bathrooms: undefined,
-            balconies: undefined,
-            parkingSpaces: undefined,
+            builtUpArea: '',
+            carpetArea: '',
+            superBuiltUpArea: '',
+            totalFloors: '',
+            floorNumber: '',
+            bedrooms: '',
+            bathrooms: '',
+            balconies: '',
+            parkingSpaces: '',
         },
         mode: "onChange",
     });
@@ -358,9 +358,9 @@ export default function AddPropertyPage() {
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
-                <div>
-                     <h1 className="text-2xl font-bold tracking-tight font-headline">Add New Property</h1>
-                     {propertyCode && <p className="text-sm text-muted-foreground font-mono">Property Code: {propertyCode}</p>}
+                 <div className="p-2 bg-muted rounded-md">
+                    <h1 className="text-xl font-bold tracking-tight font-headline">Add New Property</h1>
+                    {propertyCode && <p className="text-sm text-muted-foreground font-mono">Property Code: {propertyCode}</p>}
                 </div>
             </div>
 
@@ -560,3 +560,4 @@ export default function AddPropertyPage() {
     
 
     
+
