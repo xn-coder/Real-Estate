@@ -253,6 +253,9 @@ export default function AddPropertyPage() {
             airportDistance: '',
             schoolDistance: '',
             otherConnectivity: '',
+            name: '',
+            phone: '',
+            email: '',
             altPhone: '',
             agencyName: '',
             reraId: '',
@@ -430,7 +433,7 @@ export default function AddPropertyPage() {
                                                      <FormField
                                                         control={form.control}
                                                         name={`slides.${index}.image`}
-                                                        render={({ field: { onChange, value, ...rest} }) => (
+                                                        render={({ field: { onChange, ...rest} }) => (
                                                             <FormItem>
                                                                 <FormLabel>Image</FormLabel>
                                                                 <div className="w-full aspect-[16/9] bg-muted rounded-md flex items-center justify-center overflow-hidden">
@@ -447,7 +450,7 @@ export default function AddPropertyPage() {
                                                                     )}
                                                                 </div>
                                                                 <FormControl>
-                                                                    <Input className="hidden" id={`banner-upload-${index}`} type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
+                                                                    <Input className="hidden" id={`banner-upload-${index}`} type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
                                                                 </FormControl>
                                                                 <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => document.getElementById(`banner-upload-${index}`)?.click()}>
                                                                     <Upload className="mr-2 h-4 w-4" /> Upload
