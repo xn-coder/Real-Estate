@@ -23,6 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
+import { sendOtp, verifyOtp } from "@/services/otp-service"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -58,6 +59,7 @@ const enquiryFormSchema = z.object({
   city: z.string().min(1, "City is required."),
   state: z.string().min(1, "State is required."),
   country: z.string().min(1, "Country is required."),
+  otp: z.string().length(6, "OTP must be 6 digits.").optional(),
 });
 type EnquiryFormValues = z.infer<typeof enquiryFormSchema>;
 
@@ -73,6 +75,9 @@ export default function PropertyDetailsPage() {
     const [imageUrls, setImageUrls] = React.useState<string[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [isSubmittingEnquiry, setIsSubmittingEnquiry] = React.useState(false);
+    const [otpSent, setOtpSent] = React.useState(false);
+    const [isOtpSending, setIsOtpSending] = React.useState(false);
+    const [isOtpVerified, setIsOtpVerified] = React.useState(false);
 
     const isOwner = user?.role === 'admin' || user?.role === 'seller';
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
@@ -84,15 +89,19 @@ export default function PropertyDetailsPage() {
     
     const enquiryForm = useForm<EnquiryFormValues>({
         resolver: zodResolver(enquiryFormSchema),
-        defaultValues: { name: "", phone: "", email: "", city: "", state: "", country: "" },
+        defaultValues: { name: "", phone: "", email: "", city: "", state: "", country: "", otp: "" },
     });
 
     const onEnquirySubmit = async (values: EnquiryFormValues) => {
-        if (!user || !property) return;
+        if (!user || !property || !isOtpVerified) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please verify OTP before submitting.' });
+            return;
+        }
         setIsSubmittingEnquiry(true);
         try {
+            const { otp, ...leadData } = values;
             await addDoc(collection(db, "leads"), {
-                ...values,
+                ...leadData,
                 propertyId: property.id,
                 partnerId: user.id,
                 status: "New",
@@ -103,6 +112,8 @@ export default function PropertyDetailsPage() {
                 description: "Your enquiry has been sent. We will get back to you shortly.",
             });
             enquiryForm.reset();
+            setOtpSent(false);
+            setIsOtpVerified(false);
         } catch (error) {
             console.error("Error submitting enquiry:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry." });
@@ -110,6 +121,52 @@ export default function PropertyDetailsPage() {
             setIsSubmittingEnquiry(false);
         }
     }
+    
+    const handleSendOtp = async () => {
+        const email = enquiryForm.getValues("email");
+        const isEmailValid = await enquiryForm.trigger("email");
+
+        if (!isEmailValid) {
+            enquiryForm.setFocus("email");
+            return;
+        }
+        
+        setIsOtpSending(true);
+        try {
+            await sendOtp(email);
+            setOtpSent(true);
+            toast({ title: "OTP Sent", description: `An OTP has been sent to ${email}.` });
+        } catch (error) {
+            console.error("Error sending OTP:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to send OTP." });
+        } finally {
+            setIsOtpSending(false);
+        }
+    }
+
+    const handleVerifyOtp = async () => {
+        const otp = enquiryForm.getValues("otp");
+        const email = enquiryForm.getValues("email");
+        if (!otp || otp.length !== 6) {
+            enquiryForm.setError("otp", { message: "Please enter a valid 6-digit OTP."});
+            return;
+        }
+
+        try {
+            const isValid = await verifyOtp(email, otp);
+            if (isValid) {
+                setIsOtpVerified(true);
+                toast({ title: "OTP Verified", description: "You can now submit your enquiry." });
+            } else {
+                enquiryForm.setError("otp", { message: "Invalid OTP. Please try again." });
+                setIsOtpVerified(false);
+            }
+        } catch (error) {
+            console.error("Error verifying OTP:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to verify OTP." });
+            setIsOtpVerified(false);
+        }
+    };
 
 
     React.useEffect(() => {
@@ -316,15 +373,35 @@ export default function PropertyDetailsPage() {
                                             <Label htmlFor="propertyId">Property ID</Label>
                                             <Input id="propertyId" defaultValue={propertyId} disabled />
                                         </div>
-                                        <FormField control={enquiryForm.control} name="name" render={({ field }) => ( <FormItem> <Label>Full Name</Label> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                        <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <Label>Phone Number</Label> <FormControl><Input type="tel" placeholder="(123) 456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                        <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <Label>Email</Label> <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <FormField control={enquiryForm.control} name="city" render={({ field }) => ( <FormItem className="col-span-1"> <Label>City</Label> <FormControl><Input placeholder="City" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <Label>State</Label> <FormControl><Input placeholder="State" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <Label>Country</Label> <FormControl><Input placeholder="Country" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={enquiryForm.control} name="name" render={({ field }) => ( <FormItem> <Label>Full Name</Label> <FormControl><Input placeholder="John Doe" {...field} disabled={isOtpVerified} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <Label>Phone Number</Label> <FormControl><Input type="tel" placeholder="(123) 456-7890" {...field} disabled={isOtpVerified} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        
+                                        <div className="space-y-2">
+                                            <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <Label>Email</Label> <FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={otpSent || isOtpVerified} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            {!otpSent && (
+                                                <Button type="button" size="sm" className="w-full" onClick={handleSendOtp} disabled={isOtpSending}>
+                                                    {isOtpSending && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Send OTP
+                                                </Button>
+                                            )}
                                         </div>
-                                        <Button type="submit" className="w-full" disabled={isSubmittingEnquiry}>
+                                         {otpSent && !isOtpVerified && (
+                                            <div className="space-y-2">
+                                                <FormField control={enquiryForm.control} name="otp" render={({ field }) => ( <FormItem> <Label>Enter OTP</Label> <FormControl><Input placeholder="_ _ _ _ _ _" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                                <Button type="button" size="sm" variant="secondary" className="w-full" onClick={handleVerifyOtp}>Verify OTP</Button>
+                                            </div>
+                                         )}
+                                        {isOtpVerified && (
+                                            <div className="p-2 text-sm text-green-700 bg-green-100 rounded-md flex items-center gap-2">
+                                                <CheckCircle className="h-4 w-4"/> Email Verified Successfully
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <FormField control={enquiryForm.control} name="city" render={({ field }) => ( <FormItem className="col-span-1"> <Label>City</Label> <FormControl><Input placeholder="City" {...field} disabled={isOtpVerified} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <Label>State</Label> <FormControl><Input placeholder="State" {...field} disabled={isOtpVerified} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <Label>Country</Label> <FormControl><Input placeholder="Country" {...field} disabled={isOtpVerified} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        </div>
+                                        <Button type="submit" className="w-full" disabled={isSubmittingEnquiry || !isOtpVerified}>
                                             {isSubmittingEnquiry && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                             Submit Enquiry
                                         </Button>
