@@ -3,13 +3,12 @@
 
 import * as React from "react"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal, PlusCircle, ArrowLeft, Loader2 } from "lucide-react"
@@ -86,73 +85,61 @@ export default function ListingsPage() {
             </Button>
         )}
       </div>
-      <div className="border rounded-lg">
-         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="hidden w-[100px] sm:table-cell">
-                <span className="sr-only">Image</span>
-              </TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Price</TableHead>
-              <TableHead className="hidden md:table-cell">Beds/Baths</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                    </TableCell>
-                </TableRow>
-            ) : listings.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        No properties found.
-                    </TableCell>
-                </TableRow>
-            ) : listings.map((listing) => (
-              <TableRow key={listing.id}>
-                <TableCell className="hidden sm:table-cell">
-                  <Image
-                    alt="Property image"
-                    className="aspect-square rounded-md object-cover"
-                    height="64"
-                    src={listing.featureImage || 'https://placehold.co/64x64.png'}
-                    width="64"
-                    data-ai-hint="house exterior"
-                  />
-                </TableCell>
-                <TableCell className="font-medium">{listing.addressLine}</TableCell>
-                <TableCell>
-                  <Badge variant={statusColors[listing.status] || 'default'}>{listing.status}</Badge>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">${listing.listingPrice.toLocaleString()}</TableCell>
-                <TableCell className="hidden md:table-cell">{listing.bedrooms}bd / {listing.bathrooms}ba</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
+      
+      {isLoading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+                <Card key={i}><div className="bg-muted rounded-lg h-80 animate-pulse"></div></Card>
             ))}
-          </TableBody>
-        </Table>
-      </div>
+        </div>
+      ) : listings.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <p>No properties found.</p>
+          </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {listings.map((listing) => (
+                <Card key={listing.id} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+                    <CardHeader className="p-0 relative">
+                        <Image
+                            alt={listing.catalogTitle || "Property image"}
+                            className="aspect-video object-cover"
+                            height="225"
+                            src={listing.featureImage || 'https://placehold.co/400x225.png'}
+                            width="400"
+                            data-ai-hint="house exterior"
+                        />
+                        <div className="absolute top-2 right-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="secondary" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Toggle menu</span>
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem>Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-4 flex-grow">
+                        <Badge variant={statusColors[listing.status] || 'default'} className="mb-2">{listing.status}</Badge>
+                        <h3 className="font-semibold text-lg leading-tight truncate" title={listing.addressLine}>{listing.addressLine}</h3>
+                        <p className="text-muted-foreground text-sm">{listing.city}, {listing.state}</p>
+                    </CardContent>
+                    <CardFooter className="p-4 pt-0 border-t mt-auto bg-muted/50">
+                        <div className="flex justify-between items-center w-full text-sm">
+                            <span className="font-bold text-lg text-primary">${listing.listingPrice.toLocaleString()}</span>
+                            <span className="text-muted-foreground">{listing.bedrooms}bd / {listing.bathrooms}ba</span>
+                        </div>
+                    </CardFooter>
+                </Card>
+            ))}
+        </div>
+      )}
     </div>
   )
 }
