@@ -107,7 +107,8 @@ export default function ListingsPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {listings.map((listing) => (
-                <Card key={listing.id} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+              <Link href={`/listings/${listing.id}`} key={listing.id} className="block hover:shadow-lg transition-shadow rounded-lg">
+                <Card className="flex flex-col overflow-hidden shadow-md h-full">
                     <CardHeader className="p-0 relative">
                         <Image
                             alt={listing.catalogTitle || "Property image"}
@@ -120,7 +121,7 @@ export default function ListingsPage() {
                         <div className="absolute top-2 right-2">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="secondary" className="h-8 w-8">
+                                <Button aria-haspopup="true" size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
                                     <MoreHorizontal className="h-4 w-4" />
                                     <span className="sr-only">Toggle menu</span>
                                 </Button>
@@ -145,6 +146,7 @@ export default function ListingsPage() {
                         </div>
                     </CardFooter>
                 </Card>
+              </Link>
             ))}
         </div>
       )}
