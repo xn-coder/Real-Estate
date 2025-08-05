@@ -44,6 +44,11 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   loading: () => <div className="h-[242px] w-full rounded-md border border-input flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
 });
 
+const LocationPicker = dynamic(() => import('@/components/location-picker'), {
+    ssr: false,
+    loading: () => <div className="h-[400px] w-full rounded-md bg-muted flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
+});
+
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         if (!file) {
@@ -360,6 +365,9 @@ export default function AddPropertyPage() {
         "Property Size & Structure", "Features & Amenities", "Interior & Furnishing",
         "Location Details", "Nearby Connectivity", "Pricing & Financials", "Contact & Listing Agent"
     ];
+    
+    const lat = form.watch('latitude');
+    const lon = form.watch('longitude');
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -401,7 +409,7 @@ export default function AddPropertyPage() {
                                         <FormField control={form.control} name="catalogType" render={({ field }) => ( <FormItem><FormLabel>Catalog Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="New Project">New Project</SelectItem><SelectItem value="Project">Project</SelectItem><SelectItem value="Resales">Resales</SelectItem><SelectItem value="Rental">Rental</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                                      </div>
                                       <FormField control={form.control} name="reraApproved" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>RERA Approved</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem> )} />
-                                      <FormField control={form.control} name="featureImage" render={({ field: { onChange, ...rest } }) => ( <FormItem><FormLabel>Featured Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
+                                      <FormField control={form.control} name="featureImage" render={({ field: { onChange } }) => ( <FormItem><FormLabel>Featured Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
                                 </div>
                             )}
 
@@ -417,7 +425,7 @@ export default function AddPropertyPage() {
                                                      <FormField
                                                         control={form.control}
                                                         name={`slides.${index}.image`}
-                                                        render={({ field: { onChange, ...rest } }) => (
+                                                        render={({ field: { onChange } }) => (
                                                             <FormItem>
                                                                 <FormLabel>Image</FormLabel>
                                                                 <div className="w-full aspect-[16/9] bg-muted rounded-md flex items-center justify-center overflow-hidden">
@@ -544,17 +552,26 @@ export default function AddPropertyPage() {
 
                              {/* Step 7: Location Details */}
                             {currentStep === 6 && (
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="locality" render={({ field }) => ( <FormItem><FormLabel>Locality/Area</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="addressLine" render={({ field }) => ( <FormItem><FormLabel>Address Line</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="state" render={({ field }) => ( <FormItem><FormLabel>State</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="pincode" render={({ field }) => ( <FormItem><FormLabel>Pincode</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="landmark" render={({ field }) => ( <FormItem><FormLabel>Nearby Landmark</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <div className="md:col-span-2 grid md:grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="latitude" render={({ field }) => ( <FormItem><FormLabel>Latitude</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                        <FormField control={form.control} name="longitude" render={({ field }) => ( <FormItem><FormLabel>Longitude</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                <div className="space-y-4">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="locality" render={({ field }) => ( <FormItem><FormLabel>Locality/Area</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="addressLine" render={({ field }) => ( <FormItem><FormLabel>Address Line</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="state" render={({ field }) => ( <FormItem><FormLabel>State</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="pincode" render={({ field }) => ( <FormItem><FormLabel>Pincode</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="landmark" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Nearby Landmark</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    </div>
+                                     <div>
+                                        <FormLabel>Pin Location on Map</FormLabel>
+                                        <LocationPicker 
+                                            onLocationChange={(lat, lng) => {
+                                                form.setValue('latitude', lat.toString());
+                                                form.setValue('longitude', lng.toString());
+                                            }}
+                                            position={lat && lon ? [parseFloat(lat), parseFloat(lon)] : undefined}
+                                        />
+                                        <p className="text-sm text-muted-foreground mt-2">Lat: {lat || 'N/A'}, Lng: {lon || 'N/A'}</p>
                                     </div>
                                 </div>
                             )}
