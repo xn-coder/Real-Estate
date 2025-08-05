@@ -142,30 +142,32 @@ export default function SchedulePage() {
               ) : selectedDayAppointments.length > 0 ? (
                 selectedDayAppointments.map((appointment) => (
                   <Card key={appointment.id}>
-                    <CardContent className="p-4 flex flex-col md:flex-row gap-4">
+                    <CardContent className="p-4 flex gap-4">
                         <Image 
-                            src={appointment.property?.featureImage || 'https://placehold.co/150x150.png'} 
+                            src={appointment.property?.featureImage || 'https://placehold.co/120x120.png'} 
                             alt={appointment.property?.catalogTitle || 'Property'}
-                            width={150}
-                            height={150}
+                            width={100}
+                            height={100}
                             className="rounded-md object-cover aspect-square"
                             data-ai-hint="house exterior"
                         />
-                        <div className="flex-1 space-y-2">
-                            <p className="font-semibold text-lg">{appointment.property?.catalogTitle}</p>
-                            <p className="text-sm text-muted-foreground">{appointment.property?.addressLine}</p>
-                            <p className="text-sm font-medium">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
-                        </div>
-                         <div className="flex flex-col gap-2 justify-center">
-                            <Button variant="outline" size="sm" onClick={() => appointment.property && handleMapView(appointment.property)}>
-                                <Map className="mr-2 h-4 w-4" /> Map View
-                            </Button>
-                            <Button variant="outline" size="sm">
-                               <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
-                            </Button>
-                             <Button variant="destructive" size="sm">
-                               <X className="mr-2 h-4 w-4" /> Cancel
-                            </Button>
+                        <div className="flex-1 flex justify-between">
+                            <div className="space-y-1">
+                                <p className="font-semibold">{appointment.property?.catalogTitle}</p>
+                                <p className="text-sm text-muted-foreground">{appointment.property?.addressLine}</p>
+                                <p className="text-sm font-medium pt-2">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
+                            </div>
+                            <div className="flex flex-col gap-2 justify-center">
+                                <Button variant="outline" size="sm" onClick={() => appointment.property && handleMapView(appointment.property)}>
+                                    <Map className="mr-2 h-4 w-4" /> Map
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
+                                </Button>
+                                <Button variant="destructive" size="sm">
+                                <X className="mr-2 h-4 w-4" /> Cancel
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                   </Card>
