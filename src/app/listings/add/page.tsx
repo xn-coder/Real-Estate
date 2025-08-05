@@ -486,7 +486,44 @@ export default function AddPropertyPage() {
 
                              {/* Step 5: Amenities */}
                             {currentStep === 4 && (
-                                <FormField control={form.control} name="amenities" render={() => ( <FormItem> <div className="mb-4"><FormLabel className="text-base">Features & Amenities</FormLabel></div> <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"> {amenitiesList.map((item) => ( <FormField key={item.id} control={form.control} name="amenities" render={({ field }) => ( <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0"> <FormControl> <Checkbox checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange(field.value?.filter((value) => value !== item.id)) }} /> </FormControl> <FormLabel className="font-normal text-sm">{item.label}</FormLabel> </FormItem> )} /> ))} </div> <FormMessage /> </FormItem> )} />
+                                <FormField
+                                    control={form.control}
+                                    name="amenities"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <div className="mb-4">
+                                        <FormLabel className="text-base">Features & Amenities</FormLabel>
+                                        <FormDescription>
+                                            Select all the amenities that apply to the property.
+                                        </FormDescription>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {amenitiesList.map((item) => (
+                                            <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            return checked
+                                                            ? field.onChange([...(field.value || []), item.id])
+                                                            : field.onChange(
+                                                                field.value?.filter(
+                                                                    (value) => value !== item.id
+                                                                )
+                                                                )
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="text-sm font-normal">
+                                                    {item.label}
+                                                </FormLabel>
+                                            </FormItem>
+                                        ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
                             )}
                             
                             {/* Step 6: Interior & Furnishing */}
