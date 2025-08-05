@@ -214,6 +214,11 @@ export default function AddPropertyPage() {
         resolver: zodResolver(fullSchema),
         defaultValues: {
             // Initialize with defaults for all fields
+            catalogTitle: '',
+            catalogMetaDescription: '',
+            catalogMetaKeyword: '',
+            propertyTypeId: '',
+            overview: '',
             propertyCategory: 'Residential',
             propertyAge: 'New',
             catalogType: 'New Project',
