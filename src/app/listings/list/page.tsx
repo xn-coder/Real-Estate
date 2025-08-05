@@ -1,6 +1,7 @@
 
 'use client'
 
+import * as React from "react"
 import {
   Table,
   TableBody,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, ArrowLeft } from "lucide-react"
+import { MoreHorizontal, PlusCircle, ArrowLeft, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,20 +20,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { activeListings as listings } from "@/lib/data"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { useToast } from "@/hooks/use-toast"
+import type { Property } from "@/types/property"
+import Link from "next/link"
+import { useUser } from "@/hooks/use-user"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'For Sale': 'default',
@@ -43,6 +38,29 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
 
 export default function ListingsPage() {
     const router = useRouter();
+    const { toast } = useToast();
+    const { user } = useUser();
+    const [listings, setListings] = React.useState<Property[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const isSeller = user?.role === 'seller';
+
+    React.useEffect(() => {
+        const fetchListings = async () => {
+            setIsLoading(true);
+            try {
+                const snapshot = await getDocs(collection(db, "properties"));
+                const listingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
+                setListings(listingsData);
+            } catch (error) {
+                console.error("Error fetching listings:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch properties.' });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchListings();
+    }, [toast]);
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -52,50 +70,13 @@ export default function ListingsPage() {
             </Button>
             <h1 className="text-3xl font-bold tracking-tight font-headline">All Properties</h1>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> New Listing
+        {isSeller && (
+            <Button asChild>
+                <Link href="/listings/add">
+                    <PlusCircle className="mr-2 h-4 w-4" /> New Listing
+                </Link>
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Listing</DialogTitle>
-              <DialogDescription>
-                Enter the details of the new property listing.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="address" className="text-right">
-                  Address
-                </Label>
-                <Input id="address" placeholder="123 Main St" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="price" className="text-right">
-                  Price
-                </Label>
-                <Input id="price" type="number" placeholder="500000" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="bedrooms" className="text-right">
-                  Beds
-                </Label>
-                <Input id="bedrooms" type="number" placeholder="3" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="bathrooms" className="text-right">
-                  Baths
-                </Label>
-                <Input id="bathrooms" type="number" placeholder="2" className="col-span-3" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Save listing</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        )}
       </div>
       <div className="border rounded-lg">
         <Table>
@@ -114,23 +95,35 @@ export default function ListingsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {listings.map((listing) => (
+            {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    </TableCell>
+                </TableRow>
+            ) : listings.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        No properties found.
+                    </TableCell>
+                </TableRow>
+            ) : listings.map((listing) => (
               <TableRow key={listing.id}>
                 <TableCell className="hidden sm:table-cell">
                   <Image
                     alt="Property image"
                     className="aspect-square rounded-md object-cover"
                     height="64"
-                    src={listing.image}
+                    src={listing.featureImage || 'https://placehold.co/64x64.png'}
                     width="64"
                     data-ai-hint="house exterior"
                   />
                 </TableCell>
-                <TableCell className="font-medium">{listing.address}</TableCell>
+                <TableCell className="font-medium">{listing.addressLine}</TableCell>
                 <TableCell>
                   <Badge variant={statusColors[listing.status] || 'default'}>{listing.status}</Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">${listing.price.toLocaleString()}</TableCell>
+                <TableCell className="hidden md:table-cell">${listing.listingPrice.toLocaleString()}</TableCell>
                 <TableCell className="hidden md:table-cell">{listing.bedrooms}bd / {listing.bathrooms}ba</TableCell>
                 <TableCell>
                   <DropdownMenu>

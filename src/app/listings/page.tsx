@@ -12,19 +12,32 @@ import {
 import { Button } from "@/components/ui/button"
 import { Building, CheckCircle, ChevronRight, Loader2, PlusCircle, Hourglass } from "lucide-react"
 import Link from "next/link"
-import { activeListings } from "@/lib/data"
+import { db } from "@/lib/firebase"
+import { collection, getDocs, query, where } from "firebase/firestore"
+import { useUser } from "@/hooks/use-user"
 
 export default function ListingsDashboardPage() {
+  const { user } = useUser();
   const [counts, setCounts] = React.useState({ total: 0, pending: 0 })
   const [isLoading, setIsLoading] = React.useState(true)
+  const isSeller = user?.role === 'seller';
 
   React.useEffect(() => {
-    // In a real app, you'd fetch this from your database.
-    // We'll simulate it with the mock data for now.
-    const totalCount = activeListings.length
-    const pendingCount = activeListings.filter(l => l.status === 'Pending Verification').length
-    setCounts({ total: totalCount, pending: pendingCount })
-    setIsLoading(false)
+    const fetchCounts = async () => {
+        setIsLoading(true);
+        try {
+            const propertiesCollection = collection(db, "properties");
+            const totalSnapshot = await getDocs(propertiesCollection);
+            const pendingQuery = query(propertiesCollection, where("status", "==", "Pending Verification"));
+            const pendingSnapshot = await getDocs(pendingQuery);
+            setCounts({ total: totalSnapshot.size, pending: pendingSnapshot.size });
+        } catch (error) {
+            console.error("Error fetching property counts:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    fetchCounts();
   }, [])
 
   const statCards = [
@@ -41,11 +54,13 @@ export default function ListingsDashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Properties</h1>
-         <Button asChild>
-            <Link href="/listings/add">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Property
-            </Link>
-        </Button>
+         {isSeller && (
+            <Button asChild>
+                <Link href="/listings/add">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                </Link>
+            </Button>
+         )}
       </div>
 
        <div className="grid gap-4 md:grid-cols-2">
