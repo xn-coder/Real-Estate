@@ -27,7 +27,7 @@ export default function ListingsDashboardPage() {
         setIsLoading(true);
         try {
             const propertiesCollection = collection(db, "properties");
-            const totalSnapshot = await getDocs(propertiesCollection);
+            const totalSnapshot = await getDocs(query(propertiesCollection, where("status", "!=", "Pending Verification")));
             const pendingQuery = query(propertiesCollection, where("status", "==", "Pending Verification"));
             const pendingSnapshot = await getDocs(pendingQuery);
             setCounts({ total: totalSnapshot.size, pending: pendingSnapshot.size });

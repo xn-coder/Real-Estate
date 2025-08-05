@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import type { Property } from "@/types/property"
@@ -48,7 +48,8 @@ export default function ListingsPage() {
         const fetchListings = async () => {
             setIsLoading(true);
             try {
-                const snapshot = await getDocs(collection(db, "properties"));
+                const q = query(collection(db, "properties"), where("status", "!=", "Pending Verification"));
+                const snapshot = await getDocs(q);
                 const listingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
                 setListings(listingsData);
             } catch (error) {
