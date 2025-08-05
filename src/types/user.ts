@@ -38,12 +38,25 @@ export type User = {
   rejectionReason?: string;
   kycStatus?: 'verified' | 'pending' | 'rejected';
   website?: {
+    businessProfile?: {
+        businessName: string;
+        businessLogo: string;
+    };
     slideshow?: {
       id: string;
       title: string;
       bannerImage: string;
       linkUrl: string;
     }[];
+    contactDetails?: {
+        name: string;
+        phone: string;
+        email: string;
+        address: string;
+        city: string;
+        state: string;
+        pincode: string;
+    },
     aboutLegal?: {
       aboutText: string;
       termsLink: string;
