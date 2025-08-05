@@ -52,7 +52,7 @@ export default function ListingsDashboardPage() {
   ];
   
   const adminDashboardItems = [
-    { name: "Admin View Properties", href: "/listings/list", icon: Eye },
+    { name: "Admin View Properties", href: "/listings/admin-list", icon: Eye },
     { name: "Pending Properties", href: "/listings/pending", icon: Hourglass },
   ]
 

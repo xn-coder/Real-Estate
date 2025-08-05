@@ -28,7 +28,6 @@ import { useToast } from "@/hooks/use-toast"
 import type { Property } from "@/types/property"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
-import { format, addDays } from "date-fns"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'For Sale': 'default',
@@ -44,7 +43,6 @@ export default function ListingsPage() {
     const [listings, setListings] = React.useState<Property[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const isSeller = user?.role === 'seller';
-    const isAdmin = user?.role === 'admin';
 
     React.useEffect(() => {
         const fetchListings = async () => {
@@ -71,67 +69,24 @@ export default function ListingsPage() {
         fetchListings();
     }, [toast]);
     
-    const renderAdminView = () => (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Listing ID</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Listing Date</TableHead>
-                    <TableHead>Expiry Date</TableHead>
-                    <TableHead>Views</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>
-                        <span className="sr-only">Actions</span>
-                    </TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {isLoading ? (
-                    <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                        </TableCell>
-                    </TableRow>
-                ) : listings.length === 0 ? (
-                    <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center">
-                            No properties found.
-                        </TableCell>
-                    </TableRow>
-                ) : listings.map((listing) => {
-                    const expiryDate = listing.createdAt ? addDays(new Date(listing.createdAt), 90) : new Date();
-                    return (
-                        <TableRow key={listing.id}>
-                            <TableCell className="font-mono text-xs">{listing.id}</TableCell>
-                            <TableCell><Badge variant={statusColors[listing.status] || 'default'}>{listing.status}</Badge></TableCell>
-                            <TableCell>{listing.createdAt ? format(new Date(listing.createdAt), 'PPP') : 'N/A'}</TableCell>
-                            <TableCell>{format(expiryDate, 'PPP')}</TableCell>
-                            <TableCell>{listing.views || 0}</TableCell>
-                            <TableCell className="max-w-[200px] truncate">{listing.modificationNotes || '-'}</TableCell>
-                            <TableCell>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button aria-haspopup="true" size="icon" variant="ghost">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Toggle menu</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem>Delete</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                    )
-                })}
-            </TableBody>
-        </Table>
-    );
-    
-    const renderDefaultView = () => (
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">All Properties</h1>
+        </div>
+        {isSeller && (
+            <Button asChild>
+                <Link href="/listings/add">
+                    <PlusCircle className="mr-2 h-4 w-4" /> New Listing
+                </Link>
+            </Button>
+        )}
+      </div>
+      <div className="border rounded-lg">
          <Table>
           <TableHeader>
             <TableRow>
@@ -197,27 +152,6 @@ export default function ListingsPage() {
             ))}
           </TableBody>
         </Table>
-    );
-
-  return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">All Properties</h1>
-        </div>
-        {isSeller && (
-            <Button asChild>
-                <Link href="/listings/add">
-                    <PlusCircle className="mr-2 h-4 w-4" /> New Listing
-                </Link>
-            </Button>
-        )}
-      </div>
-      <div className="border rounded-lg">
-        {isAdmin ? renderAdminView() : renderDefaultView()}
       </div>
     </div>
   )
