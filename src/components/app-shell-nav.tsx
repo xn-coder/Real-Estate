@@ -95,7 +95,7 @@ const adminNavItems: NavItem[] = [
 
 const partnerNavItems: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/listings', icon: Building, label: 'Properties' },
+  { href: '/listings/list', icon: Building, label: 'Properties' },
   { href: '/leads', icon: UserRound, label: 'Manage Leads' },
   { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
   { href: '/schedule', icon: Calendar, label: 'Location Visit Schedule' },
