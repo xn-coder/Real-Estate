@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Calendar as CalendarIcon, Eye } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Calendar as CalendarIcon, Eye, Building } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New': 'default',
@@ -161,6 +162,7 @@ export default function LeadsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Client Name</TableHead>
+              <TableHead>Property</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Status</TableHead>
@@ -172,13 +174,13 @@ export default function LeadsPage() {
           <TableBody>
             {isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                     </TableCell>
                 </TableRow>
             ) : leads.length === 0 ? (
                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                         No leads found.
                     </TableCell>
                 </TableRow>
@@ -186,6 +188,14 @@ export default function LeadsPage() {
                 leads.map((lead) => (
                 <TableRow key={lead.id}>
                     <TableCell className="font-medium">{lead.name}</TableCell>
+                    <TableCell>
+                        <Button variant="link" asChild className="p-0 h-auto">
+                           <Link href={`/listings/${lead.propertyId}`}>
+                                <Building className="mr-2 h-4 w-4" />
+                                {lead.propertyId}
+                            </Link>
+                        </Button>
+                    </TableCell>
                     <TableCell>{lead.email}</TableCell>
                     <TableCell>{lead.phone}</TableCell>
                     <TableCell>
