@@ -389,39 +389,43 @@ export default function PropertyDetailsPage() {
 
             <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
                 <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Verify Your Email</DialogTitle>
-                        <DialogDescription>
-                            We've sent a 6-digit OTP to {enquiryForm.getValues("email")}. 
-                            Please enter it below to submit your enquiry.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2 py-4">
-                         <FormField 
-                            control={enquiryForm.control} 
-                            name="otp" 
-                            render={({ field }) => ( 
-                                <FormItem>
-                                    <Label>Enter OTP</Label>
-                                    <FormControl>
-                                        <Input 
-                                            placeholder="_ _ _ _ _ _" 
-                                            {...field}
-                                            disabled={isSubmittingEnquiry}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} 
-                         />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsOtpDialogOpen(false)} disabled={isSubmittingEnquiry}>Cancel</Button>
-                        <Button onClick={handleVerifyOtpAndSubmit} disabled={isSubmittingEnquiry}>
-                            {isSubmittingEnquiry && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                            Verify & Submit
-                        </Button>
-                    </DialogFooter>
+                    <Form {...enquiryForm}>
+                        <form onSubmit={(e) => { e.preventDefault(); handleVerifyOtpAndSubmit(); }}>
+                            <DialogHeader>
+                                <DialogTitle>Verify Your Email</DialogTitle>
+                                <DialogDescription>
+                                    We've sent a 6-digit OTP to {enquiryForm.getValues("email")}. 
+                                    Please enter it below to submit your enquiry.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-2 py-4">
+                                <FormField 
+                                    control={enquiryForm.control} 
+                                    name="otp" 
+                                    render={({ field }) => ( 
+                                        <FormItem>
+                                            <Label>Enter OTP</Label>
+                                            <FormControl>
+                                                <Input 
+                                                    placeholder="_ _ _ _ _ _" 
+                                                    {...field}
+                                                    disabled={isSubmittingEnquiry}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} 
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setIsOtpDialogOpen(false)} disabled={isSubmittingEnquiry}>Cancel</Button>
+                                <Button type="submit" disabled={isSubmittingEnquiry}>
+                                    {isSubmittingEnquiry && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                    Verify & Submit
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
                 </DialogContent>
             </Dialog>
 
