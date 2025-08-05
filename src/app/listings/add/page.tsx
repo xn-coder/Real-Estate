@@ -274,6 +274,11 @@ export default function AddPropertyPage() {
             bathrooms: '',
             balconies: '',
             parkingSpaces: '',
+            listingPrice: '',
+            maintenanceCharge: '',
+            securityDeposit: '',
+            bookingAmount: '',
+            registrationCharge: '',
         },
         mode: "onChange",
     });
@@ -425,7 +430,7 @@ export default function AddPropertyPage() {
                                                      <FormField
                                                         control={form.control}
                                                         name={`slides.${index}.image`}
-                                                        render={({ field: { onChange } }) => (
+                                                        render={({ field: { onChange, value, ...rest} }) => (
                                                             <FormItem>
                                                                 <FormLabel>Image</FormLabel>
                                                                 <div className="w-full aspect-[16/9] bg-muted rounded-md flex items-center justify-center overflow-hidden">
