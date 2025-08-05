@@ -232,6 +232,12 @@ export default function AddPropertyPage() {
             listedBy: 'Agent',
             contactTime: 'Morning',
             furnitureIncluded: '',
+            locality: '',
+            addressLine: '',
+            city: '',
+            state: '',
+            country: '',
+            pincode: '',
             landmark: '',
             latitude: '',
             longitude: '',
@@ -414,13 +420,13 @@ export default function AddPropertyPage() {
                                                         render={({ field: { onChange, ...rest } }) => (
                                                             <FormItem>
                                                                 <FormLabel>Image</FormLabel>
-                                                                <div className="w-full aspect-[3/1] bg-muted rounded-md flex items-center justify-center overflow-hidden">
+                                                                <div className="w-full aspect-[16/9] bg-muted rounded-md flex items-center justify-center overflow-hidden">
                                                                    {imagePreview ? (
                                                                         <Image
                                                                             src={typeof imagePreview === 'string' ? imagePreview : URL.createObjectURL(imagePreview)}
                                                                             alt="Banner Preview"
                                                                             width={1200}
-                                                                            height={400}
+                                                                            height={675}
                                                                             className="w-full h-full object-cover"
                                                                         />
                                                                     ) : (
