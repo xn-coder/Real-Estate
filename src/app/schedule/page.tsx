@@ -5,7 +5,7 @@ import React from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X } from "lucide-react"
+import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
@@ -19,8 +19,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -142,33 +147,38 @@ export default function SchedulePage() {
               ) : selectedDayAppointments.length > 0 ? (
                 selectedDayAppointments.map((appointment) => (
                   <Card key={appointment.id}>
-                    <CardContent className="p-4 flex gap-4">
+                    <CardContent className="p-4 flex items-center gap-4">
                         <Image 
-                            src={appointment.property?.featureImage || 'https://placehold.co/120x120.png'} 
+                            src={appointment.property?.featureImage || 'https://placehold.co/100x100.png'} 
                             alt={appointment.property?.catalogTitle || 'Property'}
                             width={100}
                             height={100}
                             className="rounded-md object-cover aspect-square"
                             data-ai-hint="house exterior"
                         />
-                        <div className="flex-1 flex justify-between">
-                            <div className="space-y-1">
-                                <p className="font-semibold">{appointment.property?.catalogTitle}</p>
-                                <p className="text-sm text-muted-foreground">{appointment.property?.addressLine}</p>
-                                <p className="text-sm font-medium pt-2">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
-                            </div>
-                            <div className="flex flex-col gap-2 justify-center">
-                                <Button variant="outline" size="sm" onClick={() => appointment.property && handleMapView(appointment.property)}>
-                                    <Map className="mr-2 h-4 w-4" /> Map
-                                </Button>
-                                <Button variant="outline" size="sm">
-                                <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
-                                </Button>
-                                <Button variant="destructive" size="sm">
-                                <X className="mr-2 h-4 w-4" /> Cancel
-                                </Button>
-                            </div>
+                        <div className="flex-1 space-y-1">
+                            <p className="font-semibold">{appointment.property?.catalogTitle}</p>
+                            <p className="text-sm text-muted-foreground">{appointment.property?.addressLine}</p>
+                            <p className="text-sm font-medium pt-2">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
                         </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
+                                    <Map className="mr-2 h-4 w-4" /> Map View
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                    <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">
+                                    <X className="mr-2 h-4 w-4" /> Cancel
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </CardContent>
                   </Card>
                 ))
