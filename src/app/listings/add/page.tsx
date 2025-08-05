@@ -450,7 +450,7 @@ export default function AddPropertyPage() {
                                                                     )}
                                                                 </div>
                                                                 <FormControl>
-                                                                    <Input className="hidden" id={`banner-upload-${index}`} type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
+                                                                    <Input className="hidden" id={`banner-upload-${index}`} type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} />
                                                                 </FormControl>
                                                                 <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => document.getElementById(`banner-upload-${index}`)?.click()}>
                                                                     <Upload className="mr-2 h-4 w-4" /> Upload
@@ -475,7 +475,7 @@ export default function AddPropertyPage() {
                                             </Button>
                                         </div>
                                     )})}
-                                    <Button type="button" variant="outline" onClick={() => append({ title: '', image: undefined })}>
+                                    <Button type="button" variant="outline" onClick={() => append({ title: '', image: null })}>
                                         <PlusCircle className="mr-2 h-4 w-4"/>Add Slide
                                     </Button>
                                 </div>
