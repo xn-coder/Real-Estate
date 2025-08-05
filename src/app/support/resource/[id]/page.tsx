@@ -17,6 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function ResourceDetailsPage() {
   const params = useParams()
@@ -110,15 +111,22 @@ export default function ResourceDetailsPage() {
 
   const renderFAQs = () => (
     <div className="mt-8">
-        <h2 className="text-2xl font-bold font-headline mb-4">Frequently Asked Questions</h2>
-        <Accordion type="single" collapsible className="w-full">
-            {(resource.faqs || []).map((faq, index) => (
-                <AccordionItem value={`item-${index}`} key={index}>
-                    <AccordionTrigger>{faq.question}</AccordionTrigger>
-                    <AccordionContent>{faq.answer}</AccordionContent>
-                </AccordionItem>
-            ))}
-        </Accordion>
+      <Card>
+        <CardHeader>
+          <CardTitle>Frequently Asked Questions</CardTitle>
+          <CardDescription>Find answers to common questions about this topic.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+              {(resource.faqs || []).map((faq, index) => (
+                  <AccordionItem value={`item-${index}`} key={index}>
+                      <AccordionTrigger>{faq.question}</AccordionTrigger>
+                      <AccordionContent>{faq.answer}</AccordionContent>
+                  </AccordionItem>
+              ))}
+          </Accordion>
+        </CardContent>
+      </Card>
     </div>
   )
 
