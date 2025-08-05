@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2 } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Calendar as CalendarIcon } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +36,8 @@ import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp } from "firebase/firestore"
 import type { Lead } from "@/types/lead"
 import { useToast } from "@/hooks/use-toast"
+import { Calendar } from "@/components/ui/calendar"
+import { createAppointment } from "@/services/appointment-service"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New': 'default',
@@ -49,39 +51,64 @@ export default function LeadsPage() {
   const { toast } = useToast();
   const [leads, setLeads] = React.useState<Lead[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
+  const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
+  const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
+
+  const fetchLeads = React.useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const leadsCollection = collection(db, "leads");
+      let q;
+      if (user.role === 'admin' || user.role === 'seller') {
+        q = query(leadsCollection);
+      } else {
+        q = query(leadsCollection, where("partnerId", "==", user.id));
+      }
+      const snapshot = await getDocs(q);
+      const leadsData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+              id: doc.id,
+              ...data,
+              createdAt: (data.createdAt as Timestamp).toDate(),
+          } as Lead;
+      });
+      setLeads(leadsData.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch leads.' });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, toast]);
 
   React.useEffect(() => {
-    const fetchLeads = async () => {
-      if (!user) return;
-      setIsLoading(true);
-      try {
-        const leadsCollection = collection(db, "leads");
-        let q;
-        if (user.role === 'admin' || user.role === 'seller') {
-          q = query(leadsCollection);
-        } else {
-          // Partners see leads they created
-          q = query(leadsCollection, where("partnerId", "==", user.id));
-        }
-        const snapshot = await getDocs(q);
-        const leadsData = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                createdAt: (data.createdAt as Timestamp).toDate(),
-            } as Lead;
-        });
-        setLeads(leadsData.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
-      } catch (error) {
-        console.error("Error fetching leads:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch leads.' });
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchLeads();
-  }, [user, toast]);
+  }, [fetchLeads]);
+
+  const handleScheduleClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsScheduleDialogOpen(true);
+  };
+
+  const handleScheduleVisit = async () => {
+    if (!visitDate || !selectedLead || !user) return;
+    try {
+        await createAppointment({
+            leadId: selectedLead.id,
+            propertyId: selectedLead.propertyId,
+            partnerId: user.id,
+            visitDate,
+        });
+        toast({ title: "Visit Scheduled", description: "The site visit has been successfully scheduled." });
+        setIsScheduleDialogOpen(false);
+    } catch (error) {
+        console.error("Error scheduling visit:", error);
+        toast({ variant: "destructive", title: "Scheduling Failed", description: "Could not schedule the visit." });
+    }
+  };
 
 
   return (
@@ -173,6 +200,7 @@ export default function LeadsPage() {
                         <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleScheduleClick(lead)}>Schedule Visit</DropdownMenuItem>
                         <DropdownMenuItem>Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -183,6 +211,31 @@ export default function LeadsPage() {
           </TableBody>
         </Table>
       </div>
+        <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Schedule a Site Visit</DialogTitle>
+                    <DialogDescription>
+                       Select a date to schedule a visit for {selectedLead?.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 flex justify-center">
+                    <Calendar
+                        mode="single"
+                        selected={visitDate}
+                        onSelect={setVisitDate}
+                        disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsScheduleDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleScheduleVisit}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        Confirm Visit
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   )
 }

@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Property } from "@/types/property"
-import { Loader2, ArrowLeft, BedDouble, Bath, Car, Ruler, Heart, Share2, Pencil, Trash2, CheckCircle } from "lucide-react"
+import { Loader2, ArrowLeft, BedDouble, Bath, Car, Ruler, Heart, Share2, Pencil, Trash2, CheckCircle, Calendar as CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
@@ -25,6 +25,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { sendOtp, verifyOtp } from "@/services/otp-service"
+import { Calendar } from "@/components/ui/calendar"
+import { createAppointment } from "@/services/appointment-service"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -78,6 +80,10 @@ export default function PropertyDetailsPage() {
     const [isSubmittingEnquiry, setIsSubmittingEnquiry] = React.useState(false);
     const [isOtpSending, setIsOtpSending] = React.useState(false);
     const [isOtpDialogOpen, setIsOtpDialogOpen] = React.useState(false);
+    const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
+    const [lastLeadId, setLastLeadId] = React.useState<string | null>(null);
+    const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
+
 
     const isOwner = user?.role === 'admin' || user?.role === 'seller';
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
@@ -98,19 +104,21 @@ export default function PropertyDetailsPage() {
         setIsSubmittingEnquiry(true);
         try {
             const { otp, ...leadData } = values;
-            await addDoc(collection(db, "leads"), {
+            const leadRef = await addDoc(collection(db, "leads"), {
                 ...leadData,
                 propertyId: property.id,
                 partnerId: user.id,
                 status: "New",
                 createdAt: Timestamp.now(),
             });
+            setLastLeadId(leadRef.id);
             toast({
                 title: "Enquiry Submitted",
                 description: "Your enquiry has been sent. We will get back to you shortly.",
             });
             enquiryForm.reset();
             setIsOtpDialogOpen(false);
+            setIsScheduleDialogOpen(true);
         } catch (error) {
             console.error("Error submitting enquiry:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry." });
@@ -159,6 +167,23 @@ export default function PropertyDetailsPage() {
         } catch (error) {
             console.error("Error verifying OTP:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to verify OTP." });
+        }
+    };
+
+     const handleScheduleVisit = async () => {
+        if (!visitDate || !lastLeadId || !user || !property) return;
+        try {
+            await createAppointment({
+                leadId: lastLeadId,
+                propertyId: property.id,
+                partnerId: user.id,
+                visitDate,
+            });
+            toast({ title: "Visit Scheduled", description: "The site visit has been successfully scheduled." });
+            setIsScheduleDialogOpen(false);
+        } catch (error) {
+            console.error("Error scheduling visit:", error);
+            toast({ variant: "destructive", title: "Scheduling Failed", description: "Could not schedule the visit." });
         }
     };
 
@@ -428,6 +453,33 @@ export default function PropertyDetailsPage() {
                     </Form>
                 </DialogContent>
             </Dialog>
+            
+            <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Schedule a Site Visit</DialogTitle>
+                        <DialogDescription>
+                            Your enquiry was submitted. Would you like to schedule a site visit?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 flex justify-center">
+                        <Calendar
+                            mode="single"
+                            selected={visitDate}
+                            onSelect={setVisitDate}
+                            disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsScheduleDialogOpen(false)}>Skip for now</Button>
+                        <Button onClick={handleScheduleVisit}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            Confirm Visit
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
 
         </div>
     )
