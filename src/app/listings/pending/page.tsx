@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import type { Property } from "@/types/property"
@@ -45,16 +45,16 @@ export default function PendingListingsPage() {
     try {
         const q = query(collection(db, "properties"), where("status", "==", "Pending Verification"));
         const snapshot = await getDocs(q);
-        const listingsData = await Promise.all(snapshot.docs.map(async (doc) => {
-            const data = doc.data() as Property;
+        const listingsData = await Promise.all(snapshot.docs.map(async (docData) => {
+            const data = docData.data() as Property;
             let featureImageUrl = 'https://placehold.co/64x64.png';
             if (data.featureImageId) {
-                const fileDoc = await getDoc(db.collection('files').doc(data.featureImageId));
+                const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
                 if (fileDoc.exists()) {
                     featureImageUrl = fileDoc.data()?.data;
                 }
             }
-            return { ...data, id: doc.id, featureImage: featureImageUrl };
+            return { ...data, id: docData.id, featureImage: featureImageUrl };
         }));
         setPendingListings(listingsData);
     } catch (error) {
