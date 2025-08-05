@@ -59,7 +59,7 @@ import dynamic from 'next/dynamic'
 import { db } from "@/lib/firebase"
 import { collection, doc, setDoc, getDocs, Timestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
-import type { Resource, Category } from "@/types/resource"
+import type { Resource, PropertyType } from "@/types/resource"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -68,7 +68,7 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
 
 const baseSchema = z.object({
   title: z.string().min(1, "Title is required."),
-  categoryId: z.string().min(1, "Please select a category."),
+  propertyTypeId: z.string().min(1, "Please select a property type."),
   featureImage: z.any().optional(),
 });
 
@@ -113,10 +113,10 @@ const resourceFormSchema = z.discriminatedUnion("contentType", [
 
 type ResourceFormValues = z.infer<typeof resourceFormSchema>;
 
-const categoryFormSchema = z.object({
-  name: z.string().min(1, "Category name is required."),
+const propertyTypeFormSchema = z.object({
+  name: z.string().min(1, "Property type name is required."),
 });
-type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+type PropertyTypeFormValues = z.infer<typeof propertyTypeFormSchema>;
 
 
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -135,7 +135,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 const defaultResourceValues: Partial<ResourceFormValues> = {
     title: "",
     contentType: "article" as const,
-    categoryId: "",
+    propertyTypeId: "",
     faqs: [{ question: "", answer: "" }],
     articleContent: "",
     videoUrl: "",
@@ -145,13 +145,13 @@ const defaultResourceValues: Partial<ResourceFormValues> = {
 export default function ResourceCenterPage() {
   const { toast } = useToast()
   const [resources, setResources] = React.useState<Resource[]>([])
-  const [categories, setCategories] = React.useState<Category[]>([])
+  const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isResourceDialogOpen, setIsResourceDialogOpen] = React.useState(false)
-  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false)
+  const [isPropertyTypeDialogOpen, setIsPropertyTypeDialogOpen] = React.useState(false)
   const [editingResource, setEditingResource] = React.useState<Resource | null>(null);
-  const [editingCategory, setEditingCategory] = React.useState<Category | null>(null);
+  const [editingPropertyType, setEditingPropertyType] = React.useState<PropertyType | null>(null);
 
   const resourceForm = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
@@ -159,8 +159,8 @@ export default function ResourceCenterPage() {
     mode: "onChange"
   });
 
-  const categoryForm = useForm<CategoryFormValues>({
-    resolver: zodResolver(categoryFormSchema),
+  const propertyTypeForm = useForm<PropertyTypeFormValues>({
+    resolver: zodResolver(propertyTypeFormSchema),
     defaultValues: { name: "" },
   });
 
@@ -173,9 +173,9 @@ export default function ResourceCenterPage() {
     setIsLoading(true);
     try {
       const resourcesSnapshot = await getDocs(collection(db, "resources"));
-      const categoriesSnapshot = await getDocs(collection(db, "resource_categories"));
+      const propertyTypesSnapshot = await getDocs(collection(db, "property_types"));
       setResources(resourcesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource)));
-      setCategories(categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
+      setPropertyTypes(propertyTypesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PropertyType)));
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ variant: "destructive", title: "Error", description: "Failed to fetch data." });
@@ -211,14 +211,14 @@ export default function ResourceCenterPage() {
     resourceForm.reset(defaultResourceValues as ResourceFormValues);
   }
 
-  const openCategoryDialog = (category: Category | null) => {
-    setEditingCategory(category);
-    if (category) {
-        categoryForm.reset(category);
+  const openPropertyTypeDialog = (propertyType: PropertyType | null) => {
+    setEditingPropertyType(propertyType);
+    if (propertyType) {
+        propertyTypeForm.reset(propertyType);
     } else {
-        categoryForm.reset({ name: "" });
+        propertyTypeForm.reset({ name: "" });
     }
-    setIsCategoryDialogOpen(true);
+    setIsPropertyTypeDialogOpen(true);
   }
 
   const onResourceSubmit = async (values: ResourceFormValues) => {
@@ -238,7 +238,7 @@ export default function ResourceCenterPage() {
   
       const resourceData: Omit<Resource, 'id' | 'createdAt'> & { id?: string; createdAt?: Timestamp } = {
         title: values.title,
-        categoryId: values.categoryId,
+        propertyTypeId: values.propertyTypeId,
         contentType: values.contentType,
         featureImage: featureImageUrl,
         articleContent: values.contentType === 'article' || values.contentType === 'terms_condition' ? values.articleContent || null : null,
@@ -267,24 +267,24 @@ export default function ResourceCenterPage() {
     }
   };
 
-  const onCategorySubmit = async (values: CategoryFormValues) => {
+  const onPropertyTypeSubmit = async (values: PropertyTypeFormValues) => {
     setIsSubmitting(true);
     try {
-        if (editingCategory) {
-            await updateDoc(doc(db, "resource_categories", editingCategory.id), values);
-            toast({ title: "Category Updated", description: "The category has been updated." });
+        if (editingPropertyType) {
+            await updateDoc(doc(db, "property_types", editingPropertyType.id), values);
+            toast({ title: "Property Type Updated", description: "The property type has been updated." });
         } else {
-            const categoryId = generateUserId("CAT");
-            await setDoc(doc(db, "resource_categories", categoryId), { id: categoryId, name: values.name });
-            toast({ title: "Category Created", description: "The new category has been added." });
+            const propertyTypeId = generateUserId("PT");
+            await setDoc(doc(db, "property_types", propertyTypeId), { id: propertyTypeId, name: values.name });
+            toast({ title: "Property Type Created", description: "The new property type has been added." });
         }
 
-        setIsCategoryDialogOpen(false);
-        setEditingCategory(null);
+        setIsPropertyTypeDialogOpen(false);
+        setEditingPropertyType(null);
         await fetchData();
     } catch (error) {
-        console.error("Error saving category:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to save category." });
+        console.error("Error saving property type:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to save property type." });
     } finally {
         setIsSubmitting(false);
     }
@@ -301,22 +301,22 @@ export default function ResourceCenterPage() {
     }
   };
 
-  const deleteCategory = async (categoryId: string) => {
+  const deletePropertyType = async (propertyTypeId: string) => {
     try {
-        await deleteDoc(doc(db, "resource_categories", categoryId));
-        toast({ title: "Category Deleted", description: "The category has been removed." });
+        await deleteDoc(doc(db, "property_types", propertyTypeId));
+        toast({ title: "Property Type Deleted", description: "The property type has been removed." });
         await fetchData();
     } catch (error) {
-        console.error("Error deleting category:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete category." });
+        console.error("Error deleting property type:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete property type." });
     }
     };
 
   const contentType = resourceForm.watch("contentType");
   const featureImage = resourceForm.watch("featureImage");
 
-  const getCategoryName = (categoryId: string) => {
-    return categories.find(c => c.id === categoryId)?.name || 'N/A';
+  const getPropertyTypeName = (propertyTypeId: string) => {
+    return propertyTypes.find(c => c.id === propertyTypeId)?.name || 'N/A';
   }
 
   const contentTypeDisplay: Record<Resource['contentType'], string> = {
@@ -336,7 +336,7 @@ export default function ResourceCenterPage() {
       <Tabs defaultValue="resources">
         <TabsList>
           <TabsTrigger value="resources">Manage Resources</TabsTrigger>
-          <TabsTrigger value="categories">Manage Categories</TabsTrigger>
+          <TabsTrigger value="property-types">Property Type</TabsTrigger>
         </TabsList>
         <TabsContent value="resources">
           <Card>
@@ -376,14 +376,14 @@ export default function ResourceCenterPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
                                         control={resourceForm.control}
-                                        name="categoryId"
+                                        name="propertyTypeId"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Category</FormLabel>
+                                                <FormLabel>Property Type</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a property type" /></SelectTrigger></FormControl>
                                                     <SelectContent>
-                                                        {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                                                        {propertyTypes.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                                 <FormMessage />
@@ -532,7 +532,7 @@ export default function ResourceCenterPage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Title</TableHead>
-                        <TableHead>Category</TableHead>
+                        <TableHead>Property Type</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -546,7 +546,7 @@ export default function ResourceCenterPage() {
                         resources.map(resource => (
                             <TableRow key={resource.id}>
                                 <TableCell>{resource.title}</TableCell>
-                                <TableCell>{getCategoryName(resource.categoryId)}</TableCell>
+                                <TableCell>{getPropertyTypeName(resource.propertyTypeId)}</TableCell>
                                 <TableCell className="capitalize">{contentTypeDisplay[resource.contentType]}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" onClick={() => openResourceDialog(resource)}>
@@ -578,32 +578,32 @@ export default function ResourceCenterPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="categories">
+        <TabsContent value="property-types">
           <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle>Categories</CardTitle>
-                        <CardDescription>Organize your resources by category.</CardDescription>
+                        <CardTitle>Property Types</CardTitle>
+                        <CardDescription>Manage property types for resources.</CardDescription>
                     </div>
-                    <Dialog open={isCategoryDialogOpen} onOpenChange={(isOpen) => { setIsCategoryDialogOpen(isOpen); if (!isOpen) setEditingCategory(null); }}>
+                    <Dialog open={isPropertyTypeDialogOpen} onOpenChange={(isOpen) => { setIsPropertyTypeDialogOpen(isOpen); if (!isOpen) setEditingPropertyType(null); }}>
                         <DialogTrigger asChild>
-                            <Button onClick={() => openCategoryDialog(null)}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Add Category
+                            <Button onClick={() => openPropertyTypeDialog(null)}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Property Type
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md">
                             <DialogHeader>
-                                <DialogTitle>{editingCategory ? "Edit Category" : "Add New Category"}</DialogTitle>
+                                <DialogTitle>{editingPropertyType ? "Edit Property Type" : "Add New Property Type"}</DialogTitle>
                             </DialogHeader>
-                            <Form {...categoryForm}>
-                                <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
+                            <Form {...propertyTypeForm}>
+                                <form onSubmit={propertyTypeForm.handleSubmit(onPropertyTypeSubmit)} className="space-y-4">
                                     <FormField
-                                        control={categoryForm.control}
+                                        control={propertyTypeForm.control}
                                         name="name"
                                         render={({ field }) => (
                                             <FormItem>
-                                            <FormLabel>Category Name</FormLabel>
+                                            <FormLabel>Property Type Name</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="e.g., Sales Training" {...field} />
                                             </FormControl>
@@ -614,7 +614,7 @@ export default function ResourceCenterPage() {
                                     <DialogFooter>
                                         <Button type="submit" disabled={isSubmitting}>
                                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                            {editingCategory ? "Save Changes" : "Save Category"}
+                                            {editingPropertyType ? "Save Changes" : "Save Property Type"}
                                         </Button>
                                     </DialogFooter>
                                 </form>
@@ -634,14 +634,14 @@ export default function ResourceCenterPage() {
                  <TableBody>
                     {isLoading ? (
                         <TableRow><TableCell colSpan={2} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                    ) : categories.length === 0 ? (
-                        <TableRow><TableCell colSpan={2} className="h-24 text-center">No categories found.</TableCell></TableRow>
+                    ) : propertyTypes.length === 0 ? (
+                        <TableRow><TableCell colSpan={2} className="h-24 text-center">No property types found.</TableCell></TableRow>
                     ) : (
-                        categories.map(cat => (
+                        propertyTypes.map(cat => (
                             <TableRow key={cat.id}>
                                 <TableCell>{cat.name}</TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="icon" onClick={() => openCategoryDialog(cat)}>
+                                    <Button variant="ghost" size="icon" onClick={() => openPropertyTypeDialog(cat)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
                                      <AlertDialog>
@@ -652,12 +652,12 @@ export default function ResourceCenterPage() {
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    This action cannot be undone. This will permanently delete the category.
+                                                    This action cannot be undone. This will permanently delete the property type.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => deleteCategory(cat.id)}>Delete</AlertDialogAction>
+                                                <AlertDialogAction onClick={() => deletePropertyType(cat.id)}>Delete</AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
@@ -674,5 +674,3 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
-
-    

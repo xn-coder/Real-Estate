@@ -9,7 +9,7 @@ export type FaqItem = {
 export type Resource = {
     id: string;
     title: string;
-    categoryId: string;
+    propertyTypeId: string;
     contentType: "article" | "video" | "faq" | "terms_condition";
     featureImage: string;
     articleContent: string | null;
@@ -18,9 +18,7 @@ export type Resource = {
     createdAt: Date | Timestamp;
 };
 
-export type Category = {
+export type PropertyType = {
     id: string;
     name: string;
 };
-
-    
