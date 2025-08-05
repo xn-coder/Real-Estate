@@ -57,6 +57,8 @@ export default function PropertyDetailsPage() {
     const [isLoading, setIsLoading] = React.useState(true)
 
     const isOwner = user?.role === 'admin' || user?.role === 'seller';
+    const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+
 
     const plugin = React.useRef(
         Autoplay({ delay: 3000, stopOnInteraction: true })
@@ -241,47 +243,7 @@ export default function PropertyDetailsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Enquiry Form */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Enquiry Form</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="propertyId">Property ID</Label>
-                                <Input id="propertyId" defaultValue={propertyId} disabled />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="name">Full Name</Label>
-                                <Input id="name" placeholder="John Doe" />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="phone">Phone Number</Label>
-                                <Input id="phone" type="tel" placeholder="(123) 456-7890" />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input id="email" type="email" placeholder="you@example.com" />
-                            </div>
-                             <div className="grid grid-cols-3 gap-2">
-                                 <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="city">City</Label>
-                                    <Input id="city" placeholder="City" />
-                                </div>
-                                 <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="state">State</Label>
-                                    <Input id="state" placeholder="State" />
-                                </div>
-                                <div className="space-y-2 col-span-1">
-                                    <Label htmlFor="country">Country</Label>
-                                    <Input id="country" placeholder="Country" />
-                                </div>
-                            </div>
-                            <Button className="w-full">Submit Enquiry</Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* Contact Info */}
+                     {/* Contact Info */}
                     <Card>
                         <CardHeader><CardTitle>Contact Information</CardTitle></CardHeader>
                         <CardContent className="space-y-2 text-sm">
@@ -292,6 +254,48 @@ export default function PropertyDetailsPage() {
                             {property.agencyName && <p><strong>Agency:</strong> {property.agencyName}</p>}
                         </CardContent>
                     </Card>
+                    
+                    {/* Enquiry Form */}
+                    {isPartner && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Enquiry Form</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="propertyId">Property ID</Label>
+                                    <Input id="propertyId" defaultValue={propertyId} disabled />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="name">Full Name</Label>
+                                    <Input id="name" placeholder="John Doe" />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="phone">Phone Number</Label>
+                                    <Input id="phone" type="tel" placeholder="(123) 456-7890" />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="email">Email</Label>
+                                    <Input id="email" type="email" placeholder="you@example.com" />
+                                </div>
+                                 <div className="grid grid-cols-3 gap-2">
+                                     <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="city">City</Label>
+                                        <Input id="city" placeholder="City" />
+                                    </div>
+                                     <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="state">State</Label>
+                                        <Input id="state" placeholder="State" />
+                                    </div>
+                                    <div className="space-y-2 col-span-1">
+                                        <Label htmlFor="country">Country</Label>
+                                        <Input id="country" placeholder="Country" />
+                                    </div>
+                                </div>
+                                <Button className="w-full">Submit Enquiry</Button>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>
