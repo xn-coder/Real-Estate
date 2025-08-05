@@ -61,7 +61,7 @@ export default function ListingsDashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Properties</h1>
-         {isSeller && (
+         {(isSeller || isAdmin) && (
             <Button asChild>
                 <Link href="/listings/add">
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Property

@@ -41,7 +41,7 @@ export default function ListingsPage() {
     const { user } = useUser();
     const [listings, setListings] = React.useState<Property[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
-    const isSeller = user?.role === 'seller';
+    const canAddProperties = user?.role === 'seller' || user?.role === 'admin';
 
     React.useEffect(() => {
         const fetchListings = async () => {
@@ -77,7 +77,7 @@ export default function ListingsPage() {
             </Button>
             <h1 className="text-3xl font-bold tracking-tight font-headline">All Properties</h1>
         </div>
-        {isSeller && (
+        {canAddProperties && (
             <Button asChild>
                 <Link href="/listings/add">
                     <PlusCircle className="mr-2 h-4 w-4" /> New Listing
