@@ -210,9 +210,6 @@ export default function SchedulePage() {
                                         <DropdownMenuItem>
                                             <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem className="text-destructive">
-                                            <X className="mr-2 h-4 w-4" /> Cancel
-                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </TableCell>
