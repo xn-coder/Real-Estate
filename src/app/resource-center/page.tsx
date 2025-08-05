@@ -531,6 +531,7 @@ export default function ResourceCenterPage() {
                <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>Feature Image</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Property Type</TableHead>
                         <TableHead>Type</TableHead>
@@ -539,12 +540,15 @@ export default function ResourceCenterPage() {
                 </TableHeader>
                 <TableBody>
                     {isLoading ? (
-                        <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                        <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
                     ) : resources.length === 0 ? (
-                         <TableRow><TableCell colSpan={4} className="h-24 text-center">No resources found.</TableCell></TableRow>
+                         <TableRow><TableCell colSpan={5} className="h-24 text-center">No resources found.</TableCell></TableRow>
                     ) : (
                         resources.map(resource => (
                             <TableRow key={resource.id}>
+                                <TableCell>
+                                    <Image src={resource.featureImage} alt={resource.title} width={40} height={40} className="rounded-md object-cover" />
+                                </TableCell>
                                 <TableCell>{resource.title}</TableCell>
                                 <TableCell>{getPropertyTypeName(resource.propertyTypeId)}</TableCell>
                                 <TableCell className="capitalize">{contentTypeDisplay[resource.contentType]}</TableCell>
