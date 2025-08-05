@@ -213,12 +213,11 @@ export default function AddPropertyPage() {
     const form = useForm<AddPropertyForm>({
         resolver: zodResolver(fullSchema),
         defaultValues: {
-            // Initialize with defaults for all fields
-            catalogTitle: '',
-            catalogMetaDescription: '',
-            catalogMetaKeyword: '',
-            propertyTypeId: '',
-            overview: '',
+            catalogTitle: "",
+            catalogMetaDescription: "",
+            catalogMetaKeyword: "",
+            propertyTypeId: "",
+            overview: "",
             propertyCategory: 'Residential',
             propertyAge: 'New',
             catalogType: 'New Project',
@@ -400,44 +399,62 @@ export default function AddPropertyPage() {
                             )}
 
                             {/* Step 2: Slideshow */}
-                            {currentStep === 1 && (
+                           {currentStep === 1 && (
                                 <div className="space-y-4">
                                     {fields.map((field, index) => {
                                         const imagePreview = form.watch(`slides.${index}.image`);
                                         return (
-                                        <Card key={field.id} className="relative p-4">
-                                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                            <div className="grid md:grid-cols-2 gap-4 items-center">
+                                        <div key={field.id} className="border rounded-lg p-4 relative">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <div className="space-y-2">
-                                                    <FormField
+                                                     <FormField
                                                         control={form.control}
                                                         name={`slides.${index}.image`}
                                                         render={({ field: { onChange, ...rest } }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Image</FormLabel>
-                                                            <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                                                                {imagePreview ? (
-                                                                    <Image src={typeof imagePreview === 'string' ? imagePreview : URL.createObjectURL(imagePreview)} alt="Banner Preview" width={300} height={150} className="w-full h-full object-cover" />
-                                                                ) : (
-                                                                    <span className="text-muted-foreground text-sm">Image Preview</span>
-                                                                )}
-                                                            </div>
-                                                            <FormControl>
-                                                                <Input className="hidden" id={`slide-upload-${index}`} type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
-                                                            </FormControl>
-                                                            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => document.getElementById(`slide-upload-${index}`)?.click()}>
-                                                                <Upload className="mr-2 h-4 w-4" /> Upload Image
-                                                            </Button>
-                                                            <FormMessage />
-                                                        </FormItem>
+                                                            <FormItem>
+                                                                <FormLabel>Image</FormLabel>
+                                                                <div className="w-full aspect-[3/1] bg-muted rounded-md flex items-center justify-center overflow-hidden">
+                                                                   {imagePreview ? (
+                                                                        <Image
+                                                                            src={typeof imagePreview === 'string' ? imagePreview : URL.createObjectURL(imagePreview)}
+                                                                            alt="Banner Preview"
+                                                                            width={1200}
+                                                                            height={400}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="text-muted-foreground text-sm">Image Preview</span>
+                                                                    )}
+                                                                </div>
+                                                                <FormControl>
+                                                                    <Input className="hidden" id={`banner-upload-${index}`} type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
+                                                                </FormControl>
+                                                                <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => document.getElementById(`banner-upload-${index}`)?.click()}>
+                                                                    <Upload className="mr-2 h-4 w-4" /> Upload
+                                                                </Button>
+                                                                <FormMessage />
+                                                            </FormItem>
                                                         )}
                                                     />
                                                 </div>
-                                                <FormField control={form.control} name={`slides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <div className="md:col-span-2 space-y-2">
+                                                    <FormField control={form.control} name={`slides.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Promotion Title" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
                                             </div>
-                                        </Card>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute top-2 right-2"
+                                                onClick={() => remove(index)}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </div>
                                     )})}
-                                    <Button type="button" variant="outline" onClick={() => append({ title: '', image: undefined })}><PlusCircle className="mr-2 h-4 w-4"/>Add Slide</Button>
+                                    <Button type="button" variant="outline" onClick={() => append({ title: '', image: undefined })}>
+                                        <PlusCircle className="mr-2 h-4 w-4"/>Add Slide
+                                    </Button>
                                 </div>
                             )}
 
