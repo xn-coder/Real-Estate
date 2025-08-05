@@ -1,0 +1,486 @@
+
+'use client'
+
+import * as React from "react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm, useFieldArray } from "react-hook-form"
+import * as z from "zod"
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
+import { db } from "@/lib/firebase"
+import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore"
+import { generateUserId } from "@/lib/utils"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Loader2, ArrowLeft, PlusCircle, Trash2, Upload, ChevronsUpDown, Check, MapPin } from "lucide-react"
+import type { PropertyType } from "@/types/resource"
+import { Switch } from "@/components/ui/switch"
+import dynamic from "next/dynamic"
+import Image from "next/image"
+
+const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
+  ssr: false,
+  loading: () => <div className="h-[242px] w-full rounded-md border border-input flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
+});
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+const fileSchema = z.any()
+  .refine((file) => file, "Image is required.")
+  .refine((file) => file?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+  .refine(
+    (file) => ACCEPTED_IMAGE_TYPES.includes(file?.type),
+    ".jpg, .jpeg, .png and .webp files are accepted."
+  );
+
+
+// Schemas for each step
+const step1Schema = z.object({
+  catalogTitle: z.string().min(1, "Catalog title is required."),
+  catalogMetaDescription: z.string().min(1, "Meta description is required."),
+  catalogMetaKeyword: z.string().min(1, "Meta keywords are required."),
+  propertyCategory: z.enum(["Residential", "Commercial", "Land", "Industrial", "Agriculture", "Rental", "Other"]),
+  propertyTypeId: z.string().min(1, "Please select a property type."),
+  propertyAge: z.enum(["New", "<1 year", "1 - 5 years", "5 - 10 years", "10+ years"]),
+  reraApproved: z.boolean().default(false),
+  featureImage: fileSchema,
+  catalogType: z.enum(["New Project", "Project", "Resales", "Rental", "Other"]),
+});
+
+const step2Schema = z.object({
+    slides: z.array(z.object({
+        image: fileSchema,
+        title: z.string().min(1, "Slideshow title is required."),
+    })).min(1, "At least one slideshow item is required."),
+});
+
+const step3Schema = z.object({
+    overview: z.string().min(20, "Overview should be at least 20 characters."),
+});
+
+const step4Schema = z.object({
+    builtUpArea: z.coerce.number().min(0),
+    carpetArea: z.coerce.number().min(0),
+    superBuiltUpArea: z.coerce.number().min(0),
+    unitOfMeasurement: z.enum(["sq. ft", "sq. m", "acres", "other"]),
+    totalFloors: z.coerce.number().min(0),
+    floorNumber: z.coerce.number().min(0),
+    bedrooms: z.coerce.number().min(0),
+    bathrooms: z.coerce.number().min(0),
+    balconies: z.coerce.number().min(0),
+    servantRoom: z.boolean().default(false),
+    parkingSpaces: z.coerce.number().min(0),
+});
+
+const step5Schema = z.object({
+    amenities: z.array(z.string()).optional(),
+});
+
+const step6Schema = z.object({
+    furnishingStatus: z.enum(["fully", "semi", "unfurnished"]),
+    flooringType: z.enum(["vitrified", "marble", "wood", "other"]),
+    kitchenType: z.enum(["modular", "normal"]),
+    furnitureIncluded: z.string().optional(),
+});
+
+const step7Schema = z.object({
+    locality: z.string().min(1, "Locality/Area is required."),
+    addressLine: z.string().min(1, "Address is required."),
+    city: z.string().min(1, "City is required."),
+    state: z.string().min(1, "State is required."),
+    country: z.string().min(1, "Country is required."),
+    pincode: z.string().min(6, "Valid pincode is required."),
+    landmark: z.string().optional(),
+    latitude: z.string().optional(),
+    longitude: z.string().optional(),
+});
+
+const step8Schema = z.object({
+    busStop: z.string().optional(),
+    metroStation: z.string().optional(),
+    hospitalDistance: z.string().optional(),
+    mallDistance: z.string().optional(),
+    airportDistance: z.string().optional(),
+    schoolDistance: z.string().optional(),
+    otherConnectivity: z.string().optional(),
+});
+
+const step9Schema = z.object({
+    listingPrice: z.coerce.number().min(1, "Price is required."),
+    priceType: z.enum(["fixed", "negotiable", "auction"]),
+    maintenanceCharge: z.coerce.number().min(0),
+    securityDeposit: z.coerce.number().min(0),
+    bookingAmount: z.coerce.number().min(0),
+    registrationCharge: z.coerce.number().min(0),
+    loanAvailable: z.boolean().default(false),
+});
+
+const step10Schema = z.object({
+    listedBy: z.enum(["Owner", "Agent", "Builder", "Team"]),
+    name: z.string().min(1, "Name is required."),
+    phone: z.string().min(10, "Valid phone number is required."),
+    altPhone: z.string().optional(),
+    email: z.string().email(),
+    agencyName: z.string().optional(),
+    reraId: z.string().optional(),
+    contactTime: z.enum(["Morning", "Afternoon", "Evening"]),
+});
+
+
+const allSteps = [
+    step1Schema, step2Schema, step3Schema, step4Schema, step5Schema,
+    step6Schema, step7Schema, step8Schema, step9Schema, step10Schema
+];
+
+const fullSchema = allSteps.reduce((acc, schema) => acc.merge(schema), z.object({}));
+
+type AddPropertyForm = z.infer<typeof fullSchema>;
+
+const amenitiesList = [
+    { id: "lift", label: "Lift" },
+    { id: "power_backup", label: "Power Backup" },
+    { id: "security", label: "Security (CCTV, Guard)" },
+    { id: "water_supply", label: "Water Supply (24x7)" },
+    { id: "gated_community", label: "Gated Community" },
+    { id: "gas_pipeline", label: "Gas Pipeline" },
+    { id: "park_garden", label: "Park/Garden" },
+    { id: "swimming_pool", label: "Swimming Pool" },
+    { id: "club_house", label: "Clubhouse" },
+    { id: "gym", label: "Gym" },
+    { id: "rainwater_harvesting", label: "Rainwater Harvesting" },
+    { id: "internet_wifi", label: "Internet/Wifi" },
+    { id: "intercom", label: "Intercom" },
+    { id: "fire_safety", label: "Fire Safety" },
+    { id: "solar_power", label: "Solar Power" },
+    { id: "visitor_parking", label: "Visitor Parking" },
+    { id: "waste_disposal", label: "Waste Disposal" },
+    { id: "pets_allowed", label: "Pets Allowed" },
+    { id: "wheelchair_access", label: "Wheelchair Access" },
+];
+
+
+export default function AddPropertyPage() {
+    const { toast } = useToast()
+    const router = useRouter();
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [currentStep, setCurrentStep] = React.useState(0);
+    const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
+    const [catalogCode, setCatalogCode] = React.useState<string | null>(null);
+
+    const form = useForm<AddPropertyForm>({
+        resolver: zodResolver(fullSchema),
+        defaultValues: {
+            // Initialize with defaults for all fields
+            propertyCategory: 'Residential',
+            propertyAge: 'New',
+            catalogType: 'New Project',
+            slides: [],
+            unitOfMeasurement: 'sq. ft',
+            amenities: [],
+            furnishingStatus: 'unfurnished',
+            flooringType: 'vitrified',
+            kitchenType: 'normal',
+            priceType: 'fixed',
+            listedBy: 'Agent',
+            contactTime: 'Morning',
+        },
+        mode: "onChange",
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "slides"
+    });
+
+    React.useEffect(() => {
+        const fetchPropertyTypes = async () => {
+            try {
+                const snapshot = await getDocs(collection(db, "property_types"));
+                setPropertyTypes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PropertyType)));
+            } catch (error) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch property types.' });
+            }
+        };
+        fetchPropertyTypes();
+    }, [toast]);
+
+    const handleNextStep = async () => {
+        const currentStepSchema = allSteps[currentStep];
+        const fieldsToValidate = Object.keys(currentStepSchema.shape) as (keyof AddPropertyForm)[];
+        const isValid = await form.trigger(fieldsToValidate);
+
+        if (isValid) {
+            if (currentStep === 0 && !catalogCode) {
+                 setCatalogCode(generateUserId("CAT"));
+            }
+            if (currentStep < allSteps.length - 1) {
+                setCurrentStep(prev => prev + 1);
+            } else {
+                await form.handleSubmit(onFinalSubmit)();
+            }
+        }
+    };
+
+    const handlePrevStep = () => {
+        setCurrentStep(prev => prev - 1);
+    };
+
+    const onFinalSubmit = async (values: AddPropertyForm) => {
+        setIsSubmitting(true);
+        try {
+            const propertyId = catalogCode || generateUserId("PROP");
+
+            const featureImageUrl = await fileToDataUrl(values.featureImage);
+            
+            const slideImageUrls = await Promise.all(
+                values.slides.map(slide => fileToDataUrl(slide.image))
+            );
+            
+            const slidesWithUrls = values.slides.map((slide, index) => ({
+                title: slide.title,
+                image: slideImageUrls[index],
+            }));
+
+            const propertyData = {
+                ...values,
+                id: propertyId,
+                status: 'Pending Verification',
+                featureImage: featureImageUrl,
+                slides: slidesWithUrls,
+            };
+
+            await setDoc(doc(db, "properties", propertyId), propertyData);
+
+            toast({
+                title: "Property Submitted",
+                description: "Your property has been submitted for verification.",
+            });
+            router.push("/listings/list");
+
+        } catch (error) {
+            console.error("Error adding property:", error);
+            toast({
+                variant: "destructive",
+                title: "Submission Error",
+                description: "An unexpected error occurred. Please try again.",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const steps = [
+        "Property Classification", "Add Slideshow", "Write Overview",
+        "Property Size & Structure", "Features & Amenities", "Interior & Furnishing",
+        "Location Details", "Nearby Connectivity", "Pricing & Financials", "Contact & Listing Agent"
+    ];
+
+    return (
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" asChild>
+                    <Link href="/listings">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
+                <div>
+                     <h1 className="text-2xl font-bold tracking-tight font-headline">Add New Property</h1>
+                     {catalogCode && <p className="text-sm text-muted-foreground font-mono">Catalog Code: {catalogCode}</p>}
+                </div>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Step {currentStep + 1}: {steps[currentStep]}</CardTitle>
+                    <div className="w-full bg-muted rounded-full h-2.5 mt-2">
+                        <div className="bg-primary h-2.5 rounded-full" style={{ width: `${((currentStep + 1) / allSteps.length) * 100}%` }}></div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={(e) => { e.preventDefault(); handleNextStep(); }} className="space-y-6">
+                           
+                            {/* Step 1: Property Classification */}
+                            {currentStep === 0 && (
+                                <div className="space-y-4">
+                                     <FormField control={form.control} name="catalogTitle" render={({ field }) => ( <FormItem><FormLabel>Catalog Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="catalogMetaDescription" render={({ field }) => ( <FormItem><FormLabel>Meta Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="catalogMetaKeyword" render={({ field }) => ( <FormItem><FormLabel>Meta Keywords</FormLabel><FormControl><Input placeholder="e.g. apartment, 3bhk, luxury" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <div className="grid md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="propertyCategory" render={({ field }) => ( <FormItem><FormLabel>Property Category</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Residential">Residential</SelectItem><SelectItem value="Commercial">Commercial</SelectItem><SelectItem value="Land">Land</SelectItem><SelectItem value="Industrial">Industrial</SelectItem><SelectItem value="Agriculture">Agriculture</SelectItem><SelectItem value="Rental">Rental</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="propertyTypeId" render={({ field }) => ( <FormItem><FormLabel>Property Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a type"/></SelectTrigger></FormControl><SelectContent>{propertyTypes.map(pt => <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
+                                     </div>
+                                     <div className="grid md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="propertyAge" render={({ field }) => ( <FormItem><FormLabel>Property Age</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="New">New</SelectItem><SelectItem value="<1 year">&lt;1 year</SelectItem><SelectItem value="1 - 5 years">1 - 5 years</SelectItem><SelectItem value="5 - 10 years">5 - 10 years</SelectItem><SelectItem value="10+ years">10+ years</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="catalogType" render={({ field }) => ( <FormItem><FormLabel>Catalog Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="New Project">New Project</SelectItem><SelectItem value="Project">Project</SelectItem><SelectItem value="Resales">Resales</SelectItem><SelectItem value="Rental">Rental</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                     </div>
+                                      <FormField control={form.control} name="reraApproved" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>RERA Approved</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem> )} />
+                                      <FormField control={form.control} name="featureImage" render={({ field: { onChange, ...rest } }) => ( <FormItem><FormLabel>Featured Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
+                                </div>
+                            )}
+
+                            {/* Step 2: Slideshow */}
+                            {currentStep === 1 && (
+                                <div className="space-y-4">
+                                    {fields.map((field, index) => (
+                                        <Card key={field.id} className="relative p-4">
+                                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                            <div className="grid md:grid-cols-2 gap-4">
+                                                <FormField control={form.control} name={`slides.${index}.image`} render={({ field: { onChange, ...rest } }) => ( <FormItem><FormLabel>Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={form.control} name={`slides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            </div>
+                                        </Card>
+                                    ))}
+                                    <Button type="button" variant="outline" onClick={() => append({ title: '', image: undefined })}><PlusCircle className="mr-2 h-4 w-4"/>Add Slide</Button>
+                                </div>
+                            )}
+
+                             {/* Step 3: Overview */}
+                            {currentStep === 2 && (
+                                <FormField control={form.control} name="overview" render={({ field }) => ( <FormItem><FormLabel>Overview</FormLabel><FormControl><RichTextEditor initialData={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
+                            )}
+
+                             {/* Step 4: Size & Structure */}
+                            {currentStep === 3 && (
+                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <FormField control={form.control} name="builtUpArea" render={({ field }) => ( <FormItem><FormLabel>Built-up Area</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="carpetArea" render={({ field }) => ( <FormItem><FormLabel>Carpet Area</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="superBuiltUpArea" render={({ field }) => ( <FormItem><FormLabel>Super Built-up Area</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="unitOfMeasurement" render={({ field }) => ( <FormItem><FormLabel>Unit of Measurement</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="sq. ft">Sq. Ft.</SelectItem><SelectItem value="sq. m">Sq. M.</SelectItem><SelectItem value="acres">Acres</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="totalFloors" render={({ field }) => ( <FormItem><FormLabel>Total Floors</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="floorNumber" render={({ field }) => ( <FormItem><FormLabel>Floor Number</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem><FormLabel>Bedrooms</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem><FormLabel>Bathrooms</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="balconies" render={({ field }) => ( <FormItem><FormLabel>Balconies</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="servantRoom" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm col-span-1"><div className="space-y-0.5"><FormLabel>Servant/Store Room</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem> )} />
+                                    <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem><FormLabel>Parking Spaces</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                </div>
+                            )}
+
+                             {/* Step 5: Amenities */}
+                            {currentStep === 4 && (
+                                <FormField control={form.control} name="amenities" render={() => ( <FormItem> <div className="mb-4"><FormLabel className="text-base">Features & Amenities</FormLabel></div> <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"> {amenitiesList.map((item) => ( <FormField key={item.id} control={form.control} name="amenities" render={({ field }) => ( <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0"> <FormControl> <Checkbox checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange(field.value?.filter((value) => value !== item.id)) }} /> </FormControl> <FormLabel className="font-normal text-sm">{item.label}</FormLabel> </FormItem> )} /> ))} </div> <FormMessage /> </FormItem> )} />
+                            )}
+                            
+                            {/* Step 6: Interior & Furnishing */}
+                             {currentStep === 5 && (
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="furnishingStatus" render={({ field }) => ( <FormItem><FormLabel>Furnishing Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="fully">Fully Furnished</SelectItem><SelectItem value="semi">Semi-Furnished</SelectItem><SelectItem value="unfurnished">Unfurnished</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="flooringType" render={({ field }) => ( <FormItem><FormLabel>Flooring Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="vitrified">Vitrified</SelectItem><SelectItem value="marble">Marble</SelectItem><SelectItem value="wood">Wood</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="kitchenType" render={({ field }) => ( <FormItem><FormLabel>Kitchen Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="modular">Modular</SelectItem><SelectItem value="normal">Normal</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="furnitureIncluded" render={({ field }) => ( <FormItem><FormLabel>Wardrobes/Furniture Included</FormLabel><FormControl><Textarea placeholder="e.g. 2 Wardrobes, 1 Sofa Set" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                </div>
+                            )}
+
+                             {/* Step 7: Location Details */}
+                            {currentStep === 6 && (
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="locality" render={({ field }) => ( <FormItem><FormLabel>Locality/Area</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="addressLine" render={({ field }) => ( <FormItem><FormLabel>Address Line</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="state" render={({ field }) => ( <FormItem><FormLabel>State</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="pincode" render={({ field }) => ( <FormItem><FormLabel>Pincode</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="landmark" render={({ field }) => ( <FormItem><FormLabel>Nearby Landmark</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <div className="md:col-span-2 grid md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="latitude" render={({ field }) => ( <FormItem><FormLabel>Latitude</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="longitude" render={({ field }) => ( <FormItem><FormLabel>Longitude</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    </div>
+                                </div>
+                            )}
+
+                             {/* Step 8: Nearby Connectivity */}
+                            {currentStep === 7 && (
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="busStop" render={({ field }) => ( <FormItem><FormLabel>Nearest Bus Stop</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="metroStation" render={({ field }) => ( <FormItem><FormLabel>Nearest Metro Station</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="hospitalDistance" render={({ field }) => ( <FormItem><FormLabel>Distance from Hospital</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="mallDistance" render={({ field }) => ( <FormItem><FormLabel>Nearest Mall</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="airportDistance" render={({ field }) => ( <FormItem><FormLabel>Distance from Airport</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="schoolDistance" render={({ field }) => ( <FormItem><FormLabel>Distance from School/College</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="otherConnectivity" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Other</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                </div>
+                            )}
+
+                             {/* Step 9: Pricing & Financials */}
+                            {currentStep === 8 && (
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="listingPrice" render={({ field }) => ( <FormItem><FormLabel>Listing Price/Rent</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="priceType" render={({ field }) => ( <FormItem><FormLabel>Price Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="negotiable">Negotiable</SelectItem><SelectItem value="auction">Auction</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="maintenanceCharge" render={({ field }) => ( <FormItem><FormLabel>Maintenance Charge</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="securityDeposit" render={({ field }) => ( <FormItem><FormLabel>Security Deposit (Rent)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="bookingAmount" render={({ field }) => ( <FormItem><FormLabel>Booking Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="registrationCharge" render={({ field }) => ( <FormItem><FormLabel>Registration Charge</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={form.control} name="loanAvailable" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm md:col-span-2"><div className="space-y-0.5"><FormLabel>Loan Facility Available</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem> )} />
+                                </div>
+                            )}
+
+                            {/* Step 10: Contact & Listing Agent */}
+                            {currentStep === 9 && (
+                                <div className="grid md:grid-cols-2 gap-4">
+                                     <FormField control={form.control} name="listedBy" render={({ field }) => ( <FormItem><FormLabel>Listed By</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Owner">Owner</SelectItem><SelectItem value="Agent">Agent</SelectItem><SelectItem value="Builder">Builder</SelectItem><SelectItem value="Team">Team</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="altPhone" render={({ field }) => ( <FormItem><FormLabel>Alternative Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email ID</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="agencyName" render={({ field }) => ( <FormItem><FormLabel>Agency Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="reraId" render={({ field }) => ( <FormItem><FormLabel>RERA ID</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                     <FormField control={form.control} name="contactTime" render={({ field }) => ( <FormItem><FormLabel>Preferred Contact Time</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Morning">Morning</SelectItem><SelectItem value="Afternoon">Afternoon</SelectItem><SelectItem value="Evening">Evening</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                </div>
+                            )}
+
+
+                            {/* Navigation Buttons */}
+                            <div className="flex justify-between pt-4">
+                                {currentStep > 0 ? (
+                                    <Button type="button" variant="outline" onClick={handlePrevStep} disabled={isSubmitting}>
+                                        Previous
+                                    </Button>
+                                ) : (
+                                    <div></div>
+                                )}
+                                <Button type="button" onClick={handleNextStep} disabled={isSubmitting}>
+                                    {isSubmitting && currentStep === allSteps.length - 1 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    {currentStep === allSteps.length - 1 ? 'Submit for Verification' : 'Next'}
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
