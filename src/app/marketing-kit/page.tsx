@@ -43,12 +43,10 @@ import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const marketingKitSchema = z.object({
-  kitType: z.enum(["poster", "brochure"], {
+  kitType: z.enum(["poster", "brochure", "video"], {
     required_error: "Please select a kit type.",
   }),
   title: z.string().min(1, { message: "Title is required." }),
-  featureImage: z.any().refine(file => file, "Feature image is required."),
-  files: z.any().optional(),
 })
 
 type MarketingKitForm = z.infer<typeof marketingKitSchema>
@@ -112,7 +110,7 @@ export default function MarketingKitPage() {
   const featureImageRef = React.useRef<HTMLInputElement>(null)
   const filesRef = React.useRef<HTMLInputElement>(null)
 
-  const isAdmin = user?.role === 'admin';
+  const canAddKits = user?.role === 'admin' || user?.role === 'seller';
 
   const form = useForm<MarketingKitForm>({
     resolver: zodResolver(marketingKitSchema),
@@ -153,32 +151,16 @@ export default function MarketingKitPage() {
   async function onSubmit(values: MarketingKitForm) {
     setIsSubmitting(true)
     try {
-        const featureImageUrl = await fileToDataUrl(values.featureImage);
-        
-        let fileUrls: KitFile[] = [];
-        if (values.files && values.files.length > 0) {
-            fileUrls = await Promise.all(
-                Array.from(values.files as FileList).map(async (file) => ({
-                    name: file.name,
-                    url: await fileToDataUrl(file),
-                }))
-            );
-        }
-
         const kitId = generateUserId("KIT");
         await setDoc(doc(db, "marketing_kits", kitId), {
             id: kitId,
             title: values.title,
-            type: values.kitType === "poster" ? "Poster" : "Brochure",
-            featureImage: featureImageUrl,
-            files: fileUrls,
+            type: values.kitType.charAt(0).toUpperCase() + values.kitType.slice(1),
         });
 
       setIsSubmitting(false)
       setIsDialogOpen(false)
       form.reset()
-      if (featureImageRef.current) featureImageRef.current.value = "";
-      if (filesRef.current) filesRef.current.value = "";
       toast({
         title: "Marketing Kit Created",
         description: "Your new marketing kit has been added successfully.",
@@ -226,14 +208,11 @@ export default function MarketingKitPage() {
       );
   }, [kits, activeFilter, searchTerm]);
 
-  const featureImage = form.watch("featureImage")
-  const uploadedFiles = form.watch("files")
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Marketing Kits</h1>
-        {isAdmin && (
+        {canAddKits && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
                 <Button>
@@ -264,6 +243,7 @@ export default function MarketingKitPage() {
                             <SelectContent>
                             <SelectItem value="poster">Poster</SelectItem>
                             <SelectItem value="brochure">Brochure</SelectItem>
+                            <SelectItem value="video">Video</SelectItem>
                             </SelectContent>
                         </Select>
                         <FormMessage />
@@ -283,79 +263,7 @@ export default function MarketingKitPage() {
                         </FormItem>
                     )}
                     />
-                    <FormField
-                    control={form.control}
-                    name="featureImage"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Feature Image</FormLabel>
-                        <div className="flex items-center gap-4">
-                            <div className="w-32 h-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
-                            {featureImage && (
-                                <Image
-                                src={URL.createObjectURL(featureImage)}
-                                alt="Feature preview"
-                                width={128}
-                                height={80}
-                                className="object-cover w-full h-full"
-                                />
-                            )}
-                            </div>
-                            <Button type="button" variant="outline" onClick={() => featureImageRef.current?.click()} disabled={isSubmitting}>
-                            <Upload className="mr-2 h-4 w-4" />
-                            Upload Image
-                            </Button>
-                        </div>
-                        <FormControl>
-                            <Input 
-                                type="file" 
-                                className="hidden" 
-                                ref={featureImageRef}
-                                onChange={(e) => field.onChange(e.target.files?.[0])}
-                                accept="image/*"
-                                disabled={isSubmitting}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="files"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Upload Files (PDF/Image)</FormLabel>
-                        <FormControl>
-                            <Button type="button" variant="outline" className="w-full" onClick={() => filesRef.current?.click()} disabled={isSubmitting}>
-                            <Paperclip className="mr-2 h-4 w-4" />
-                            Select Files
-                            </Button>
-                        </FormControl>
-                        <Input
-                            type="file"
-                            className="hidden"
-                            ref={filesRef}
-                            onChange={(e) => field.onChange(e.target.files)}
-                            multiple
-                            accept="image/*,application/pdf"
-                            disabled={isSubmitting}
-                        />
-                        <FormMessage />
-                        {uploadedFiles && uploadedFiles.length > 0 && (
-                            <div className="text-sm text-muted-foreground space-y-1 pt-2">
-                            {Array.from(uploadedFiles as FileList).map((file, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                    <Paperclip className="h-4 w-4"/>
-                                    <span>{file.name}</span>
-                                </div>
-                            ))}
-                            </div>
-                        )}
-                        </FormItem>
-                    )}
-                    />
-
+                    
                     <DialogFooter>
                     <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -385,6 +293,7 @@ export default function MarketingKitPage() {
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="brochure">Brochures</TabsTrigger>
             <TabsTrigger value="poster">Posters</TabsTrigger>
+            <TabsTrigger value="video">Videos</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
