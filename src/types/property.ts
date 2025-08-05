@@ -98,5 +98,8 @@ export type Property = {
     reraId?: string;
     contactTime: "Morning" | "Afternoon" | "Evening";
 
-    createdAt?: Timestamp;
+    // Admin fields
+    createdAt?: Date;
+    views?: number;
+    modificationNotes?: string;
 };
