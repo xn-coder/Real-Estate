@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc, getDocs, collection, query, where, Timestamp } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Property } from "@/types/property"
 import { Loader2, ArrowLeft, BedDouble, Bath, Car, Ruler, Heart, Share2, Pencil, Trash2, CheckCircle } from "lucide-react"
@@ -18,6 +18,11 @@ import { Separator } from "@/components/ui/separator"
 import Autoplay from "embla-carousel-autoplay"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { useToast } from "@/hooks/use-toast"
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -46,15 +51,28 @@ const amenitiesList = [
     { id: "wheelchair_access", label: "Wheelchair Access" },
 ];
 
+const enquiryFormSchema = z.object({
+  name: z.string().min(1, "Full name is required."),
+  phone: z.string().min(10, "A valid phone number is required."),
+  email: z.string().email("A valid email is required."),
+  city: z.string().min(1, "City is required."),
+  state: z.string().min(1, "State is required."),
+  country: z.string().min(1, "Country is required."),
+});
+type EnquiryFormValues = z.infer<typeof enquiryFormSchema>;
+
+
 export default function PropertyDetailsPage() {
     const params = useParams()
     const router = useRouter()
     const { user } = useUser();
+    const { toast } = useToast();
     const propertyId = params.id as string
 
     const [property, setProperty] = React.useState<Property | null>(null)
     const [imageUrls, setImageUrls] = React.useState<string[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
+    const [isSubmittingEnquiry, setIsSubmittingEnquiry] = React.useState(false);
 
     const isOwner = user?.role === 'admin' || user?.role === 'seller';
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
@@ -63,6 +81,36 @@ export default function PropertyDetailsPage() {
     const plugin = React.useRef(
         Autoplay({ delay: 3000, stopOnInteraction: true })
     )
+    
+    const enquiryForm = useForm<EnquiryFormValues>({
+        resolver: zodResolver(enquiryFormSchema),
+        defaultValues: { name: "", phone: "", email: "", city: "", state: "", country: "" },
+    });
+
+    const onEnquirySubmit = async (values: EnquiryFormValues) => {
+        if (!user || !property) return;
+        setIsSubmittingEnquiry(true);
+        try {
+            await addDoc(collection(db, "leads"), {
+                ...values,
+                propertyId: property.id,
+                partnerId: user.id,
+                status: "New",
+                createdAt: Timestamp.now(),
+            });
+            toast({
+                title: "Enquiry Submitted",
+                description: "Your enquiry has been sent. We will get back to you shortly.",
+            });
+            enquiryForm.reset();
+        } catch (error) {
+            console.error("Error submitting enquiry:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry." });
+        } finally {
+            setIsSubmittingEnquiry(false);
+        }
+    }
+
 
     React.useEffect(() => {
         if (!propertyId) return;
@@ -261,38 +309,27 @@ export default function PropertyDetailsPage() {
                             <CardHeader>
                                 <CardTitle>Enquiry Form</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="propertyId">Property ID</Label>
-                                    <Input id="propertyId" defaultValue={propertyId} disabled />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Full Name</Label>
-                                    <Input id="name" placeholder="John Doe" />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone Number</Label>
-                                    <Input id="phone" type="tel" placeholder="(123) 456-7890" />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input id="email" type="email" placeholder="you@example.com" />
-                                </div>
-                                 <div className="grid grid-cols-3 gap-2">
-                                     <div className="space-y-2 col-span-1">
-                                        <Label htmlFor="city">City</Label>
-                                        <Input id="city" placeholder="City" />
-                                    </div>
-                                     <div className="space-y-2 col-span-1">
-                                        <Label htmlFor="state">State</Label>
-                                        <Input id="state" placeholder="State" />
-                                    </div>
-                                    <div className="space-y-2 col-span-1">
-                                        <Label htmlFor="country">Country</Label>
-                                        <Input id="country" placeholder="Country" />
-                                    </div>
-                                </div>
-                                <Button className="w-full">Submit Enquiry</Button>
+                            <CardContent>
+                                <Form {...enquiryForm}>
+                                    <form onSubmit={enquiryForm.handleSubmit(onEnquirySubmit)} className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="propertyId">Property ID</Label>
+                                            <Input id="propertyId" defaultValue={propertyId} disabled />
+                                        </div>
+                                        <FormField control={enquiryForm.control} name="name" render={({ field }) => ( <FormItem> <Label>Full Name</Label> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <Label>Phone Number</Label> <FormControl><Input type="tel" placeholder="(123) 456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <Label>Email</Label> <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <FormField control={enquiryForm.control} name="city" render={({ field }) => ( <FormItem className="col-span-1"> <Label>City</Label> <FormControl><Input placeholder="City" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <Label>State</Label> <FormControl><Input placeholder="State" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <Label>Country</Label> <FormControl><Input placeholder="Country" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        </div>
+                                        <Button type="submit" className="w-full" disabled={isSubmittingEnquiry}>
+                                            {isSubmittingEnquiry && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                            Submit Enquiry
+                                        </Button>
+                                    </form>
+                                </Form>
                             </CardContent>
                         </Card>
                     )}

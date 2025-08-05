@@ -1,5 +1,7 @@
+
 'use client'
 
+import * as React from "react"
 import {
   Table,
   TableBody,
@@ -10,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +31,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { activeLeads as leads } from "@/lib/data"
+import { useUser } from "@/hooks/use-user"
+import { db } from "@/lib/firebase"
+import { collection, getDocs, query, where, Timestamp } from "firebase/firestore"
+import type { Lead } from "@/types/lead"
+import { useToast } from "@/hooks/use-toast"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New': 'default',
@@ -39,6 +45,45 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
 }
 
 export default function LeadsPage() {
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [leads, setLeads] = React.useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchLeads = async () => {
+      if (!user) return;
+      setIsLoading(true);
+      try {
+        const leadsCollection = collection(db, "leads");
+        let q;
+        if (user.role === 'admin' || user.role === 'seller') {
+          q = query(leadsCollection);
+        } else {
+          // Partners see leads they created
+          q = query(leadsCollection, where("partnerId", "==", user.id));
+        }
+        const snapshot = await getDocs(q);
+        const leadsData = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: (data.createdAt as Timestamp).toDate(),
+            } as Lead;
+        });
+        setLeads(leadsData.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
+      } catch (error) {
+        console.error("Error fetching leads:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch leads.' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLeads();
+  }, [user, toast]);
+
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -96,31 +141,45 @@ export default function LeadsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leads.map((lead) => (
-              <TableRow key={lead.id}>
-                <TableCell className="font-medium">{lead.name}</TableCell>
-                <TableCell>{lead.email}</TableCell>
-                <TableCell>{lead.phone}</TableCell>
-                <TableCell>
-                  <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    </TableCell>
+                </TableRow>
+            ) : leads.length === 0 ? (
+                 <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        No leads found.
+                    </TableCell>
+                </TableRow>
+            ) : (
+                leads.map((lead) => (
+                <TableRow key={lead.id}>
+                    <TableCell className="font-medium">{lead.name}</TableCell>
+                    <TableCell>{lead.email}</TableCell>
+                    <TableCell>{lead.phone}</TableCell>
+                    <TableCell>
+                    <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem>Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    </TableCell>
+                </TableRow>
+                ))
+            )}
           </TableBody>
         </Table>
       </div>
