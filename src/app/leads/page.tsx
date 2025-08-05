@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Calendar as CalendarIcon } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Calendar as CalendarIcon, Eye } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +38,7 @@ import type { Lead } from "@/types/lead"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
+import { useRouter } from "next/navigation"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New': 'default',
@@ -49,6 +50,7 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
 export default function LeadsPage() {
   const { user } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
   const [leads, setLeads] = React.useState<Lead[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
@@ -199,9 +201,14 @@ export default function LeadsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleScheduleClick(lead)}>Schedule Visit</DropdownMenuItem>
-                        <DropdownMenuItem>Delete</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push(`/listings/${lead.propertyId}`)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Property
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleScheduleClick(lead)}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            Schedule Visit
+                        </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                     </TableCell>
