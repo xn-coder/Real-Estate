@@ -107,8 +107,10 @@ const partnerNavItems: NavItem[] = [
   { href: '/team-management', icon: Users, label: 'Team Management' },
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
   { href: '/support-ticket', icon: Ticket, label: 'Support Ticket' },
+  { href: '/support', icon: Headset, label: 'Help & Support' },
   { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { href: '/upgrade', icon: Award, label: 'Upgrade' },
+  { href: '/updates', icon: History, label: 'Notifications' },
 ];
 
 const sellerNavItems: NavItem[] = [
@@ -123,7 +125,6 @@ const sellerNavItems: NavItem[] = [
     { href: '/manage-partner', icon: Handshake, label: 'Partner Manage' },
     { href: '/booking-quotation', icon: FileText, label: 'Booking & Quotation' },
     { href: '/document-management', icon: FileText, label: 'Document Manage' },
-    { href: '/support', icon: Headset, label: 'Help & Support' },
 ];
 
 const userNavItems: NavItem[] = [

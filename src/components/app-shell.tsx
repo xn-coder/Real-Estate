@@ -162,9 +162,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 <Wallet className="mr-2 h-4 w-4" />
                                 <span>Earning & Wallet</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <LifeBuoy className="mr-2 h-4 w-4" />
-                                <span>Help & Support</span>
+                            <DropdownMenuItem asChild>
+                                <Link href="/support">
+                                    <LifeBuoy className="mr-2 h-4 w-4" />
+                                    <span>Help & Support</span>
+                                </Link>
                             </DropdownMenuItem>
                         </>
                      )}
@@ -174,12 +176,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                 <Link href="/wallet-billing">
                                     <Wallet className="mr-2 h-4 w-4" />
                                     <span>Manage Wallet</span>
-                                </Link>
-                            </DropdownMenuItem>
-                             <DropdownMenuItem asChild>
-                                <Link href="/support">
-                                    <Headset className="mr-2 h-4 w-4" />
-                                    <span>Help & Support</span>
                                 </Link>
                             </DropdownMenuItem>
                         </>
