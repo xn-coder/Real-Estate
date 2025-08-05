@@ -1,148 +1,90 @@
+
 'use client'
 
+import * as React from "react"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { activeListings as listings } from "@/lib/data"
-import Image from "next/image"
+import { Building, CheckCircle, ChevronRight, Loader2, PlusCircle, Hourglass } from "lucide-react"
+import Link from "next/link"
+import { activeListings } from "@/lib/data"
 
-const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
-  'For Sale': 'default',
-  'Under Contract': 'secondary',
-  'Sold': 'outline',
-}
+export default function ListingsDashboardPage() {
+  const [counts, setCounts] = React.useState({ total: 0, pending: 0 })
+  const [isLoading, setIsLoading] = React.useState(true)
 
-export default function ListingsPage() {
+  React.useEffect(() => {
+    // In a real app, you'd fetch this from your database.
+    // We'll simulate it with the mock data for now.
+    const totalCount = activeListings.length
+    const pendingCount = activeListings.filter(l => l.status === 'Pending Verification').length
+    setCounts({ total: totalCount, pending: pendingCount })
+    setIsLoading(false)
+  }, [])
+
+  const statCards = [
+    { title: "Total Properties", count: counts.total, icon: Building, color: "text-blue-500" },
+    { title: "Pending Verification", count: counts.pending, icon: Hourglass, color: "text-yellow-500" },
+  ];
+
+  const dashboardItems = [
+    { name: "List of Properties", href: "/listings/list", icon: Building },
+    { name: "Pending Properties", href: "/listings/pending", icon: Hourglass },
+  ];
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Listings</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> New Listing
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Listing</DialogTitle>
-              <DialogDescription>
-                Enter the details of the new property listing.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="address" className="text-right">
-                  Address
-                </Label>
-                <Input id="address" placeholder="123 Main St" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="price" className="text-right">
-                  Price
-                </Label>
-                <Input id="price" type="number" placeholder="500000" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="bedrooms" className="text-right">
-                  Beds
-                </Label>
-                <Input id="bedrooms" type="number" placeholder="3" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="bathrooms" className="text-right">
-                  Baths
-                </Label>
-                <Input id="bathrooms" type="number" placeholder="2" className="col-span-3" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Save listing</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Properties</h1>
+         <Button asChild>
+            <Link href="/listings/add">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+            </Link>
+        </Button>
       </div>
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="hidden w-[100px] sm:table-cell">
-                <span className="sr-only">Image</span>
-              </TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Price</TableHead>
-              <TableHead className="hidden md:table-cell">Beds/Baths</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {listings.map((listing) => (
-              <TableRow key={listing.id}>
-                <TableCell className="hidden sm:table-cell">
-                  <Image
-                    alt="Property image"
-                    className="aspect-square rounded-md object-cover"
-                    height="64"
-                    src={listing.image}
-                    width="64"
-                    data-ai-hint="house exterior"
-                  />
-                </TableCell>
-                <TableCell className="font-medium">{listing.address}</TableCell>
-                <TableCell>
-                  <Badge variant={statusColors[listing.status] || 'default'}>{listing.status}</Badge>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">${listing.price.toLocaleString()}</TableCell>
-                <TableCell className="hidden md:table-cell">{listing.bedrooms}bd / {listing.bathrooms}ba</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit</DropdownMenuItem>
-                      <DropdownMenuItem>Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
+
+       <div className="grid gap-4 md:grid-cols-2">
+        {statCards.map((stat) => (
+            <Card key={stat.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/> : <stat.icon className={`h-4 w-4 text-muted-foreground ${stat.color}`} />}
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">
+                        {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : stat.count}
+                    </div>
+                </CardContent>
+            </Card>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Properties</CardTitle>
+          <CardDescription>View and manage all property listings.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y divide-border">
+            {dashboardItems.map((option) => (
+              <Link href={option.href} key={option.name}>
+                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
+                    <div className="flex items-center gap-4">
+                        <option.icon className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-medium">{option.name}</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </Link>
             ))}
-          </TableBody>
-        </Table>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

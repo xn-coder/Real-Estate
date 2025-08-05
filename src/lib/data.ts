@@ -12,6 +12,8 @@ export const activeListings = [
   { id: 'list2', address: '456 Ocean View', price: 1200000, bedrooms: 4, bathrooms: 3, status: 'For Sale', image: 'https://placehold.co/400x400.png' },
   { id: 'list3', address: '789 Pine Forest', price: 750000, bedrooms: 4, bathrooms: 2.5, status: 'Under Contract', image: 'https://placehold.co/400x400.png' },
   { id: 'list4', address: '101 Maple Street', price: 350000, bedrooms: 2, bathrooms: 1, status: 'Sold', image: 'https://placehold.co/400x400.png' },
+  { id: 'list5', address: '202 Birch Road', price: 450000, bedrooms: 3, bathrooms: 2, status: 'Pending Verification', image: 'https://placehold.co/400x400.png' },
+  { id: 'list6', address: '303 Cedar Blvd', price: 620000, bedrooms: 4, bathrooms: 3, status: 'Pending Verification', image: 'https://placehold.co/400x400.png' },
 ];
 
 export const activeDeals = [
