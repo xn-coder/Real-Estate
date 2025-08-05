@@ -11,7 +11,7 @@ import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
 import type { Appointment } from "@/types/appointment"
 import type { Property } from "@/types/property"
-import Image from "next/image"
+import type { Lead } from "@/types/lead"
 import { format } from "date-fns"
 import dynamic from "next/dynamic"
 import {
@@ -26,6 +26,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -34,6 +42,7 @@ const LocationPicker = dynamic(() => import('@/components/location-picker'), {
 
 type DetailedAppointment = Appointment & {
   property?: Property;
+  lead?: Lead;
 };
 
 export default function SchedulePage() {
@@ -66,20 +75,21 @@ export default function SchedulePage() {
             let propertyData: Property | undefined = undefined;
             if (propDoc.exists()) {
                 const data = propDoc.data() as Property;
-                let featureImageUrl = 'https://placehold.co/400x225.png';
-                if (data.featureImageId) {
-                    const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                    if (fileDoc.exists()) {
-                        featureImageUrl = fileDoc.data()?.data;
-                    }
-                }
-                propertyData = { ...data, id: propDoc.id, featureImage: featureImageUrl };
+                propertyData = { ...data, id: propDoc.id };
+            }
+
+            const leadDocRef = doc(db, "leads", appointment.leadId);
+            const leadDoc = await getDoc(leadDocRef);
+            let leadData: Lead | undefined = undefined;
+            if (leadDoc.exists()) {
+                leadData = leadDoc.data() as Lead;
             }
 
             return { 
                 ...appointment,
                 visitDate: (appointment.visitDate as Timestamp).toDate(),
-                property: propertyData
+                property: propertyData,
+                lead: leadData
             } as DetailedAppointment;
         }));
         
@@ -96,7 +106,7 @@ export default function SchedulePage() {
   const selectedDayAppointments = appointments.filter(
     (appointment) =>
       date && new Date(appointment.visitDate as Date).toDateString() === date.toDateString()
-  )
+  ).sort((a,b) => (a.visitDate as Date).getTime() - (b.visitDate as Date).getTime())
 
   const handleMapView = (property: Property) => {
     setSelectedProperty(property);
@@ -119,7 +129,7 @@ export default function SchedulePage() {
                 mode="single"
                 selected={date}
                 onSelect={setDate}
-                className="p-3"
+                className="p-3 w-full"
                 classNames={{
                   day_selected:
                     "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary focus:text-primary-foreground",
@@ -139,54 +149,62 @@ export default function SchedulePage() {
                 You have {selectedDayAppointments.length} appointments scheduled.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {isLoading ? (
-                  <div className="flex justify-center py-8">
-                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-              ) : selectedDayAppointments.length > 0 ? (
-                selectedDayAppointments.map((appointment) => (
-                  <Card key={appointment.id}>
-                    <CardContent className="p-4 flex items-center gap-4">
-                        <Image 
-                            src={appointment.property?.featureImage || 'https://placehold.co/100x100.png'} 
-                            alt={appointment.property?.catalogTitle || 'Property'}
-                            width={100}
-                            height={100}
-                            className="rounded-md object-cover aspect-square"
-                            data-ai-hint="house exterior"
-                        />
-                        <div className="flex-1 space-y-1">
-                            <p className="font-semibold">{appointment.property?.catalogTitle}</p>
-                            <p className="text-sm text-muted-foreground">{appointment.property?.addressLine}</p>
-                            <p className="text-sm font-medium pt-2">Visit Time: {format(appointment.visitDate as Date, "p")}</p>
-                        </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
-                                    <Map className="mr-2 h-4 w-4" /> Map View
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
-                                    <X className="mr-2 h-4 w-4" /> Cancel
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  No appointments for this day.
-                </div>
-              )}
+            <CardContent>
+               <div className="border rounded-lg">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Time</TableHead>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Property</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                         {isLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                                </TableCell>
+                            </TableRow>
+                        ) : selectedDayAppointments.length > 0 ? (
+                            selectedDayAppointments.map((appointment) => (
+                            <TableRow key={appointment.id}>
+                                <TableCell className="font-medium">{format(appointment.visitDate as Date, "p")}</TableCell>
+                                <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>
+                                <TableCell className="text-muted-foreground">{appointment.property?.catalogTitle || 'N/A'}</TableCell>
+                                <TableCell className="text-right">
+                                     <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
+                                                <Map className="mr-2 h-4 w-4" /> Map View
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem>
+                                                <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-destructive">
+                                                <X className="mr-2 h-4 w-4" /> Cancel
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                                    No appointments for this day.
+                                </TableCell>
+                             </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </div>
