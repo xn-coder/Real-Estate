@@ -76,15 +76,7 @@ type SubNavItem = {
 
 const adminNavItems: NavItem[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-    { 
-      href: '/listings', 
-      icon: Building, 
-      label: 'Properties',
-      subItems: [
-        { href: '/listings/list', label: 'List of Properties' },
-        { href: '/listings/pending', label: 'Pending Properties' },
-      ]
-    },
+    { href: '/listings', icon: Building, label: 'Properties' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
     { href: '/onboarding', icon: Plane, label: 'Onboarding' },
     { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
@@ -118,7 +110,6 @@ const partnerNavItems: NavItem[] = [
   { href: '/support', icon: Headset, label: 'Help & Support' },
   { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { href: '/upgrade', icon: Award, label: 'Upgrade' },
-  { href: '/updates', icon: History, label: 'Notifications' },
 ];
 
 const sellerNavItems: NavItem[] = [
