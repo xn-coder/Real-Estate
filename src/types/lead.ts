@@ -11,6 +11,7 @@ export type Lead = {
     country: string;
     propertyId: string;
     partnerId: string;
+    customerId: string;
     status: 'New' | 'Contacted' | 'Qualified' | 'Lost';
     createdAt: Date | Timestamp;
 };

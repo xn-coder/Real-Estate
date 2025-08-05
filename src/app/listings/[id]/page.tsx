@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc, setDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Property } from "@/types/property"
 import { Loader2, ArrowLeft, BedDouble, Bath, Car, Ruler, Heart, Share2, Pencil, Trash2, CheckCircle, Calendar as CalendarIcon } from "lucide-react"
@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { sendOtp, verifyOtp } from "@/services/otp-service"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
+import { generateUserId } from "@/lib/utils"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -104,10 +105,35 @@ export default function PropertyDetailsPage() {
         setIsSubmittingEnquiry(true);
         try {
             const { otp, ...leadData } = values;
+
+            // Create customer record
+            const customerId = generateUserId("CUS");
+            const [firstName, ...lastNameParts] = values.name.split(' ');
+            const lastName = lastNameParts.join(' ');
+            
+            await setDoc(doc(db, "users", customerId), {
+                id: customerId,
+                name: values.name,
+                firstName: firstName,
+                lastName: lastName,
+                email: values.email,
+                phone: values.phone,
+                role: 'customer',
+                status: 'active',
+                address: '', // Customers from leads might not have full address initially
+                city: values.city,
+                state: values.state,
+                pincode: '',
+                country: values.country,
+                createdAt: Timestamp.now(),
+            });
+            
+            // Create lead record
             const leadRef = await addDoc(collection(db, "leads"), {
                 ...leadData,
                 propertyId: property.id,
                 partnerId: user.id,
+                customerId: customerId,
                 status: "New",
                 createdAt: Timestamp.now(),
             });
@@ -413,9 +439,9 @@ export default function PropertyDetailsPage() {
             </div>
 
             <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
-                <DialogContent>
-                    <Form {...enquiryForm}>
-                        <form onSubmit={(e) => { e.preventDefault(); handleVerifyOtpAndSubmit(); }}>
+                 <Form {...enquiryForm}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleVerifyOtpAndSubmit(); }}>
+                        <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Verify Your Email</DialogTitle>
                                 <DialogDescription>
@@ -449,9 +475,9 @@ export default function PropertyDetailsPage() {
                                     Verify & Submit
                                 </Button>
                             </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
+                        </DialogContent>
+                    </form>
+                 </Form>
             </Dialog>
             
             <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
