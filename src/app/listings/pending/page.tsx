@@ -45,7 +45,17 @@ export default function PendingListingsPage() {
     try {
         const q = query(collection(db, "properties"), where("status", "==", "Pending Verification"));
         const snapshot = await getDocs(q);
-        const listingsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
+        const listingsData = await Promise.all(snapshot.docs.map(async (doc) => {
+            const data = doc.data() as Property;
+            let featureImageUrl = 'https://placehold.co/64x64.png';
+            if (data.featureImageId) {
+                const fileDoc = await getDoc(db.collection('files').doc(data.featureImageId));
+                if (fileDoc.exists()) {
+                    featureImageUrl = fileDoc.data()?.data;
+                }
+            }
+            return { ...data, id: doc.id, featureImage: featureImageUrl };
+        }));
         setPendingListings(listingsData);
     } catch (error) {
         console.error("Error fetching pending listings:", error);

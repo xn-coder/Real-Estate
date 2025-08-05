@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { collection, getDocs, query, where, Timestamp } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import type { Property } from "@/types/property"
@@ -49,14 +49,22 @@ export default function ListingsPage() {
             try {
                 const q = query(collection(db, "properties"), where("status", "!=", "Pending Verification"));
                 const snapshot = await getDocs(q);
-                const listingsData = snapshot.docs.map(doc => {
-                    const data = doc.data();
+                const listingsData = await Promise.all(snapshot.docs.map(async (doc) => {
+                    const data = doc.data() as Property;
+                    let featureImageUrl = 'https://placehold.co/400x225.png';
+                    if (data.featureImageId) {
+                        const fileDoc = await getDoc(db.collection('files').doc(data.featureImageId));
+                        if (fileDoc.exists()) {
+                            featureImageUrl = fileDoc.data()?.data;
+                        }
+                    }
                     return { 
-                        id: doc.id, 
                         ...data,
-                        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date()
-                    } as Property
-                });
+                        id: doc.id,
+                        createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
+                        featureImage: featureImageUrl,
+                    };
+                }));
                 setListings(listingsData);
             } catch (error) {
                 console.error("Error fetching listings:", error);

@@ -4,7 +4,7 @@ import type { Timestamp } from "firebase/firestore";
 type Slide = {
     id: string;
     title: string;
-    image: string;
+    image: string; // This will now store the file ID
 };
 
 export type Property = {
@@ -19,7 +19,7 @@ export type Property = {
     propertyTypeId: string;
     propertyAge: "New" | "<1 year" | "1 - 5 years" | "5 - 10 years" | "10+ years";
     reraApproved: boolean;
-    featureImage: string;
+    featureImageId: string; // Changed from featureImage
     catalogType: "New Project" | "Project" | "Resales" | "Rental" | "Other";
 
     // Step 2
@@ -102,4 +102,5 @@ export type Property = {
     createdAt?: Date;
     views?: number;
     modificationNotes?: string;
+    featureImage?: string; // Keep for display purposes after fetching
 };

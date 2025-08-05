@@ -329,24 +329,33 @@ export default function AddPropertyPage() {
         try {
             const propertyId = propertyCode || generateUserId("PROP");
 
+            // Handle feature image
+            const featureImageFileId = generateUserId("FILE");
             const featureImageUrl = await fileToDataUrl(values.featureImage);
+            await setDoc(doc(db, "files", featureImageFileId), { data: featureImageUrl });
             
-            const slideImageUrls = await Promise.all(
-                values.slides.map(slide => fileToDataUrl(slide.image))
+            // Handle slide images
+            const slidesWithIds = await Promise.all(
+                values.slides.map(async (slide) => {
+                    const slideImageFileId = generateUserId("FILE");
+                    const slideImageUrl = await fileToDataUrl(slide.image);
+                    await setDoc(doc(db, "files", slideImageFileId), { data: slideImageUrl });
+                    return {
+                        title: slide.title,
+                        image: slideImageFileId, // Store file ID instead of data URL
+                    };
+                })
             );
-            
-            const slidesWithUrls = values.slides.map((slide, index) => ({
-                title: slide.title,
-                image: slideImageUrls[index],
-            }));
 
             const propertyData = {
                 ...values,
                 id: propertyId,
                 status: 'Pending Verification',
-                featureImage: featureImageUrl,
-                slides: slidesWithUrls,
+                featureImageId: featureImageFileId,
+                slides: slidesWithIds,
             };
+            // @ts-ignore
+            delete propertyData.featureImage; // Remove the large file data
 
             await setDoc(doc(db, "properties", propertyId), propertyData);
 
