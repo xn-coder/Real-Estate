@@ -160,9 +160,20 @@ export default function PropertyDetailsPage() {
         if (!isFormValid) {
             return;
         }
-        
+
         setIsOtpSending(true);
         try {
+            // Check if email already exists
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", email));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                enquiryForm.setError("email", { message: "This email is already registered." });
+                toast({ variant: "destructive", title: "Email Exists", description: "A user with this email already exists." });
+                return;
+            }
+            
             await sendOtp(email);
             setIsOtpDialogOpen(true);
             toast({ title: "OTP Sent", description: `An OTP has been sent to ${email}.` });
