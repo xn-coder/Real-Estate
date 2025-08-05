@@ -93,17 +93,26 @@ const step3Schema = z.object({
 });
 
 const step4Schema = z.object({
-    builtUpArea: z.coerce.number().min(0),
-    carpetArea: z.coerce.number().min(0),
-    superBuiltUpArea: z.coerce.number().min(0),
+    builtUpArea: z.coerce.number().min(0).optional(),
+    isBuiltUpAreaEnabled: z.boolean().default(true),
+    carpetArea: z.coerce.number().min(0).optional(),
+    isCarpetAreaEnabled: z.boolean().default(true),
+    superBuiltUpArea: z.coerce.number().min(0).optional(),
+    isSuperBuiltUpAreaEnabled: z.boolean().default(true),
     unitOfMeasurement: z.enum(["sq. ft", "sq. m", "acres", "other"]),
-    totalFloors: z.coerce.number().min(0),
-    floorNumber: z.coerce.number().min(0),
-    bedrooms: z.coerce.number().min(0),
-    bathrooms: z.coerce.number().min(0),
-    balconies: z.coerce.number().min(0),
+    totalFloors: z.coerce.number().min(0).optional(),
+    isTotalFloorsEnabled: z.boolean().default(true),
+    floorNumber: z.coerce.number().min(0).optional(),
+    isFloorNumberEnabled: z.boolean().default(true),
+    bedrooms: z.coerce.number().min(0).optional(),
+    isBedroomsEnabled: z.boolean().default(true),
+    bathrooms: z.coerce.number().min(0).optional(),
+    isBathroomsEnabled: z.boolean().default(true),
+    balconies: z.coerce.number().min(0).optional(),
+    isBalconiesEnabled: z.boolean().default(true),
     servantRoom: z.boolean().default(false),
-    parkingSpaces: z.coerce.number().min(0),
+    parkingSpaces: z.coerce.number().min(0).optional(),
+    isParkingSpacesEnabled: z.boolean().default(true),
 });
 
 const step5Schema = z.object({
@@ -199,7 +208,7 @@ export default function AddPropertyPage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [currentStep, setCurrentStep] = React.useState(0);
     const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
-    const [catalogCode, setCatalogCode] = React.useState<string | null>(null);
+    const [propertyCode, setPropertyCode] = React.useState<string | null>(null);
 
     const form = useForm<AddPropertyForm>({
         resolver: zodResolver(fullSchema),
@@ -231,6 +240,15 @@ export default function AddPropertyPage() {
             altPhone: '',
             agencyName: '',
             reraId: '',
+            isBuiltUpAreaEnabled: true,
+            isCarpetAreaEnabled: true,
+            isSuperBuiltUpAreaEnabled: true,
+            isTotalFloorsEnabled: true,
+            isFloorNumberEnabled: true,
+            isBedroomsEnabled: true,
+            isBathroomsEnabled: true,
+            isBalconiesEnabled: true,
+            isParkingSpacesEnabled: true,
         },
         mode: "onChange",
     });
@@ -258,8 +276,8 @@ export default function AddPropertyPage() {
         const isValid = await form.trigger(fieldsToValidate);
 
         if (isValid) {
-            if (currentStep === 0 && !catalogCode) {
-                 setCatalogCode(generateUserId("CAT"));
+            if (currentStep === 0 && !propertyCode) {
+                 setPropertyCode(generateUserId("PROP"));
             }
             if (currentStep < allSteps.length - 1) {
                 setCurrentStep(prev => prev + 1);
@@ -276,7 +294,7 @@ export default function AddPropertyPage() {
     const onFinalSubmit = async (values: AddPropertyForm) => {
         setIsSubmitting(true);
         try {
-            const propertyId = catalogCode || generateUserId("PROP");
+            const propertyId = propertyCode || generateUserId("PROP");
 
             const featureImageUrl = await fileToDataUrl(values.featureImage);
             
@@ -333,7 +351,7 @@ export default function AddPropertyPage() {
                 </Button>
                 <div>
                      <h1 className="text-2xl font-bold tracking-tight font-headline">Add New Property</h1>
-                     {catalogCode && <p className="text-sm text-muted-foreground font-mono">Catalog Code: {catalogCode}</p>}
+                     {propertyCode && <p className="text-sm text-muted-foreground font-mono">Property Code: {propertyCode}</p>}
                 </div>
             </div>
 
@@ -370,15 +388,41 @@ export default function AddPropertyPage() {
                             {/* Step 2: Slideshow */}
                             {currentStep === 1 && (
                                 <div className="space-y-4">
-                                    {fields.map((field, index) => (
+                                    {fields.map((field, index) => {
+                                        const imagePreview = form.watch(`slides.${index}.image`);
+                                        return (
                                         <Card key={field.id} className="relative p-4">
                                             <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                            <div className="grid md:grid-cols-2 gap-4">
-                                                <FormField control={form.control} name={`slides.${index}.image`} render={({ field: { onChange, ...rest } }) => ( <FormItem><FormLabel>Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} /></FormControl><FormMessage /></FormItem> )} />
+                                            <div className="grid md:grid-cols-2 gap-4 items-center">
+                                                <div className="space-y-2">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`slides.${index}.image`}
+                                                        render={({ field: { onChange, ...rest } }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Image</FormLabel>
+                                                            <div className="w-full aspect-video bg-muted rounded-md flex items-center justify-center overflow-hidden">
+                                                                {imagePreview ? (
+                                                                    <Image src={typeof imagePreview === 'string' ? imagePreview : URL.createObjectURL(imagePreview)} alt="Banner Preview" width={300} height={150} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className="text-muted-foreground text-sm">Image Preview</span>
+                                                                )}
+                                                            </div>
+                                                            <FormControl>
+                                                                <Input className="hidden" id={`slide-upload-${index}`} type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
+                                                            </FormControl>
+                                                            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => document.getElementById(`slide-upload-${index}`)?.click()}>
+                                                                <Upload className="mr-2 h-4 w-4" /> Upload Image
+                                                            </Button>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
                                                 <FormField control={form.control} name={`slides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                             </div>
                                         </Card>
-                                    ))}
+                                    )})}
                                     <Button type="button" variant="outline" onClick={() => append({ title: '', image: undefined })}><PlusCircle className="mr-2 h-4 w-4"/>Add Slide</Button>
                                 </div>
                             )}
@@ -390,18 +434,22 @@ export default function AddPropertyPage() {
 
                              {/* Step 4: Size & Structure */}
                             {currentStep === 3 && (
-                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <FormField control={form.control} name="builtUpArea" render={({ field }) => ( <FormItem><FormLabel>Built-up Area</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="carpetArea" render={({ field }) => ( <FormItem><FormLabel>Carpet Area</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="superBuiltUpArea" render={({ field }) => ( <FormItem><FormLabel>Super Built-up Area</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="unitOfMeasurement" render={({ field }) => ( <FormItem><FormLabel>Unit of Measurement</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="sq. ft">Sq. Ft.</SelectItem><SelectItem value="sq. m">Sq. M.</SelectItem><SelectItem value="acres">Acres</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="totalFloors" render={({ field }) => ( <FormItem><FormLabel>Total Floors</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="floorNumber" render={({ field }) => ( <FormItem><FormLabel>Floor Number</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem><FormLabel>Bedrooms</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem><FormLabel>Bathrooms</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="balconies" render={({ field }) => ( <FormItem><FormLabel>Balconies</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    <FormField control={form.control} name="servantRoom" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm col-span-1"><div className="space-y-0.5"><FormLabel>Servant/Store Room</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem> )} />
-                                    <FormField control={form.control} name="parkingSpaces" render={({ field }) => ( <FormItem><FormLabel>Parking Spaces</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                <div className="space-y-4">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="unitOfMeasurement" render={({ field }) => ( <FormItem><FormLabel>Unit of Measurement</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="sq. ft">Sq. Ft.</SelectItem><SelectItem value="sq. m">Sq. M.</SelectItem><SelectItem value="acres">Acres</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="servantRoom" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Servant/Store Room</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem> )} />
+                                    </div>
+                                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <FormField control={form.control} name="isBuiltUpAreaEnabled" render={({ field }) => ( <FormItem><FormLabel>Built-up Area</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("builtUpArea")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isCarpetAreaEnabled" render={({ field }) => ( <FormItem><FormLabel>Carpet Area</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("carpetArea")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isSuperBuiltUpAreaEnabled" render={({ field }) => ( <FormItem><FormLabel>Super Built-up Area</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("superBuiltUpArea")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isTotalFloorsEnabled" render={({ field }) => ( <FormItem><FormLabel>Total Floors</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("totalFloors")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isFloorNumberEnabled" render={({ field }) => ( <FormItem><FormLabel>Floor Number</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("floorNumber")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isBedroomsEnabled" render={({ field }) => ( <FormItem><FormLabel>Bedrooms</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("bedrooms")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isBathroomsEnabled" render={({ field }) => ( <FormItem><FormLabel>Bathrooms</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("bathrooms")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isBalconiesEnabled" render={({ field }) => ( <FormItem><FormLabel>Balconies</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("balconies")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                        <FormField control={form.control} name="isParkingSpacesEnabled" render={({ field }) => ( <FormItem><FormLabel>Parking Spaces</FormLabel><div className="flex items-center gap-2"><Switch checked={field.value} onCheckedChange={field.onChange}/><Input type="number" {...form.register("parkingSpaces")} disabled={!field.value} /></div><FormMessage /></FormItem> )} />
+                                    </div>
                                 </div>
                             )}
 
@@ -499,5 +547,7 @@ export default function AddPropertyPage() {
         </div>
     );
 }
+
+    
 
     
