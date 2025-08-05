@@ -36,6 +36,7 @@ import type { PropertyType } from "@/types/resource"
 import { Switch } from "@/components/ui/switch"
 import dynamic from "next/dynamic"
 import Image from "next/image"
+import { Checkbox } from "@/components/ui/checkbox"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -216,6 +217,20 @@ export default function AddPropertyPage() {
             priceType: 'fixed',
             listedBy: 'Agent',
             contactTime: 'Morning',
+            furnitureIncluded: '',
+            landmark: '',
+            latitude: '',
+            longitude: '',
+            busStop: '',
+            metroStation: '',
+            hospitalDistance: '',
+            mallDistance: '',
+            airportDistance: '',
+            schoolDistance: '',
+            otherConnectivity: '',
+            altPhone: '',
+            agencyName: '',
+            reraId: '',
         },
         mode: "onChange",
     });
