@@ -80,15 +80,7 @@ type SubNavItem = {
 
 const adminNavItems: NavItem[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-    { 
-        href: '/listings', 
-        icon: Building, 
-        label: 'Properties',
-        subItems: [
-            { href: '/listings/list', label: 'All Properties' },
-            { href: '/listings/property-types', label: 'Property Types' },
-        ]
-    },
+    { href: '/listings', icon: Building, label: 'Properties' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
     { href: '/onboarding', icon: Plane, label: 'Onboarding' },
     { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
