@@ -23,6 +23,7 @@ import type { TeamMember, User as PartnerUser } from "@/types/user"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { getAvailablePartners } from "@/services/team-service"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -42,7 +43,7 @@ export default function TeamManagementPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
-
+  const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null);
 
   const canManageTeam = user?.role && ['franchisee', 'channel', 'associate'].includes(user.role);
 
@@ -85,20 +86,22 @@ export default function TeamManagementPage() {
     }
   }, [user, canManageTeam, isUserLoading, fetchData]);
 
-  const handleSendRequest = async (partner: TeamMember) => {
-    if (!user) return;
+  const handleSendRequest = async () => {
+    if (!user || !selectedPartner) return;
     setIsSubmitting(true);
     try {
         await addDoc(collection(db, "team_requests"), {
             requesterId: user.id,
             requesterName: user.name,
-            recipientId: partner.id,
-            recipientName: partner.name,
+            recipientId: selectedPartner.id,
+            recipientName: selectedPartner.name,
             status: "pending",
             requestedAt: Timestamp.now(),
         });
-        toast({ title: "Request Sent", description: `Your request to add ${partner.name} has been sent.` });
+        toast({ title: "Request Sent", description: `Your request to add ${selectedPartner.name} has been sent.` });
         fetchData(); // Refresh data
+        setIsDialogOpen(false); // Close dialog
+        setSelectedPartner(null); // Reset selection
     } catch(error) {
         console.error("Error sending request:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to send team request." });
@@ -108,24 +111,17 @@ export default function TeamManagementPage() {
   }
 
   const partnersToDisplay = React.useMemo(() => {
-    // Client-side sorting
-    const sortedPartners = [...allRequestablePartners].sort((a, b) => {
-        const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0;
-        const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0;
-        return dateB - dateA;
-    });
-
-    const filteredPartners = sortedPartners.filter(partner => 
+    if (!searchTerm) return [];
+    return allRequestablePartners.filter(partner => 
         partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         partner.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    if (!searchTerm) {
-        return filteredPartners.slice(0, 8);
-    }
-    
-    return filteredPartners;
   }, [allRequestablePartners, searchTerm]);
+
+  const handleSelectPartner = (partner: PartnerUser) => {
+    setSelectedPartner(partner);
+    setSearchTerm("");
+  }
 
 
   if (isUserLoading) {
@@ -158,57 +154,67 @@ export default function TeamManagementPage() {
                     {pendingRequestCount > 0 && <Badge className="ml-2">{pendingRequestCount}</Badge>}
                 </Link>
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) {
+                    setSelectedPartner(null);
+                    setSearchTerm("");
+                }
+            }}>
               <DialogTrigger asChild>
                 <Button><UserPlus className="mr-2 h-4 w-4" /> Request Partner</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-xl">
                 <DialogHeader>
                   <DialogTitle>Request Partner to Join Team</DialogTitle>
                   <DialogDescription>Select a partner from the list to send them a request.</DialogDescription>
                 </DialogHeader>
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search by name or ID to see all available partners..."
-                        className="pl-8"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <div className="max-h-[60vh] overflow-y-auto border rounded-lg">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Partner</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                                <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                            ) : partnersToDisplay.length === 0 ? (
-                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No partners available to request.</TableCell></TableRow>
-                            ) : (
-                                partnersToDisplay.map(partner => (
-                                    <TableRow key={partner.id}>
-                                        <TableCell>
-                                            <div className="font-medium">{partner.name}</div>
-                                            <div className="text-sm text-muted-foreground font-mono">{partner.id}</div>
-                                        </TableCell>
-                                        <TableCell><Badge variant="outline">{roleNameMapping[partner.role]}</Badge></TableCell>
-                                        <TableCell className="text-right">
-                                            <Button size="sm" onClick={() => handleSendRequest(partner)} disabled={isSubmitting}>
-                                                <Send className="mr-2 h-4 w-4" /> Request
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Recipient</label>
+                    {selectedPartner ? (
+                        <div className="flex items-center gap-4 p-2 border rounded-md">
+                            <Avatar>
+                                <AvatarImage src={selectedPartner.profileImage} />
+                                <AvatarFallback>{selectedPartner.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <p className="font-medium">{selectedPartner.name}</p>
+                                <p className="text-sm text-muted-foreground">{selectedPartner.email}</p>
+                            </div>
+                            <Button variant="ghost" onClick={() => setSelectedPartner(null)}>Change</Button>
+                        </div>
+                    ) : (
+                        <div>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Search for a partner by name or email..."
+                                    className="pl-8"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            {searchTerm && (
+                                <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
+                                    {isLoading ? (
+                                        <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                                    ) : partnersToDisplay.length > 0 ? partnersToDisplay.map(p => (
+                                        <div key={p.id} onClick={() => handleSelectPartner(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                            {p.name} ({p.email})
+                                        </div>
+                                    )) : <p className="p-4 text-sm text-center text-muted-foreground">No partners found.</p>}
+                                </div>
                             )}
-                        </TableBody>
-                    </Table>
+                        </div>
+                    )}
                 </div>
+                <DialogFooter>
+                    <Button onClick={handleSendRequest} disabled={isSubmitting || !selectedPartner}>
+                        <Send className="mr-2 h-4 w-4" />
+                        {isSubmitting ? "Sending..." : "Send Request"}
+                    </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
         </div>
