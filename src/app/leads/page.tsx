@@ -61,9 +61,22 @@ export default function LeadsPage() {
     try {
       const leadsCollection = collection(db, "leads");
       let q;
-      if (user.role === 'admin' || user.role === 'seller') {
+
+      if (user.role === 'admin') {
         q = query(leadsCollection);
-      } else {
+      } else if (user.role === 'seller') {
+        const propertiesCollection = collection(db, "properties");
+        const sellerPropertiesQuery = query(propertiesCollection, where("email", "==", user.email));
+        const sellerPropertiesSnapshot = await getDocs(sellerPropertiesQuery);
+        const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(doc => doc.id);
+
+        if (sellerPropertyIds.length === 0) {
+            setLeads([]);
+            setIsLoading(false);
+            return;
+        }
+        q = query(leadsCollection, where("propertyId", "in", sellerPropertyIds));
+      } else { // Partner roles
         q = query(leadsCollection, where("partnerId", "==", user.id));
       }
       const snapshot = await getDocs(q);
@@ -85,8 +98,10 @@ export default function LeadsPage() {
   }, [user, toast]);
 
   React.useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    if(user) {
+        fetchLeads();
+    }
+  }, [user, fetchLeads]);
 
   const handleScheduleClick = (lead: Lead) => {
     setSelectedLead(lead);

@@ -19,7 +19,6 @@ import { collection, getDocs, query, where, documentId } from "firebase/firestor
 import type { User as CustomerUser } from "@/types/user"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
-import type { Property } from "@/types/property"
 import type { Lead } from "@/types/lead"
 
 const statusColors: { [key: string]: "default" | "secondary" | "destructive" } = {
@@ -40,13 +39,13 @@ export default function ManageCustomerPage() {
     try {
         let customerQuery;
         const usersCollection = collection(db, "users");
+        const leadsCollection = collection(db, "leads");
 
         if (user.role === 'admin') {
             customerQuery = query(usersCollection, where("role", "==", "customer"));
         } else if (user.role === 'seller') {
-            // Get properties listed by the seller
             const propertiesCollection = collection(db, "properties");
-            const sellerPropertiesQuery = query(propertiesCollection, where("listedBy", "==", "Owner"), where("email", "==", user.email));
+            const sellerPropertiesQuery = query(propertiesCollection, where("email", "==", user.email));
             const sellerPropertiesSnapshot = await getDocs(sellerPropertiesQuery);
             const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(doc => doc.id);
             
@@ -56,12 +55,9 @@ export default function ManageCustomerPage() {
                  return;
             }
             
-            // Get leads for those properties
-            const leadsCollection = collection(db, "leads");
             const leadsQuery = query(leadsCollection, where("propertyId", "in", sellerPropertyIds));
             const leadsSnapshot = await getDocs(leadsQuery);
             const customerIds = [...new Set(leadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id))];
-
 
             if (customerIds.length === 0) {
                  setCustomers([]);
@@ -71,8 +67,6 @@ export default function ManageCustomerPage() {
             customerQuery = query(usersCollection, where(documentId(), "in", customerIds));
 
         } else { // Partner roles
-            // Get leads handled by the partner
-            const leadsCollection = collection(db, "leads");
             const partnerLeadsQuery = query(leadsCollection, where("partnerId", "==", user.id));
             const partnerLeadsSnapshot = await getDocs(partnerLeadsQuery);
             const customerIds = [...new Set(partnerLeadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id))];
@@ -101,8 +95,10 @@ export default function ManageCustomerPage() {
   }, [user, toast])
 
   React.useEffect(() => {
-    fetchCustomers()
-  }, [fetchCustomers])
+    if(user){
+        fetchCustomers()
+    }
+  }, [user, fetchCustomers])
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
