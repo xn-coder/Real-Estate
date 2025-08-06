@@ -4,6 +4,7 @@
 import { db } from "@/lib/firebase";
 import { collection, addDoc, Timestamp, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import type { Lead } from "@/types/lead";
+import type { Appointment } from "@/types/appointment";
 
 interface AppointmentData {
     leadId: string;
@@ -48,17 +49,23 @@ export async function createAppointment(data: AppointmentData): Promise<void> {
 
         if (!existingAppointmentsSnapshot.empty) {
             // An appointment for this customer, property, and day already exists.
-            throw new Error("This customer already has a visit scheduled for this property on the selected date.");
+            // Instead of throwing an error, we can just log it and return.
+            console.warn("Attempted to create a duplicate appointment. Operation was ignored.");
+            return;
         }
 
         // 3. Create the new appointment if no duplicates are found
-        await addDoc(collection(db, "appointments"), {
-            ...data,
-            customerId: customerId, // Store customerId for easier querying
+        const newAppointment: Omit<Appointment, 'id'> = {
+            leadId: data.leadId,
+            propertyId: data.propertyId,
+            partnerId: data.partnerId,
+            customerId: customerId,
             visitDate: Timestamp.fromDate(data.visitDate),
             status: 'Scheduled',
             createdAt: Timestamp.now(),
-        });
+        };
+
+        await addDoc(collection(db, "appointments"), newAppointment);
 
         console.log("Appointment created successfully for lead:", data.leadId);
     } catch (error: any) {
