@@ -8,24 +8,68 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useUser } from "@/hooks/use-user"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
-const walletStats = [
-    { title: "Total Balance", amount: "0", description: "Available in your wallet" },
-    { title: "Revenue", amount: "0", description: "Total income generated" },
-    { title: "Receivable", amount: "0", description: "Amount to be received" },
-    { title: "Payable", amount: "0", description: "Amount to be paid" },
-]
-
-const walletOptions = [
-  { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
-  { name: "Claim Reward Points", href: "#" },
-  { name: "Reward Points History", href: "#" },
-  { name: "Payment History", href: "#" },
-]
+type WalletStats = {
+    balance: number;
+    revenue: number;
+    receivable: number;
+    payable: number;
+}
 
 export default function WalletPage() {
+    const { user } = useUser();
+    const [stats, setStats] = React.useState<WalletStats>({
+        balance: 0,
+        revenue: 0,
+        receivable: 0,
+        payable: 0,
+    });
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const fetchStats = async () => {
+            if (!user) return;
+            setIsLoading(true);
+            try {
+                const walletRef = doc(db, "wallets", user.id);
+                const walletSnap = await getDoc(walletRef);
+                if (walletSnap.exists()) {
+                    const data = walletSnap.data();
+                    setStats({
+                        balance: data.balance || 0,
+                        revenue: data.revenue || 0,
+                        receivable: data.receivable || 0,
+                        payable: data.payable || 0,
+                    });
+                }
+            } catch(e) {
+                console.error("Error fetching wallet stats:", e);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        fetchStats();
+    }, [user]);
+
+    const walletStats = [
+        { title: "Total Balance", amount: stats.balance.toLocaleString(), description: "Available in your wallet" },
+        { title: "Revenue", amount: stats.revenue.toLocaleString(), description: "Total income generated" },
+        { title: "Receivable", amount: stats.receivable.toLocaleString(), description: "Amount to be received" },
+        { title: "Payable", amount: stats.payable.toLocaleString(), description: "Amount to be paid" },
+    ]
+
+    const walletOptions = [
+        { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
+        { name: "Claim Reward Points", href: "#" },
+        { name: "Reward Points History", href: "#" },
+        { name: "Payment History", href: "#" },
+    ]
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
        <div className="flex items-center justify-between">
@@ -39,7 +83,9 @@ export default function WalletPage() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₹{stat.amount}</div>
+                        <div className="text-2xl font-bold">
+                             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `₹${stat.amount}`}
+                        </div>
                         <p className="text-xs text-muted-foreground">{stat.description}</p>
                     </CardContent>
                 </Card>

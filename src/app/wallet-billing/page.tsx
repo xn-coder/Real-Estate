@@ -8,20 +8,63 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
+import { collection, getDocs } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 
-const walletStats = [
-    { title: "Total Balance", amount: "0", description: "Available in your wallet" },
-    { title: "Revenue", amount: "0", description: "Total income generated" },
-    { title: "Receivable", amount: "0", description: "Amount to be received" },
-    { title: "Payable", amount: "0", description: "Amount to be paid" },
-]
+type WalletStats = {
+    totalBalance: number;
+    totalRevenue: number;
+    totalReceivable: number;
+    totalPayable: number;
+}
 
 export default function WalletBillingPage() {
   const { user } = useUser();
   const isAdmin = user?.role === 'admin';
+  const [stats, setStats] = React.useState<WalletStats>({
+      totalBalance: 0,
+      totalRevenue: 0,
+      totalReceivable: 0,
+      totalPayable: 0,
+  });
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+      const fetchStats = async () => {
+          if (!isAdmin) {
+              setIsLoading(false);
+              return;
+          };
+          setIsLoading(true);
+          try {
+              const snapshot = await getDocs(collection(db, "wallets"));
+              let totalBalance = 0, totalRevenue = 0, totalReceivable = 0, totalPayable = 0;
+              snapshot.forEach(doc => {
+                  const data = doc.data();
+                  totalBalance += data.balance || 0;
+                  totalRevenue += data.revenue || 0;
+                  totalReceivable += data.receivable || 0;
+                  totalPayable += data.payable || 0;
+              });
+              setStats({ totalBalance, totalRevenue, totalReceivable, totalPayable });
+          } catch(e) {
+              console.error("Error fetching wallet stats:", e);
+          } finally {
+              setIsLoading(false);
+          }
+      }
+      fetchStats();
+  }, [isAdmin]);
+
+  const walletStats = [
+    { title: "Total Balance", amount: stats.totalBalance.toLocaleString(), description: "Across all wallets" },
+    { title: "Total Revenue", amount: stats.totalRevenue.toLocaleString(), description: "Total income generated" },
+    { title: "Total Receivable", amount: stats.totalReceivable.toLocaleString(), description: "Total amount to be received" },
+    { title: "Total Payable", amount: stats.totalPayable.toLocaleString(), description: "Total amount to be paid" },
+  ]
 
   const walletOptions = [
     ...(isAdmin ? [{ name: "Manage Wallet", href: "/wallet-billing/manage" }] : []),
@@ -49,7 +92,9 @@ export default function WalletBillingPage() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₹{stat.amount}</div>
+                        <div className="text-2xl font-bold">
+                            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `₹${stat.amount}`}
+                        </div>
                         <p className="text-xs text-muted-foreground">{stat.description}</p>
                     </CardContent>
                 </Card>
