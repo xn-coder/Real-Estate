@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,7 +28,7 @@ import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp } fro
 import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, Users, Send, UserPlus } from "lucide-react"
+import { Loader2, PlusCircle, Users, Send, UserPlus, Search } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
 import type { User as TeamMember } from "@/types/user"
@@ -45,7 +45,7 @@ const roleNameMapping: Record<string, string> = {
 
 const addableRoles: Record<string, string[]> = {
   franchisee: ['channel', 'associate', 'super_affiliate', 'affiliate'],
-  channel: ['channel', 'associate', 'super_affiliate', 'affiliate'],
+  channel: ['associate', 'super_affiliate', 'affiliate'],
   associate: ['super_affiliate', 'affiliate'],
 };
 
@@ -58,6 +58,8 @@ export default function TeamManagementPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState("");
+
 
   const canManageTeam = user?.role && ['franchisee', 'channel', 'associate'].includes(user.role);
 
@@ -80,7 +82,11 @@ export default function TeamManagementPage() {
       // Fetch requestable partners
       const availableRoles = addableRoles[user.role as keyof typeof addableRoles] || [];
       if (availableRoles.length > 0) {
-        const requestableQuery = query(usersCollection, where("role", "in", availableRoles), where("teamLeadId", "==", null));
+        const requestableQuery = query(
+            usersCollection, 
+            where("role", "in", availableRoles), 
+            where("teamLeadId", "==", null)
+        );
         const requestableSnapshot = await getDocs(requestableQuery);
         const requestableList = requestableSnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as TeamMember))
@@ -127,6 +133,13 @@ export default function TeamManagementPage() {
     }
   }
 
+  const filteredPartners = React.useMemo(() => {
+    return requestablePartners.filter(partner => 
+        partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        partner.id.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [requestablePartners, searchTerm]);
+
 
   if (isUserLoading) {
     return <div className="flex-1 p-4 md:p-8 pt-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -167,6 +180,15 @@ export default function TeamManagementPage() {
                   <DialogTitle>Request Partner to Join Team</DialogTitle>
                   <DialogDescription>Select a partner from the list to send them a request.</DialogDescription>
                 </DialogHeader>
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search by name or ID..."
+                        className="pl-8"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
                 <div className="max-h-[60vh] overflow-y-auto border rounded-lg">
                     <Table>
                         <TableHeader>
@@ -179,10 +201,10 @@ export default function TeamManagementPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                            ) : requestablePartners.length === 0 ? (
+                            ) : filteredPartners.length === 0 ? (
                                 <TableRow><TableCell colSpan={3} className="h-24 text-center">No partners available to request.</TableCell></TableRow>
                             ) : (
-                                requestablePartners.map(partner => (
+                                filteredPartners.map(partner => (
                                     <TableRow key={partner.id}>
                                         <TableCell>
                                             <div className="font-medium">{partner.name}</div>
