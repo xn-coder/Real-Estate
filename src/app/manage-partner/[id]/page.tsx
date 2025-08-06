@@ -32,7 +32,7 @@ const roleNameMapping: Record<string, string> = {
 const salesStats = [
     { icon: BarChart, label: "Total Enquiries", value: "150", color: "text-blue-500" },
     { icon: UserRound, label: "Total Customers", value: "32", color: "text-green-500" },
-    { icon: DollarSign, label: "Total Revenue", value: "$12,500", color: "text-yellow-500" },
+    { icon: DollarSign, label: "Total Revenue", value: "₹12,500", color: "text-yellow-500" },
     { icon: Star, label: "Reward Points", value: "1,200", color: "text-purple-500" },
 ]
 
