@@ -19,8 +19,8 @@ const walletStats = [
 ]
 
 const walletOptions = [
-  { name: "Withdrawal Request", href: "#" },
-  { name: "Send Reward Points", href: "#" },
+  { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
+  { name: "Claim Reward Points", href: "#" },
   { name: "Reward Points History", href: "#" },
   { name: "Payment History", href: "#" },
 ]

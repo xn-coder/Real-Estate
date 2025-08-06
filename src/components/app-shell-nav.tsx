@@ -101,7 +101,7 @@ const partnerNavItems: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/listings/list', icon: Building, label: 'Properties' },
   { href: '/leads', icon: UserRound, label: 'Manage Leads' },
-  { href: '/wallet', icon: Wallet, label: 'Earning & Wallet' },
+  { href: '/wallet-billing', icon: Wallet, label: 'Earning & Wallet' },
   { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
   { href: '/schedule', icon: Calendar, label: 'Location Visit Schedule' },
   { href: '/manage-quotation', icon: FileText, label: 'Manage Quotation' },
