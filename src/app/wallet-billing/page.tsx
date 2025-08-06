@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card"
 import { ChevronRight } from "lucide-react"
 import Link from "next/link"
+import { useUser } from "@/hooks/use-user"
 
 const walletStats = [
     { title: "Total Balance", amount: "0", description: "Available in your wallet" },
@@ -18,18 +19,23 @@ const walletStats = [
     { title: "Payable", amount: "0", description: "Amount to be paid" },
 ]
 
-const walletOptions = [
-  { name: "Manage Wallet", href: "/wallet-billing/manage" },
-  { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
-  { name: "Send Reward Points", href: "/wallet-billing/rewards" },
-  { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
-  { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
-  { name: "Payable List", href: "/wallet-billing/payable" },
-  { name: "Renew Billing & Invoice, Quotation", href: "/wallet-billing/billing" },
-  { name: "Payment History", href: "/wallet-billing/history" },
-]
-
 export default function WalletBillingPage() {
+  const { user } = useUser();
+  const isAdmin = user?.role === 'admin';
+
+  const walletOptions = [
+    ...(isAdmin ? [{ name: "Manage Wallet", href: "/wallet-billing/manage" }] : []),
+    { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
+    { name: "Claim Reward Points", href: "/wallet-billing/rewards" },
+    { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
+    ...(isAdmin ? [
+      { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
+      { name: "Payable List", href: "/wallet-billing/payable" },
+      { name: "Renew Billing & Invoice, Quotation", href: "/wallet-billing/billing" },
+    ] : []),
+    { name: "Payment History", href: "/wallet-billing/history" },
+  ]
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
        <div className="flex items-center justify-between">
