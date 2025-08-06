@@ -24,6 +24,8 @@ import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc, writeBatch, addDoc, Timestamp, getDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import type { Wallet } from "@/types/wallet"
+
 
 const sendRewardsSchema = z.object({
   recipientId: z.string().min(1, "Please select a recipient."),
@@ -44,6 +46,7 @@ export default function RewardsPage() {
   const [partners, setPartners] = React.useState<PartnerUser[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
+  const [wallet, setWallet] = React.useState<Wallet | null>(null);
 
   const isAdmin = user?.role === 'admin'
 
@@ -76,8 +79,17 @@ export default function RewardsPage() {
         }
       }
       fetchPartners()
+    } else if (user) {
+        const fetchWallet = async () => {
+            const walletRef = doc(db, 'wallets', user.id);
+            const walletSnap = await getDoc(walletRef);
+            if(walletSnap.exists()) {
+                setWallet(walletSnap.data() as Wallet);
+            }
+        }
+        fetchWallet();
     }
-  }, [isAdmin])
+  }, [isAdmin, user])
   
   const filteredPartners = React.useMemo(() => {
     if (!searchTerm) return partners;
@@ -111,12 +123,10 @@ export default function RewardsPage() {
           const walletRef = doc(db, "wallets", selectedPartner.id);
           const walletDoc = await getDoc(walletRef);
           
-          let newBalance = values.points;
-          if (walletDoc.exists()) {
-              newBalance = (walletDoc.data().rewardBalance || 0) + values.points;
-          }
-
-          batch.set(walletRef, { rewardBalance: newBalance }, { merge: true });
+          const currentRewardBalance = walletDoc.exists() ? walletDoc.data().rewardBalance || 0 : 0;
+          const newRewardBalance = currentRewardBalance + values.points;
+          
+          batch.set(walletRef, { rewardBalance: newRewardBalance }, { merge: true });
 
           await batch.commit();
 
@@ -136,17 +146,46 @@ export default function RewardsPage() {
        if (!user) return;
         setIsSubmitting(true);
         try {
-            // Check if user has enough points
-            // In a real app, this would be a single transaction
-             const batch = writeBatch(db);
+            const walletRef = doc(db, 'wallets', user.id);
+            const walletSnap = await getDoc(walletRef);
 
-            // Add to reward transaction history (new collection)
-            // Update user's wallet (increase) and reward balance (decrease)
+            const currentRewardBalance = walletSnap.exists() ? walletSnap.data().rewardBalance || 0 : 0;
+            const currentBalance = walletSnap.exists() ? walletSnap.data().balance || 0 : 0;
 
-            console.log("Claiming rewards:", values);
-            await new Promise(res => setTimeout(res, 1000));
+            if (values.points > currentRewardBalance) {
+                claimForm.setError("points", { message: "You don't have enough points to claim." });
+                setIsSubmitting(false);
+                return;
+            }
+            
+            const batch = writeBatch(db);
+
+            batch.update(walletRef, {
+                rewardBalance: currentRewardBalance - values.points,
+                balance: currentBalance + values.points
+            });
+            
+            const transactionRef = doc(collection(db, "reward_transactions"));
+            batch.set(transactionRef, {
+                fromId: user.id,
+                fromName: user.name,
+                toId: user.id,
+                toName: user.name,
+                points: values.points,
+                notes: "Points claimed to main wallet",
+                type: "Claimed",
+                date: Timestamp.now(),
+            });
+
+            await batch.commit();
+
             toast({ title: "Success", description: `You have claimed ${values.points} points.` });
             claimForm.reset();
+             // Refetch wallet data
+            const updatedWalletSnap = await getDoc(walletRef);
+            if (updatedWalletSnap.exists()) {
+                setWallet(updatedWalletSnap.data() as Wallet);
+            }
 
         } catch (error) {
              console.error("Error claiming rewards:", error);
@@ -270,7 +309,7 @@ export default function RewardsPage() {
                     <form onSubmit={claimForm.handleSubmit(onClaimSubmit)} className="space-y-6">
                         <div className="p-4 rounded-lg bg-muted text-center">
                             <p className="text-sm text-muted-foreground">Available Reward Points</p>
-                            <p className="text-3xl font-bold">1,200</p>
+                            <p className="text-3xl font-bold">{wallet?.rewardBalance?.toLocaleString() || 0}</p>
                         </div>
                          <FormField
                             control={claimForm.control}
