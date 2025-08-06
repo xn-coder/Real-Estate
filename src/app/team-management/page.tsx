@@ -31,7 +31,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, PlusCircle, Users, Send, UserPlus, Search } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
-import type { User as TeamMember } from "@/types/user"
+import type { TeamMember } from "@/types/user"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
@@ -53,7 +53,7 @@ export default function TeamManagementPage() {
   const { user, isLoading: isUserLoading } = useUser();
   const { toast } = useToast();
   const [teamMembers, setTeamMembers] = React.useState<TeamMember[]>([]);
-  const [requestablePartners, setRequestablePartners] = React.useState<TeamMember[]>([]);
+  const [allRequestablePartners, setAllRequestablePartners] = React.useState<TeamMember[]>([]);
   const [pendingRequestCount, setPendingRequestCount] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -85,14 +85,14 @@ export default function TeamManagementPage() {
         const requestableQuery = query(
             usersCollection, 
             where("role", "in", availableRoles), 
-            where("teamLeadId", "==", null),
             orderBy("createdAt", "desc")
         );
         const requestableSnapshot = await getDocs(requestableQuery);
         const requestableList = requestableSnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as TeamMember))
-            .filter(p => p.id !== user.id); // Can't request yourself
-        setRequestablePartners(requestableList);
+            // Filter out partners who already have a team lead or are the user themselves
+            .filter(p => !p.teamLeadId && p.id !== user.id); 
+        setAllRequestablePartners(requestableList);
       }
 
       // Fetch pending request count
@@ -109,8 +109,10 @@ export default function TeamManagementPage() {
   }, [user, canManageTeam, toast]);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if(user) {
+        fetchData();
+    }
+  }, [user, fetchData]);
 
   const handleSendRequest = async (partner: TeamMember) => {
     if (!user) return;
@@ -136,13 +138,13 @@ export default function TeamManagementPage() {
 
   const partnersToDisplay = React.useMemo(() => {
     if (searchTerm) {
-        return requestablePartners.filter(partner => 
+        return allRequestablePartners.filter(partner => 
             partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             partner.id.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }
-    return requestablePartners.slice(0, 8);
-  }, [requestablePartners, searchTerm]);
+    return allRequestablePartners.slice(0, 8);
+  }, [allRequestablePartners, searchTerm]);
 
 
   if (isUserLoading) {
