@@ -3,22 +3,20 @@
 
 import * as React from "react"
 import { db } from "@/lib/firebase"
-import { collection, query, where, getDocs, Timestamp, updateDoc, doc } from "firebase/firestore"
+import { collection, query, getDocs, Timestamp, updateDoc, doc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Mail } from "lucide-react"
+import { Loader2, Eye, Mail, Pencil } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import type { SupportTicket } from "@/types/team"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const statusColors: Record<SupportTicket['status'], 'default' | 'secondary' | 'destructive'> = {
   'Open': 'default',
@@ -31,6 +29,11 @@ export default function ManageSupportTicketsPage() {
     const router = useRouter();
     const [tickets, setTickets] = React.useState<SupportTicket[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [selectedTicket, setSelectedTicket] = React.useState<SupportTicket | null>(null);
+    const [isManageDialogOpen, setIsManageDialogOpen] = React.useState(false);
+    const [currentStatus, setCurrentStatus] = React.useState<SupportTicket['status']>('Open');
+    const [resolutionDetails, setResolutionDetails] = React.useState("");
+    const [isUpdating, setIsUpdating] = React.useState(false);
 
     const fetchTickets = React.useCallback(async () => {
         setIsLoading(true);
@@ -55,16 +58,33 @@ export default function ManageSupportTicketsPage() {
         fetchTickets();
     }, [fetchTickets]);
 
-    const handleStatusChange = async (ticketId: string, status: SupportTicket['status']) => {
+    const handleManageClick = (ticket: SupportTicket) => {
+        setSelectedTicket(ticket);
+        setCurrentStatus(ticket.status);
+        setResolutionDetails(ticket.resolutionDetails || "");
+        setIsManageDialogOpen(true);
+    }
+    
+    const handleUpdateTicket = async () => {
+        if (!selectedTicket) return;
+        setIsUpdating(true);
         try {
-            await updateDoc(doc(db, "support_tickets", ticketId), { status, updatedAt: Timestamp.now() });
-            toast({ title: "Status Updated", description: `Ticket status changed to ${status}.`});
+            await updateDoc(doc(db, "support_tickets", selectedTicket.id), { 
+                status: currentStatus,
+                resolutionDetails: resolutionDetails,
+                updatedAt: Timestamp.now(),
+            });
+            toast({ title: "Ticket Updated", description: `Ticket has been updated successfully.`});
             fetchTickets();
+            setIsManageDialogOpen(false);
         } catch(error) {
-            console.error("Error updating status", error);
-            toast({ variant: "destructive", title: "Error", description: "Could not update ticket status." });
+            console.error("Error updating ticket", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not update ticket." });
+        } finally {
+            setIsUpdating(false);
         }
     }
+
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -104,18 +124,9 @@ export default function ManageSupportTicketsPage() {
                                                 <Button variant="ghost" size="icon" onClick={() => router.push(`mailto:${ticket.userName}`)}>
                                                     <Mail className="h-4 w-4" />
                                                 </Button>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon">
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent>
-                                                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, 'Open')}>Mark as Open</DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, 'In Progress')}>Mark as In Progress</DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleStatusChange(ticket.id, 'Closed')}>Mark as Closed</DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                <Button variant="ghost" size="icon" onClick={() => handleManageClick(ticket)}>
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -125,6 +136,55 @@ export default function ManageSupportTicketsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <Dialog open={isManageDialogOpen} onOpenChange={setIsManageDialogOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Manage Ticket</DialogTitle>
+                        <DialogDescription>{selectedTicket?.subject}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="p-4 border rounded-md bg-muted text-sm">
+                            <p className="font-semibold mb-2">Original Request from {selectedTicket?.userName}:</p>
+                            <p>{selectedTicket?.description}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                                Related to: {selectedTicket?.category} - {selectedTicket?.itemTitle || 'N/A'}
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <Label htmlFor="status">Status</Label>
+                            <Select value={currentStatus} onValueChange={(value) => setCurrentStatus(value as SupportTicket['status'])}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Open">Open</SelectItem>
+                                    <SelectItem value="In Progress">In Progress</SelectItem>
+                                    <SelectItem value="Closed">Closed</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="resolution">Resolution Details / Notes</Label>
+                            <Textarea 
+                                id="resolution"
+                                value={resolutionDetails}
+                                onChange={(e) => setResolutionDetails(e.target.value)}
+                                placeholder="Add your response or resolution notes here..."
+                                rows={5}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsManageDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleUpdateTicket} disabled={isUpdating}>
+                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                            Update Ticket
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

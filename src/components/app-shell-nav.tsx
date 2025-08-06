@@ -115,7 +115,6 @@ const partnerNavItems: NavItem[] = [
       allowedRoles: ['franchisee', 'channel', 'associate'],
   },
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
-  { href: '/support-ticket', icon: Ticket, label: 'Support Ticket' },
   { href: '/support', icon: Headset, label: 'Help & Support' },
   { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { href: '/upgrade', icon: Award, label: 'Upgrade' },

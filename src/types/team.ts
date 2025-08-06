@@ -24,4 +24,5 @@ export type SupportTicket = {
     status: 'Open' | 'In Progress' | 'Closed';
     createdAt: Timestamp;
     updatedAt: Timestamp;
+    resolutionDetails?: string;
 };
