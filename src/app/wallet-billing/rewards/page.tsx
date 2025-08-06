@@ -49,10 +49,18 @@ export default function RewardsPage() {
 
   const sendForm = useForm<SendRewardsForm>({
     resolver: zodResolver(sendRewardsSchema),
+    defaultValues: {
+        recipientId: "",
+        points: 0,
+        notes: ""
+    }
   })
 
   const claimForm = useForm<ClaimRewardsForm>({
     resolver: zodResolver(claimRewardsSchema),
+    defaultValues: {
+        points: 0
+    }
   })
 
   React.useEffect(() => {
