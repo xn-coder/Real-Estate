@@ -11,30 +11,28 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Building } from "lucide-react"
+import { Loader2, Eye, Building, User, Users } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore"
-import type { User } from "@/types/user"
+import type { User as UserType } from "@/types/user"
 import type { Appointment } from "@/types/appointment"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import type { Lead } from "@/types/lead"
-import type { Property } from "@/types/property"
-import { format } from 'date-fns'
-import Link from 'next/link'
 
-type ConfirmedVisit = Appointment & {
-  customer?: User;
-  property?: Property;
-  partner?: User;
-}
+type VisitorSummary = {
+  customer: UserType;
+  partnerNames: Set<string>;
+  totalVisits: number;
+  visitedProperties: Set<string>;
+};
 
 export default function ManageVisitorPage() {
   const { toast } = useToast()
   const router = useRouter();
   const { user } = useUser();
-  const [confirmedVisits, setConfirmedVisits] = React.useState<ConfirmedVisit[]>([])
+  const [visitorSummaries, setVisitorSummaries] = React.useState<VisitorSummary[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
   const fetchConfirmedVisits = React.useCallback(async () => {
@@ -51,64 +49,58 @@ export default function ManageVisitorPage() {
           const propertiesCollection = collection(db, "properties");
           const sellerPropertiesQuery = query(propertiesCollection, where("email", "==", user.email));
           const sellerPropertiesSnapshot = await getDocs(sellerPropertiesQuery);
-          const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(doc => doc.id);
+          const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(d => d.id);
 
           if (sellerPropertyIds.length === 0) {
-              setConfirmedVisits([]);
+              setVisitorSummaries([]);
               setIsLoading(false);
               return;
           }
           appointmentsQuery = query(appointmentsCollection, where("propertyId", "in", sellerPropertyIds), where("status", "==", "Completed"));
       } else {
-        setConfirmedVisits([]);
+        setVisitorSummaries([]);
         setIsLoading(false);
         return;
       }
       
       const appointmentsSnapshot = await getDocs(appointmentsQuery);
       
-      const visitsPromises = appointmentsSnapshot.docs.map(async (appointmentDoc) => {
+      const summaries = new Map<string, VisitorSummary>();
+      
+      for (const appointmentDoc of appointmentsSnapshot.docs) {
         const appointmentData = appointmentDoc.data() as Appointment;
-        
-        let customerData: User | undefined;
-        let propertyData: Property | undefined;
-        let partnerData: User | undefined;
+        const customerId = (appointmentData as any).customerId;
 
-        // Fetch Lead to get Customer ID
-        const leadDoc = await getDoc(doc(db, "leads", appointmentData.leadId));
-        if (leadDoc.exists()) {
-            const leadData = leadDoc.data() as Lead;
-            if(leadData.customerId) {
-                const customerDoc = await getDoc(doc(db, "users", leadData.customerId));
-                if (customerDoc.exists()) {
-                    customerData = { id: customerDoc.id, ...customerDoc.data() } as User;
-                }
+        if (!customerId) continue;
+
+        let summary = summaries.get(customerId);
+
+        if (!summary) {
+            const customerDoc = await getDoc(doc(db, "users", customerId));
+            if (customerDoc.exists()) {
+                summary = {
+                    customer: { id: customerDoc.id, ...customerDoc.data() } as UserType,
+                    partnerNames: new Set(),
+                    totalVisits: 0,
+                    visitedProperties: new Set(),
+                };
+            } else {
+                continue; // Skip if customer not found
             }
         }
         
-        // Fetch Partner
         const partnerDoc = await getDoc(doc(db, "users", appointmentData.partnerId));
         if (partnerDoc.exists()) {
-            partnerData = { id: partnerDoc.id, ...partnerDoc.data() } as User;
+            summary.partnerNames.add(partnerDoc.data().name);
         }
+        
+        summary.visitedProperties.add(appointmentData.propertyId);
+        summary.totalVisits = summary.visitedProperties.size;
+        
+        summaries.set(customerId, summary);
+      }
 
-        // Fetch Property
-        const propDoc = await getDoc(doc(db, "properties", appointmentData.propertyId));
-        if(propDoc.exists()) {
-            propertyData = { id: propDoc.id, ...propDoc.data() } as Property;
-        }
-
-        return {
-            ...appointmentData,
-            id: appointmentDoc.id,
-            customer: customerData,
-            property: propertyData,
-            partner: partnerData
-        };
-      });
-
-      const resolvedVisits = await Promise.all(visitsPromises);
-      setConfirmedVisits(resolvedVisits.sort((a,b) => (b.visitDate as any).seconds - (a.visitDate as any).seconds));
+      setVisitorSummaries(Array.from(summaries.values()));
 
     } catch (error) {
       console.error("Error fetching visitors:", error)
@@ -138,49 +130,45 @@ export default function ManageVisitorPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Visitor Name</TableHead>
-              <TableHead>Partner Name</TableHead>
-              <TableHead>Property Visited</TableHead>
-              <TableHead>Visit Date</TableHead>
+              <TableHead>Associated Partners</TableHead>
+              <TableHead className="text-center">No. of Properties Visited</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : confirmedVisits.length === 0 ? (
+            ) : visitorSummaries.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                     No confirmed visits found.
                     </TableCell>
                 </TableRow>
-            ) : confirmedVisits.map((visit) => (
-              <TableRow key={visit.id}>
-                <TableCell className="font-medium">{visit.customer?.name || 'N/A'}</TableCell>
-                <TableCell>{visit.partner?.name || 'N/A'}</TableCell>
-                <TableCell>
-                    {visit.property ? (
-                        <Button variant="link" asChild className="p-0 h-auto font-normal">
-                            <Link href={`/listings/${visit.property.id}`}>
-                                <Building className="mr-2 h-4 w-4" />
-                                {visit.property.catalogTitle}
-                            </Link>
-                        </Button>
-                    ) : (
-                        'N/A'
-                    )}
+            ) : visitorSummaries.map((summary) => (
+              <TableRow key={summary.customer.id}>
+                <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        {summary.customer.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-mono pl-6">{summary.customer.id}</div>
                 </TableCell>
-                <TableCell>{visit.visitDate ? format((visit.visitDate as any).toDate(), "PPP") : 'N/A'}</TableCell>
+                <TableCell>
+                    <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        {Array.from(summary.partnerNames).join(', ')}
+                    </div>
+                </TableCell>
+                <TableCell className="text-center font-medium">{summary.totalVisits}</TableCell>
                 <TableCell className="text-right">
-                    {visit.customer && (
-                        <Button variant="ghost" size="icon" onClick={() => router.push(`/manage-customer/${visit.customer?.id}`)}>
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View Customer Profile</span>
-                        </Button>
-                    )}
+                    <Button variant="ghost" size="icon" onClick={() => router.push(`/manage-customer/${summary.customer.id}`)}>
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">View Customer Profile</span>
+                    </Button>
                 </TableCell>
               </TableRow>
             ))}

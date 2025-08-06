@@ -85,6 +85,7 @@ export default function PropertyDetailsPage() {
     const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
     const [lastLeadId, setLastLeadId] = React.useState<string | null>(null);
     const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
+    const [isScheduling, setIsScheduling] = React.useState(false);
 
 
     const isOwner = user?.role === 'admin' || user?.role === 'seller';
@@ -214,6 +215,7 @@ export default function PropertyDetailsPage() {
 
      const handleScheduleVisit = async () => {
         if (!visitDate || !lastLeadId || !user || !property) return;
+        setIsScheduling(true);
         try {
             await createAppointment({
                 leadId: lastLeadId,
@@ -223,9 +225,11 @@ export default function PropertyDetailsPage() {
             });
             toast({ title: "Visit Scheduled", description: "The site visit has been successfully scheduled." });
             setIsScheduleDialogOpen(false);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error scheduling visit:", error);
-            toast({ variant: "destructive", title: "Scheduling Failed", description: "Could not schedule the visit." });
+            toast({ variant: "destructive", title: "Scheduling Failed", description: error.message });
+        } finally {
+            setIsScheduling(false);
         }
     };
 
@@ -512,7 +516,8 @@ export default function PropertyDetailsPage() {
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsScheduleDialogOpen(false)}>Skip for now</Button>
-                        <Button onClick={handleScheduleVisit}>
+                        <Button onClick={handleScheduleVisit} disabled={isScheduling}>
+                            {isScheduling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             Confirm Visit
                         </Button>

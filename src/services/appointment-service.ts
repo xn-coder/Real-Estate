@@ -2,7 +2,8 @@
 'use server'
 
 import { db } from "@/lib/firebase";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, Timestamp, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import type { Lead } from "@/types/lead";
 
 interface AppointmentData {
     leadId: string;
@@ -13,15 +14,56 @@ interface AppointmentData {
 
 export async function createAppointment(data: AppointmentData): Promise<void> {
     try {
+        // 1. Fetch the lead to get the customerId
+        const leadDocRef = doc(db, "leads", data.leadId);
+        const leadDoc = await getDoc(leadDocRef);
+        if (!leadDoc.exists()) {
+            throw new Error("Lead not found.");
+        }
+        const leadData = leadDoc.data() as Lead;
+        const customerId = leadData.customerId;
+
+        if (!customerId) {
+            throw new Error("Customer ID not found on the lead record.");
+        }
+
+        // 2. Check for existing appointments for the same customer, property, and date
+        const appointmentsCollection = collection(db, "appointments");
+        
+        // Normalize the start and end of the day for the query
+        const startOfDay = new Date(data.visitDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(data.visitDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const q = query(
+            appointmentsCollection,
+            where("customerId", "==", customerId),
+            where("propertyId", "==", data.propertyId),
+            where("visitDate", ">=", Timestamp.fromDate(startOfDay)),
+            where("visitDate", "<=", Timestamp.fromDate(endOfDay))
+        );
+
+        const existingAppointmentsSnapshot = await getDocs(q);
+
+        if (!existingAppointmentsSnapshot.empty) {
+            // An appointment for this customer, property, and day already exists.
+            throw new Error("This customer already has a visit scheduled for this property on the selected date.");
+        }
+
+        // 3. Create the new appointment if no duplicates are found
         await addDoc(collection(db, "appointments"), {
             ...data,
+            customerId: customerId, // Store customerId for easier querying
             visitDate: Timestamp.fromDate(data.visitDate),
             status: 'Scheduled',
             createdAt: Timestamp.now(),
         });
+
         console.log("Appointment created successfully for lead:", data.leadId);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating appointment:", error);
-        throw new Error("Could not create appointment in database.");
+        // Re-throw the specific error message to be caught in the UI
+        throw new Error(error.message || "Could not create appointment in database.");
     }
 }

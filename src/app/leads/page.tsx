@@ -54,6 +54,7 @@ export default function LeadsPage() {
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
+  const [isScheduling, setIsScheduling] = React.useState(false);
 
   const fetchLeads = React.useCallback(async () => {
     if (!user) return;
@@ -110,6 +111,7 @@ export default function LeadsPage() {
 
   const handleScheduleVisit = async () => {
     if (!visitDate || !selectedLead || !user) return;
+    setIsScheduling(true);
     try {
         await createAppointment({
             leadId: selectedLead.id,
@@ -119,9 +121,11 @@ export default function LeadsPage() {
         });
         toast({ title: "Visit Scheduled", description: "The site visit has been successfully scheduled." });
         setIsScheduleDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error scheduling visit:", error);
-        toast({ variant: "destructive", title: "Scheduling Failed", description: "Could not schedule the visit." });
+        toast({ variant: "destructive", title: "Scheduling Failed", description: error.message });
+    } finally {
+        setIsScheduling(false);
     }
   };
 
@@ -220,7 +224,8 @@ export default function LeadsPage() {
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsScheduleDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleScheduleVisit}>
+                    <Button onClick={handleScheduleVisit} disabled={isScheduling}>
+                        {isScheduling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         Confirm Visit
                     </Button>

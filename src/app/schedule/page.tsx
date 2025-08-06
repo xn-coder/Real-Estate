@@ -39,6 +39,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
+import { createAppointment } from "@/services/appointment-service"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -190,9 +191,6 @@ export default function SchedulePage() {
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Schedule</h1>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" /> New Appointment
-        </Button>
       </div>
       
       <Card>
