@@ -31,7 +31,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, PlusCircle, Users, Send, UserPlus, Search } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
-import type { TeamMember } from "@/types/user"
+import type { TeamMember, User as PartnerUser } from "@/types/user"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
@@ -42,6 +42,8 @@ const roleNameMapping: Record<string, string> = {
   channel: 'Channel Partner',
   franchisee: 'Franchisee',
 };
+
+const allPartnerRoles = ['franchisee', 'channel', 'associate', 'super_affiliate', 'affiliate'];
 
 const addableRoles: Record<string, string[]> = {
   franchisee: ['channel', 'associate', 'super_affiliate', 'affiliate'],
@@ -79,21 +81,21 @@ export default function TeamManagementPage() {
       const membersList = teamSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember));
       setTeamMembers(membersList);
 
-      // Fetch requestable partners
+      // Fetch all partners
+      const allPartnersQuery = query(usersCollection, where("role", "in", allPartnerRoles), orderBy("createdAt", "desc"));
+      const allPartnersSnapshot = await getDocs(allPartnersQuery);
+      
       const availableRoles = addableRoles[user.role as keyof typeof addableRoles] || [];
-      if (availableRoles.length > 0) {
-        const requestableQuery = query(
-            usersCollection, 
-            where("role", "in", availableRoles), 
-            orderBy("createdAt", "desc")
+      
+      const requestableList = allPartnersSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
+        .filter(p => 
+            !p.teamLeadId &&                     // Not already in a team
+            p.id !== user.id &&                   // Not the user themselves
+            availableRoles.includes(p.role)       // Is a role the user can add
         );
-        const requestableSnapshot = await getDocs(requestableQuery);
-        const requestableList = requestableSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as TeamMember))
-            // Filter out partners who already have a team lead or are the user themselves
-            .filter(p => !p.teamLeadId && p.id !== user.id); 
-        setAllRequestablePartners(requestableList);
-      }
+
+      setAllRequestablePartners(requestableList);
 
       // Fetch pending request count
       const pendingRequestsQuery = query(requestsCollection, where("requesterId", "==", user.id), where("status", "==", "pending"));
@@ -137,16 +139,14 @@ export default function TeamManagementPage() {
   }
 
   const partnersToDisplay = React.useMemo(() => {
-    const filteredPartners = allRequestablePartners.filter(partner => 
+    if (!searchTerm) {
+        return allRequestablePartners.slice(0, 8);
+    }
+    
+    return allRequestablePartners.filter(partner => 
         partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         partner.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
-    if (searchTerm) {
-        return filteredPartners;
-    }
-    
-    return allRequestablePartners.slice(0, 8);
   }, [allRequestablePartners, searchTerm]);
 
 
