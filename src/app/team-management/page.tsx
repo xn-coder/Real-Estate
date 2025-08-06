@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, UserPlus, Search, Send } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
-import type { TeamMember, User as PartnerUser } from "@/types/user"
+import type { User as PartnerUser } from "@/types/user"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { getAvailablePartners } from "@/services/team-service"
@@ -36,8 +36,8 @@ const roleNameMapping: Record<string, string> = {
 export default function TeamManagementPage() {
   const { user, isLoading: isUserLoading } = useUser();
   const { toast } = useToast();
-  const [teamMembers, setTeamMembers] = React.useState<TeamMember[]>([]);
-  const [allRequestablePartners, setAllRequestablePartners] = React.useState<TeamMember[]>([]);
+  const [teamMembers, setTeamMembers] = React.useState<PartnerUser[]>([]);
+  const [allRequestablePartners, setAllRequestablePartners] = React.useState<PartnerUser[]>([]);
   const [pendingRequestCount, setPendingRequestCount] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -57,7 +57,16 @@ export default function TeamManagementPage() {
         // Fetch existing team members
         const teamQuery = query(usersCollection, where("teamLeadId", "==", user.id));
         const teamSnapshot = await getDocs(teamQuery);
-        const membersList = teamSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember));
+        const membersList = teamSnapshot.docs.map(doc => {
+            const data = doc.data();
+            if (data.dob && data.dob instanceof Timestamp) {
+                data.dob = data.dob.toDate();
+            }
+            if (data.createdAt && data.createdAt instanceof Timestamp) {
+                data.createdAt = data.createdAt.toDate();
+            }
+            return { id: doc.id, ...data } as PartnerUser
+        });
         setTeamMembers(membersList);
   
         // Fetch all partners that can be requested via server action
