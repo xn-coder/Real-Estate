@@ -15,7 +15,7 @@ import { Loader2, Eye, Building } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore"
-import type { User as CustomerUser } from "@/types/user"
+import type { User } from "@/types/user"
 import type { Appointment } from "@/types/appointment"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
@@ -23,11 +23,11 @@ import type { Lead } from "@/types/lead"
 import type { Property } from "@/types/property"
 import { format } from 'date-fns'
 import Link from 'next/link'
-import { Badge } from "@/components/ui/badge"
 
 type ConfirmedVisit = Appointment & {
-  customer?: CustomerUser;
+  customer?: User;
   property?: Property;
+  partner?: User;
 }
 
 export default function ManageVisitorPage() {
@@ -70,8 +70,9 @@ export default function ManageVisitorPage() {
       const visitsPromises = appointmentsSnapshot.docs.map(async (appointmentDoc) => {
         const appointmentData = appointmentDoc.data() as Appointment;
         
-        let customerData: CustomerUser | undefined;
+        let customerData: User | undefined;
         let propertyData: Property | undefined;
+        let partnerData: User | undefined;
 
         // Fetch Lead to get Customer ID
         const leadDoc = await getDoc(doc(db, "leads", appointmentData.leadId));
@@ -80,9 +81,15 @@ export default function ManageVisitorPage() {
             if(leadData.customerId) {
                 const customerDoc = await getDoc(doc(db, "users", leadData.customerId));
                 if (customerDoc.exists()) {
-                    customerData = { id: customerDoc.id, ...customerDoc.data() } as CustomerUser;
+                    customerData = { id: customerDoc.id, ...customerDoc.data() } as User;
                 }
             }
+        }
+        
+        // Fetch Partner
+        const partnerDoc = await getDoc(doc(db, "users", appointmentData.partnerId));
+        if (partnerDoc.exists()) {
+            partnerData = { id: partnerDoc.id, ...partnerDoc.data() } as User;
         }
 
         // Fetch Property
@@ -95,7 +102,8 @@ export default function ManageVisitorPage() {
             ...appointmentData,
             id: appointmentDoc.id,
             customer: customerData,
-            property: propertyData
+            property: propertyData,
+            partner: partnerData
         };
       });
 
@@ -130,6 +138,7 @@ export default function ManageVisitorPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Visitor Name</TableHead>
+              <TableHead>Partner Name</TableHead>
               <TableHead>Property Visited</TableHead>
               <TableHead>Visit Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -138,19 +147,20 @@ export default function ManageVisitorPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : confirmedVisits.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                     No confirmed visits found.
                     </TableCell>
                 </TableRow>
             ) : confirmedVisits.map((visit) => (
               <TableRow key={visit.id}>
                 <TableCell className="font-medium">{visit.customer?.name || 'N/A'}</TableCell>
+                <TableCell>{visit.partner?.name || 'N/A'}</TableCell>
                 <TableCell>
                     {visit.property ? (
                         <Button variant="link" asChild className="p-0 h-auto font-normal">
@@ -168,7 +178,7 @@ export default function ManageVisitorPage() {
                     {visit.customer && (
                         <Button variant="ghost" size="icon" onClick={() => router.push(`/manage-customer/${visit.customer?.id}`)}>
                             <Eye className="h-4 w-4" />
-                            <span className="sr-only">View Profile</span>
+                            <span className="sr-only">View Customer Profile</span>
                         </Button>
                     )}
                 </TableCell>
