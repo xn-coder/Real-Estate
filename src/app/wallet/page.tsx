@@ -67,7 +67,7 @@ export default function WalletPage() {
         { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
         { name: "Claim Reward Points", href: "/wallet-billing/rewards" },
         { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
-        { name: "Payment History", href: "#" },
+        { name: "Payment History", href: "/wallet-billing/history" },
     ]
 
   return (
