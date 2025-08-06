@@ -14,25 +14,28 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Eye, Building, User, Users } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, getDoc, Timestamp } from "firebase/firestore"
 import type { User as UserType } from "@/types/user"
 import type { Appointment } from "@/types/appointment"
+import type { Property } from "@/types/property"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
-import type { Lead } from "@/types/lead"
+import { format } from "date-fns"
+import Link from "next/link"
 
-type VisitorSummary = {
-  customer: UserType;
-  partnerNames: Set<string>;
-  totalVisits: number;
-  visitedProperties: Set<string>;
+type DetailedVisit = {
+  id: string;
+  customer?: UserType;
+  partner?: UserType;
+  property?: Property;
+  visitDate: Date;
 };
 
 export default function ManageVisitorPage() {
   const { toast } = useToast()
   const router = useRouter();
   const { user } = useUser();
-  const [visitorSummaries, setVisitorSummaries] = React.useState<VisitorSummary[]>([])
+  const [visits, setVisits] = React.useState<DetailedVisit[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
   const fetchConfirmedVisits = React.useCallback(async () => {
@@ -52,55 +55,39 @@ export default function ManageVisitorPage() {
           const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(d => d.id);
 
           if (sellerPropertyIds.length === 0) {
-              setVisitorSummaries([]);
+              setVisits([]);
               setIsLoading(false);
               return;
           }
           appointmentsQuery = query(appointmentsCollection, where("propertyId", "in", sellerPropertyIds), where("status", "==", "Completed"));
       } else {
-        setVisitorSummaries([]);
+        setVisits([]);
         setIsLoading(false);
         return;
       }
       
       const appointmentsSnapshot = await getDocs(appointmentsQuery);
       
-      const summaries = new Map<string, VisitorSummary>();
-      
-      for (const appointmentDoc of appointmentsSnapshot.docs) {
+      const detailedVisits = await Promise.all(appointmentsSnapshot.docs.map(async (appointmentDoc) => {
         const appointmentData = appointmentDoc.data() as Appointment;
         const customerId = (appointmentData as any).customerId;
-
-        if (!customerId) continue;
-
-        let summary = summaries.get(customerId);
-
-        if (!summary) {
-            const customerDoc = await getDoc(doc(db, "users", customerId));
-            if (customerDoc.exists()) {
-                summary = {
-                    customer: { id: customerDoc.id, ...customerDoc.data() } as UserType,
-                    partnerNames: new Set(),
-                    totalVisits: 0,
-                    visitedProperties: new Set(),
-                };
-            } else {
-                continue; // Skip if customer not found
-            }
-        }
         
-        const partnerDoc = await getDoc(doc(db, "users", appointmentData.partnerId));
-        if (partnerDoc.exists()) {
-            summary.partnerNames.add(partnerDoc.data().name);
-        }
-        
-        summary.visitedProperties.add(appointmentData.propertyId);
-        summary.totalVisits = summary.visitedProperties.size;
-        
-        summaries.set(customerId, summary);
-      }
+        const [customerDoc, partnerDoc, propertyDoc] = await Promise.all([
+            customerId ? getDoc(doc(db, "users", customerId)) : null,
+            getDoc(doc(db, "users", appointmentData.partnerId)),
+            getDoc(doc(db, "properties", appointmentData.propertyId))
+        ]);
 
-      setVisitorSummaries(Array.from(summaries.values()));
+        return {
+            id: appointmentDoc.id,
+            customer: customerDoc?.exists() ? { id: customerDoc.id, ...customerDoc.data() } as UserType : undefined,
+            partner: partnerDoc.exists() ? { id: partnerDoc.id, ...partnerDoc.data() } as UserType : undefined,
+            property: propertyDoc.exists() ? { id: propertyDoc.id, ...propertyDoc.data() } as Property : undefined,
+            visitDate: (appointmentData.visitDate as Timestamp).toDate(),
+        };
+      }));
+
+      setVisits(detailedVisits.sort((a,b) => b.visitDate.getTime() - a.visitDate.getTime()));
 
     } catch (error) {
       console.error("Error fetching visitors:", error)
@@ -130,42 +117,56 @@ export default function ManageVisitorPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Visitor Name</TableHead>
-              <TableHead>Associated Partners</TableHead>
-              <TableHead className="text-center">No. of Properties Visited</TableHead>
+              <TableHead>Associated Partner</TableHead>
+              <TableHead>Property Visited</TableHead>
+              <TableHead>Visit Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : visitorSummaries.length === 0 ? (
+            ) : visits.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                     No confirmed visits found.
                     </TableCell>
                 </TableRow>
-            ) : visitorSummaries.map((summary) => (
-              <TableRow key={summary.customer.id}>
+            ) : visits.map((visit) => (
+              <TableRow key={visit.id}>
                 <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        {summary.customer.name}
+                        {visit.customer?.name || 'N/A'}
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono pl-6">{summary.customer.id}</div>
+                    {visit.customer && <div className="text-xs text-muted-foreground font-mono pl-6">{visit.customer.id}</div>}
                 </TableCell>
                 <TableCell>
-                    <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-2">
                         <Users className="h-4 w-4 text-muted-foreground" />
-                        {Array.from(summary.partnerNames).join(', ')}
+                        {visit.partner?.name || 'N/A'}
                     </div>
+                     {visit.partner && <div className="text-xs text-muted-foreground font-mono pl-6">{visit.partner.id}</div>}
                 </TableCell>
-                <TableCell className="text-center font-medium">{summary.totalVisits}</TableCell>
+                <TableCell>
+                    {visit.property ? (
+                         <Button variant="link" asChild className="p-0 h-auto font-normal">
+                           <Link href={`/listings/${visit.property.id}`}>
+                                <Building className="mr-2 h-4 w-4" />
+                                {visit.property.catalogTitle}
+                            </Link>
+                        </Button>
+                    ) : (
+                        'Property not found'
+                    )}
+                </TableCell>
+                 <TableCell>{format(visit.visitDate, "PPP")}</TableCell>
                 <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => router.push(`/manage-customer/${summary.customer.id}`)}>
+                    <Button variant="ghost" size="icon" disabled={!visit.customer} onClick={() => router.push(`/manage-customer/${visit.customer?.id}`)}>
                         <Eye className="h-4 w-4" />
                         <span className="sr-only">View Customer Profile</span>
                     </Button>
