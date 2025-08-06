@@ -17,11 +17,10 @@ export async function getAvailablePartners(currentUserId: string, currentUserRol
     try {
         const usersCollection = collection(db, "users");
         
-        // Fetch all users that have a partner role
+        // Fetch all users that have a partner role, without ordering by a potentially missing field
         const q = query(
             usersCollection, 
-            where("role", "in", allPartnerRoles), 
-            orderBy("createdAt", "desc")
+            where("role", "in", allPartnerRoles)
         );
         const allPartnersSnapshot = await getDocs(q);
 

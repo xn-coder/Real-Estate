@@ -108,7 +108,14 @@ export default function TeamManagementPage() {
   }
 
   const partnersToDisplay = React.useMemo(() => {
-    const filteredPartners = allRequestablePartners.filter(partner => 
+    // Client-side sorting
+    const sortedPartners = [...allRequestablePartners].sort((a, b) => {
+        const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0;
+        const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0;
+        return dateB - dateA;
+    });
+
+    const filteredPartners = sortedPartners.filter(partner => 
         partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         partner.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
