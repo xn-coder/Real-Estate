@@ -82,7 +82,6 @@ const adminNavItems: NavItem[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
     { href: '/listings', icon: Building, label: 'Properties' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
-    { href: '/onboarding', icon: Plane, label: 'Onboarding' },
     { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
     { href: '/manage-seller', icon: UserSquare, label: 'Manage Seller' },
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },

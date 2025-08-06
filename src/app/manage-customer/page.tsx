@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, documentId } from "firebase/firestore"
 import type { User as CustomerUser } from "@/types/user"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import type { Lead } from "@/types/lead"
 
@@ -29,9 +29,12 @@ const statusColors: { [key: string]: "default" | "secondary" | "destructive" } =
 export default function ManageCustomerPage() {
   const { toast } = useToast()
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
   const [customers, setCustomers] = React.useState<CustomerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+
+  const partnerIdFilter = searchParams.get('partnerId');
 
   const fetchCustomers = React.useCallback(async () => {
     if (!user) return;
@@ -41,7 +44,20 @@ export default function ManageCustomerPage() {
         const usersCollection = collection(db, "users");
         const leadsCollection = collection(db, "leads");
 
-        if (user.role === 'admin') {
+        if (partnerIdFilter) {
+            // If a partnerId is provided in the URL, fetch customers for that partner
+            const partnerLeadsQuery = query(leadsCollection, where("partnerId", "==", partnerIdFilter));
+            const partnerLeadsSnapshot = await getDocs(partnerLeadsQuery);
+            const customerIds = [...new Set(partnerLeadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id))];
+
+             if (customerIds.length === 0) {
+                 setCustomers([]);
+                 setIsLoading(false);
+                 return;
+            }
+            customerQuery = query(usersCollection, where(documentId(), "in", customerIds));
+        }
+        else if (user.role === 'admin') {
             customerQuery = query(usersCollection, where("role", "==", "customer"));
         } else if (user.role === 'seller') {
             const propertiesCollection = collection(db, "properties");
@@ -92,7 +108,7 @@ export default function ManageCustomerPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [user, toast])
+  }, [user, toast, partnerIdFilter])
 
   React.useEffect(() => {
     if(user){

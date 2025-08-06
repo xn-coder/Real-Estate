@@ -24,6 +24,12 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { format } from "date-fns"
+import Image from "next/image"
+
+type VisitWithProof = {
+    date: Date;
+    proofUrl?: string;
+}
 
 type AggregatedVisit = {
   id: string; // Unique key for aggregation
@@ -31,7 +37,7 @@ type AggregatedVisit = {
   partner?: UserType;
   property?: Property;
   visitCount: number;
-  visitDates: Date[];
+  visits: VisitWithProof[];
 };
 
 export default function ManageVisitorPage() {
@@ -87,6 +93,7 @@ export default function ManageVisitorPage() {
             partner: partnerDoc.exists() ? { id: partnerDoc.id, ...partnerDoc.data() } as UserType : undefined,
             property: propertyDoc.exists() ? { id: propertyDoc.id, ...propertyDoc.data() } as Property : undefined,
             visitDate: (appointmentData.visitDate as Timestamp).toDate(),
+            visitProofUrl: appointmentData.visitProofUrl
         };
       });
 
@@ -101,7 +108,7 @@ export default function ManageVisitorPage() {
           if (aggregatedVisitsMap.has(key)) {
               const existing = aggregatedVisitsMap.get(key)!;
               existing.visitCount += 1;
-              existing.visitDates.push(visit.visitDate);
+              existing.visits.push({ date: visit.visitDate, proofUrl: visit.visitProofUrl });
           } else {
               aggregatedVisitsMap.set(key, {
                   id: key,
@@ -109,7 +116,7 @@ export default function ManageVisitorPage() {
                   partner: visit.partner,
                   property: visit.property,
                   visitCount: 1,
-                  visitDates: [visit.visitDate],
+                  visits: [{ date: visit.visitDate, proofUrl: visit.visitProofUrl }],
               });
           }
       }
@@ -211,9 +218,27 @@ export default function ManageVisitorPage() {
                             </DialogHeader>
                             <div className="max-h-60 overflow-y-auto">
                                 <ul className="space-y-2">
-                                    {visit.visitDates.sort((a,b) => b.getTime() - a.getTime()).map((date, index) => (
-                                        <li key={index} className="text-sm p-2 bg-muted rounded-md">
-                                            {format(date, "PPP")}
+                                    {visit.visits.sort((a,b) => b.date.getTime() - a.date.getTime()).map((v, index) => (
+                                        <li key={index} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
+                                            <span>{format(v.date, "PPP")}</span>
+                                            {v.proofUrl && (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="outline" size="sm">View Proof</Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader>
+                                                            <DialogTitle>Visit Proof</DialogTitle>
+                                                            <DialogDescription>
+                                                                Image uploaded for visit on {format(v.date, "PPP")}.
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="flex justify-center p-4">
+                                                            <Image src={v.proofUrl} alt="Visit proof" width={400} height={400} className="max-w-full h-auto rounded-lg" />
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>

@@ -304,10 +304,12 @@ export default function PartnerProfilePage() {
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <Separator />
-                    <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
-                        <span className="font-medium">Manage Customer</span>
-                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </div>
+                    <Link href={`/manage-customer?partnerId=${partner.id}`} className="block">
+                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
+                            <span className="font-medium">Manage Customer</span>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                    </Link>
                 </CardContent>
             </Card>
         </div>
