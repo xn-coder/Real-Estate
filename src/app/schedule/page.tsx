@@ -18,6 +18,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -35,6 +37,7 @@ import {
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { Calendar } from "@/components/ui/calendar"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -54,6 +57,9 @@ export default function SchedulePage() {
   const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
   const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null)
   const [isMapOpen, setIsMapOpen] = React.useState(false)
+  const [isRescheduleOpen, setIsRescheduleOpen] = React.useState(false);
+  const [selectedAppointment, setSelectedAppointment] = React.useState<DetailedAppointment | null>(null);
+  const [newVisitDate, setNewVisitDate] = React.useState<Date | undefined>(new Date());
 
   const fetchAppointments = React.useCallback(async () => {
       if (!user) return
@@ -141,6 +147,29 @@ export default function SchedulePage() {
           setIsUpdating(null);
       }
   }
+
+  const handleRescheduleClick = (appointment: DetailedAppointment) => {
+      setSelectedAppointment(appointment);
+      setNewVisitDate(appointment.visitDate as Date);
+      setIsRescheduleOpen(true);
+  }
+
+  const handleReschedule = async () => {
+    if (!selectedAppointment || !newVisitDate) return;
+    setIsUpdating(selectedAppointment.id);
+    try {
+      const appointmentRef = doc(db, "appointments", selectedAppointment.id);
+      await updateDoc(appointmentRef, { visitDate: Timestamp.fromDate(newVisitDate) });
+      toast({ title: "Rescheduled", description: "The appointment has been successfully rescheduled." });
+      fetchAppointments();
+      setIsRescheduleOpen(false);
+    } catch (error) {
+      console.error("Error rescheduling visit:", error);
+      toast({ variant: 'destructive', title: "Update Failed", description: "Could not reschedule the visit." });
+    } finally {
+      setIsUpdating(null);
+    }
+  };
   
   const statusBadge = (status: Appointment['status']) => {
       switch(status) {
@@ -210,7 +239,7 @@ export default function SchedulePage() {
                                         <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
                                             <Map className="mr-2 h-4 w-4" /> Map View
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleRescheduleClick(appointment)}>
                                             <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -289,7 +318,6 @@ export default function SchedulePage() {
         </CardContent>
       </Card>
 
-
         <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
@@ -301,6 +329,32 @@ export default function SchedulePage() {
                         position={[parseFloat(selectedProperty.latitude), parseFloat(selectedProperty.longitude)]}
                     />
                 )}
+            </DialogContent>
+        </Dialog>
+
+        <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Reschedule Appointment</DialogTitle>
+                    <DialogDescription>
+                        Select a new date for the visit with {selectedAppointment?.lead?.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                 <div className="py-4 flex justify-center">
+                    <Calendar
+                        mode="single"
+                        selected={newVisitDate}
+                        onSelect={setNewVisitDate}
+                        disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                    />
+                </div>
+                <DialogFooter>
+                     <Button variant="outline" onClick={() => setIsRescheduleOpen(false)}>Cancel</Button>
+                     <Button onClick={handleReschedule} disabled={!!isUpdating}>
+                        {isUpdating === selectedAppointment?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm Reschedule
+                     </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     </div>
