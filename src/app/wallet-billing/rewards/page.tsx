@@ -21,7 +21,7 @@ import { Loader2, ArrowLeft, Gift, Search, User } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, updateDoc, writeBatch } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, updateDoc, writeBatch, addDoc, Timestamp } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
@@ -91,17 +91,31 @@ export default function RewardsPage() {
   }
   
   async function onSendSubmit(values: SendRewardsForm) {
-      if (!user) return;
+      if (!user || !selectedPartner) return;
       setIsSubmitting(true);
       try {
-          // In a real app, this would be a single transaction
           const batch = writeBatch(db);
+
+          const transactionRef = doc(collection(db, "reward_transactions"));
+          batch.set(transactionRef, {
+              fromId: user.id,
+              fromName: user.name,
+              toId: selectedPartner.id,
+              toName: selectedPartner.name,
+              points: values.points,
+              notes: values.notes || "Points sent by admin",
+              type: "Sent",
+              date: Timestamp.now(),
+          });
           
-          // Add to reward transaction history (new collection)
-          // Update recipient's wallet/reward balance
-          
-          console.log("Sending rewards:", values);
-          await new Promise(res => setTimeout(res, 1000));
+          const walletRef = doc(db, "wallets", selectedPartner.id);
+          // In a real scenario you would check if the wallet exists first
+          // For now, we assume it does or will be created.
+          const currentBalanceDoc = await doc(walletRef).get();
+          const currentBalance = currentBalanceDoc.data()?.rewardBalance || 0;
+          batch.set(walletRef, { rewardBalance: currentBalance + values.points }, { merge: true });
+
+          await batch.commit();
 
           toast({ title: "Success", description: `${values.points} points sent to ${selectedPartner?.name}.` });
           sendForm.reset();

@@ -23,3 +23,11 @@ export type RewardTransaction = {
     points: number;
     notes: string;
 };
+
+export type Wallet = {
+    balance: number;
+    revenue: number;
+    receivable: number;
+    payable: number;
+    rewardBalance?: number;
+};
