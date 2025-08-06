@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp, orderBy } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp, orderBy, onSnapshot } from "firebase/firestore"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Loader2, UserPlus, Search, Send } from "lucide-react"
@@ -52,7 +52,6 @@ export default function TeamManagementPage() {
     setIsLoading(true);
     try {
         const usersCollection = collection(db, "users");
-        const requestsCollection = collection(db, "team_requests");
   
         // Fetch existing team members
         const teamQuery = query(usersCollection, where("teamLeadId", "==", user.id));
@@ -60,10 +59,10 @@ export default function TeamManagementPage() {
         const membersList = teamSnapshot.docs.map(doc => {
             const data = doc.data();
             if (data.dob && data.dob instanceof Timestamp) {
-                data.dob = data.dob.toDate();
+                data.dob = data.dob.toDate().toISOString() as any;
             }
             if (data.createdAt && data.createdAt instanceof Timestamp) {
-                data.createdAt = data.createdAt.toDate();
+                data.createdAt = data.createdAt.toDate().toISOString() as any;
             }
             return { id: doc.id, ...data } as PartnerUser
         });
@@ -73,11 +72,6 @@ export default function TeamManagementPage() {
         const availablePartners = await getAvailablePartners(user.id, user.role);
         setAllRequestablePartners(availablePartners);
       
-        // Fetch pending request count
-        const pendingRequestsQuery = query(requestsCollection, where("requesterId", "==", user.id), where("status", "==", "pending"));
-        const pendingRequestsSnapshot = await getDocs(pendingRequestsQuery);
-        setPendingRequestCount(pendingRequestsSnapshot.size);
-  
       } catch (error) {
         console.error("Error fetching team data:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to fetch team data." });
@@ -86,14 +80,23 @@ export default function TeamManagementPage() {
       }
   }, [user, toast]);
 
-
   React.useEffect(() => {
     if(user && canManageTeam) {
         fetchData();
+        
+        const requestsCollection = collection(db, "team_requests");
+        const pendingRequestsQuery = query(requestsCollection, where("requesterId", "==", user.id), where("status", "==", "pending"));
+
+        const unsubscribe = onSnapshot(pendingRequestsQuery, (snapshot) => {
+            setPendingRequestCount(snapshot.size);
+        });
+
+        return () => unsubscribe();
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
   }, [user, canManageTeam, isUserLoading, fetchData]);
+
 
   const handleSendRequest = async () => {
     if (!user || !selectedPartner) return;
