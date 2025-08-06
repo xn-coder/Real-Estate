@@ -38,7 +38,7 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
 });
 
 const messageFormSchema = z.object({
-  messageType: z.enum(["announcement", "to_partner", "to_seller"]),
+  messageType: z.enum(["announcement", "to_partner", "to_seller", "to_customer"]),
   announcementType: z.enum(["partner", "seller", "both"]).optional(),
   recipientId: z.string().optional(),
   subject: z.string().min(1, { message: "Subject is required." }),
@@ -52,7 +52,7 @@ const messageFormSchema = z.object({
     message: "Please select an announcement type.",
     path: ["announcementType"],
 }).refine(data => {
-    if ((data.messageType === 'to_partner' || data.messageType === 'to_seller') && !data.recipientId) {
+    if ((data.messageType === 'to_partner' || data.messageType === 'to_seller' || data.messageType === 'to_customer') && !data.recipientId) {
       return false;
     }
     return true;
@@ -70,7 +70,7 @@ export default function SendMessagePage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const recipientId = searchParams.get('recipientId');
-  const messageTypeParam = searchParams.get('type') as 'to_partner' | 'to_seller' | 'announcement' | null;
+  const messageTypeParam = searchParams.get('type') as 'to_partner' | 'to_seller' | 'to_customer' | 'announcement' | null;
 
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
@@ -85,7 +85,7 @@ export default function SendMessagePage() {
 
   React.useEffect(() => {
     const recipientId = searchParams.get('recipientId');
-    const type = searchParams.get('type') as 'to_partner' | 'to_seller' | 'announcement' | null;
+    const type = searchParams.get('type') as 'to_partner' | 'to_seller' | 'to_customer' | 'announcement' | null;
     
     if (type && recipientId) {
         form.reset({
@@ -95,7 +95,16 @@ export default function SendMessagePage() {
             details: '',
             announcementType: undefined
         });
-    } else {
+    } else if (type) {
+         form.reset({
+            messageType: type,
+            recipientId: '',
+            subject: '',
+            details: '',
+            announcementType: undefined
+        });
+    }
+    else {
         form.reset({
             messageType: 'announcement',
             recipientId: '',
@@ -129,7 +138,7 @@ export default function SendMessagePage() {
                 recipients.push({ id: 'ALL_PARTNERS', name: 'All Partners' });
                 recipients.push({ id: 'ALL_SELLERS', name: 'All Sellers' });
             }
-        } else if ((values.messageType === 'to_partner' || values.messageType === 'to_seller') && values.recipientId) {
+        } else if ((values.messageType === 'to_partner' || values.messageType === 'to_seller' || values.messageType === 'to_customer') && values.recipientId) {
             const userDoc = await getDoc(doc(db, 'users', values.recipientId));
             if (userDoc.exists()) {
                 recipients.push({ id: userDoc.id, name: userDoc.data().name });
@@ -182,6 +191,12 @@ export default function SendMessagePage() {
     }
   }
 
+  const recipientLabelMap = {
+    to_partner: 'Partner ID',
+    to_seller: 'Seller ID',
+    to_customer: 'Customer ID',
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <Card>
@@ -208,6 +223,7 @@ export default function SendMessagePage() {
                                     <SelectItem value="announcement">Announcement</SelectItem>
                                     <SelectItem value="to_partner">To Partner</SelectItem>
                                     <SelectItem value="to_seller">To Seller</SelectItem>
+                                    <SelectItem value="to_customer">To Customer</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -231,7 +247,7 @@ export default function SendMessagePage() {
                                     <SelectContent>
                                     <SelectItem value="partner">Partners</SelectItem>
                                     <SelectItem value="seller">Sellers</SelectItem>
-                                    <SelectItem value="both">Both</SelectItem>
+                                    <SelectItem value="both">Both (Partners & Sellers)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -240,18 +256,18 @@ export default function SendMessagePage() {
                         />
                     )}
 
-                    {(messageType === 'to_partner' || messageType === 'to_seller') && (
+                    {(messageType === 'to_partner' || messageType === 'to_seller' || messageType === 'to_customer') && (
                          <FormField
                             control={form.control}
                             name="recipientId"
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>
-                                    {messageType === 'to_partner' ? 'Partner ID' : 'Seller ID'}
+                                    {recipientLabelMap[messageType]}
                                 </FormLabel>
                                 <FormControl>
                                     <Input 
-                                        placeholder={`Enter ${messageType === 'to_partner' ? 'Partner' : 'Seller'} ID`} 
+                                        placeholder={`Enter ${recipientLabelMap[messageType]}`} 
                                         {...field}
                                         disabled={isSubmitting || isPrefilled}
                                     />

@@ -52,6 +52,7 @@ export default function UpdatesPage() {
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
     const isSeller = user?.role === 'seller';
     const isAdmin = user?.role === 'admin';
+    const isCustomer = user?.role === 'customer';
 
     const fetchMessages = React.useCallback(async () => {
         if (!user) return;
@@ -64,7 +65,10 @@ export default function UpdatesPage() {
                 recipientQueries.push(where("recipientId", "in", [user.id, "ALL_PARTNERS"]));
             } else if (isSeller) {
                  recipientQueries.push(where("recipientId", "in", [user.id, "ALL_SELLERS"]));
-            } else if (isAdmin) {
+            } else if (isCustomer) {
+                 recipientQueries.push(where("recipientId", "==", user.id)); // Customers only get direct messages
+            }
+             else if (isAdmin) {
                  recipientQueries.push(where("recipientId", "in", [user.id, "ALL_ADMINS", "ALL_PARTNERS", "ALL_SELLERS"]));
             }
 
@@ -104,7 +108,7 @@ export default function UpdatesPage() {
         } finally {
             setIsLoadingMessages(false);
         }
-    }, [user, isAdmin, isPartner, isSeller]);
+    }, [user, isAdmin, isPartner, isSeller, isCustomer]);
 
     React.useEffect(() => {
         if (user) {
@@ -181,7 +185,7 @@ export default function UpdatesPage() {
                 )}
             </div>
         
-        {isPartner || isSeller ? (
+        {isPartner || isSeller || isCustomer ? (
             <Card>
                 <CardHeader>
                 <CardTitle>Inbox</CardTitle>

@@ -134,7 +134,7 @@ export default function CustomerProfilePage() {
                     <p className="text-muted-foreground">Customer ID: {customer.id}</p>
                 </div>
                 <div className="flex gap-2">
-                     <Button variant="outline" size="icon">
+                     <Button variant="outline" size="icon" onClick={() => router.push(`/send-message?recipientId=${customer.id}&type=to_customer`)}>
                         <MessageSquare className="h-4 w-4" />
                         <span className="sr-only">Send Message</span>
                     </Button>

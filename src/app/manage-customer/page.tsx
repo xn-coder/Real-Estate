@@ -60,7 +60,8 @@ export default function ManageCustomerPage() {
             const leadsCollection = collection(db, "leads");
             const leadsQuery = query(leadsCollection, where("propertyId", "in", sellerPropertyIds));
             const leadsSnapshot = await getDocs(leadsQuery);
-            const customerIds = leadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id);
+            const customerIds = [...new Set(leadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id))];
+
 
             if (customerIds.length === 0) {
                  setCustomers([]);
@@ -74,8 +75,8 @@ export default function ManageCustomerPage() {
             const leadsCollection = collection(db, "leads");
             const partnerLeadsQuery = query(leadsCollection, where("partnerId", "==", user.id));
             const partnerLeadsSnapshot = await getDocs(partnerLeadsQuery);
-            const customerIds = partnerLeadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id);
-            
+            const customerIds = [...new Set(partnerLeadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id))];
+
              if (customerIds.length === 0) {
                  setCustomers([]);
                  setIsLoading(false);
@@ -150,7 +151,7 @@ export default function ManageCustomerPage() {
                         <Eye className="h-4 w-4" />
                         <span className="sr-only">View Profile</span>
                     </Button>
-                     <Button variant="ghost" size="icon" onClick={() => router.push(`/send-message?recipientId=${customer.id}&type=to_partner`)}>
+                     <Button variant="ghost" size="icon" onClick={() => router.push(`/send-message?recipientId=${customer.id}&type=to_customer`)}>
                         <MessageSquare className="h-4 w-4" />
                          <span className="sr-only">Send Message</span>
                     </Button>
