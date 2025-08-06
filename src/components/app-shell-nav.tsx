@@ -89,7 +89,7 @@ const adminNavItems: NavItem[] = [
     { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
     { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
     { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
-    { href: '/support-ticket', icon: Headset, label: 'Manage Support' },
+    { href: '/support-ticket/list', icon: Headset, label: 'Manage Support' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/website-panel', icon: PanelTop, label: 'Website Panel' },
     { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
