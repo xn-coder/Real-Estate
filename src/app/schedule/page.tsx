@@ -478,8 +478,8 @@ export default function SchedulePage() {
                 </DialogHeader>
                  <div className="py-4 space-y-4">
                      {visitProofUrl && (
-                        <div className="border rounded-md p-2">
-                            <Image src={visitProofUrl} alt="Visit Proof Preview" width={400} height={225} className="w-full h-auto object-contain rounded-md" />
+                        <div className="flex justify-center">
+                            <Image src={visitProofUrl} alt="Visit Proof Preview" width={80} height={80} className="w-20 h-20 object-cover rounded-md" />
                         </div>
                      )}
                      <Input 
