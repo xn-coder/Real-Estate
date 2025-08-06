@@ -124,6 +124,7 @@ const sellerNavItems: NavItem[] = [
     { href: '/manage-partner', icon: Handshake, label: 'Partner Manage' },
     { href: '/booking-quotation', icon: FileText, label: 'Booking & Quotation' },
     { href: '/document-management', icon: FileText, label: 'Document Manage' },
+    { href: '/send-message', icon: MessageSquare, label: 'Send Message' },
 ];
 
 const userNavItems: NavItem[] = [

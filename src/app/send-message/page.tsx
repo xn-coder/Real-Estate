@@ -39,7 +39,7 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
 
 const messageFormSchema = z.object({
   messageType: z.enum(["announcement", "to_partner", "to_seller", "to_customer"]),
-  announcementType: z.enum(["partner", "seller", "both"]).optional(),
+  announcementType: z.enum(["partner", "seller", "both", "customer"]).optional(),
   recipientId: z.string().optional(),
   subject: z.string().min(1, { message: "Subject is required." }),
   details: z.string().min(1, { message: "Details are required." }),
@@ -71,12 +71,15 @@ export default function SendMessagePage() {
 
   const recipientId = searchParams.get('recipientId');
   const messageTypeParam = searchParams.get('type') as 'to_partner' | 'to_seller' | 'to_customer' | 'announcement' | null;
+  const isSeller = user?.role === 'seller';
+  const isAdmin = user?.role === 'admin';
+
 
   const form = useForm<MessageForm>({
     resolver: zodResolver(messageFormSchema),
     defaultValues: {
-      messageType: messageTypeParam || "announcement",
-      announcementType: undefined,
+      messageType: isSeller ? "announcement" : (messageTypeParam || "announcement"),
+      announcementType: isSeller ? "partner" : undefined,
       recipientId: recipientId || "",
       subject: "",
       details: ""
@@ -106,14 +109,14 @@ export default function SendMessagePage() {
     }
     else {
         form.reset({
-            messageType: 'announcement',
+            messageType: isSeller ? "announcement" : 'announcement',
             recipientId: '',
             subject: '',
             details: '',
-            announcementType: undefined
+            announcementType: isSeller ? "partner" : undefined
         });
     }
-  }, [searchParams, form]);
+  }, [searchParams, form, isSeller]);
 
 
   const messageType = form.watch("messageType")
@@ -132,9 +135,9 @@ export default function SendMessagePage() {
         if (values.messageType === 'announcement') {
             if (values.announcementType === 'partner') {
                 recipients.push({ id: 'ALL_PARTNERS', name: 'All Partners' });
-            } else if (values.announcementType === 'seller') {
+            } else if (values.announcementType === 'seller' && isAdmin) {
                 recipients.push({ id: 'ALL_SELLERS', name: 'All Sellers' });
-            } else if (values.announcementType === 'both') {
+            } else if (values.announcementType === 'both' && isAdmin) {
                 recipients.push({ id: 'ALL_PARTNERS', name: 'All Partners' });
                 recipients.push({ id: 'ALL_SELLERS', name: 'All Sellers' });
             }
@@ -221,8 +224,8 @@ export default function SendMessagePage() {
                                 </FormControl>
                                 <SelectContent>
                                     <SelectItem value="announcement">Announcement</SelectItem>
-                                    <SelectItem value="to_partner">To Partner</SelectItem>
-                                    <SelectItem value="to_seller">To Seller</SelectItem>
+                                    {!isSeller && <SelectItem value="to_partner">To Partner</SelectItem>}
+                                    {isAdmin && <SelectItem value="to_seller">To Seller</SelectItem>}
                                     <SelectItem value="to_customer">To Customer</SelectItem>
                                 </SelectContent>
                             </Select>
@@ -238,7 +241,7 @@ export default function SendMessagePage() {
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>Announcement For</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isSeller}>
                                     <FormControl>
                                     <SelectTrigger disabled={isSubmitting}>
                                         <SelectValue placeholder="Select announcement type" />
@@ -246,8 +249,8 @@ export default function SendMessagePage() {
                                     </FormControl>
                                     <SelectContent>
                                     <SelectItem value="partner">Partners</SelectItem>
-                                    <SelectItem value="seller">Sellers</SelectItem>
-                                    <SelectItem value="both">Both (Partners & Sellers)</SelectItem>
+                                    {isAdmin && <SelectItem value="seller">Sellers</SelectItem>}
+                                    {isAdmin && <SelectItem value="both">Both (Partners & Sellers)</SelectItem>}
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -263,11 +266,11 @@ export default function SendMessagePage() {
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>
-                                    {recipientLabelMap[messageType]}
+                                    {recipientLabelMap[messageType as keyof typeof recipientLabelMap]}
                                 </FormLabel>
                                 <FormControl>
                                     <Input 
-                                        placeholder={`Enter ${recipientLabelMap[messageType]}`} 
+                                        placeholder={`Enter ${recipientLabelMap[messageType as keyof typeof recipientLabelMap]}`} 
                                         {...field}
                                         disabled={isSubmitting || isPrefilled}
                                     />

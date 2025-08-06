@@ -18,6 +18,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@/hooks/use-user"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Label } from "@/components/ui/label"
 
 
 const roleNameMapping: Record<string, string> = {
@@ -213,43 +214,66 @@ export default function PartnerProfilePage() {
         </Card>
 
         {adminUser?.role === 'admin' && (
-            <Card>
-                 <CardHeader>
-                    <CardTitle>Uploaded Documents</CardTitle>
-                 </CardHeader>
-                 <CardContent>
-                    <div className="border rounded-lg">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Title</TableHead>
-                                <TableHead>File Name</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoadingDocs ? (
-                                <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                            ) : documents.length === 0 ? (
-                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No documents found.</TableCell></TableRow>
-                            ) : (
-                                documents.map((doc) => (
-                                    <TableRow key={doc.id}>
-                                        <TableCell className="font-medium">{doc.title}</TableCell>
-                                        <TableCell className="text-muted-foreground">{doc.fileName}</TableCell>
-                                        <TableCell className="text-right">
-                                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                                                <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                                            </a>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                    </div>
-                 </CardContent>
-            </Card>
+            <>
+                <Card>
+                    <CardHeader><CardTitle>KYC Documents</CardTitle></CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label className="text-sm font-medium">Aadhar Card</Label>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">{partner.aadharNumber || 'Not Provided'}</p>
+                                <div className="mt-2 border rounded-lg overflow-hidden">
+                                    {partner.aadharFile ? <Image src={partner.aadharFile} alt="Aadhar Card" width={150} height={100} className="w-full" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file</p>}
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="text-sm font-medium">PAN Card</Label>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">{partner.panNumber || 'Not Provided'}</p>
+                                 <div className="mt-2 border rounded-lg overflow-hidden">
+                                    {partner.panFile ? <Image src={partner.panFile} alt="PAN Card" width={150} height={100} className="w-full" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file</p>}
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Other Uploaded Documents</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="border rounded-lg">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Title</TableHead>
+                                    <TableHead>File Name</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoadingDocs ? (
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                                ) : documents.length === 0 ? (
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No other documents found.</TableCell></TableRow>
+                                ) : (
+                                    documents.map((doc) => (
+                                        <TableRow key={doc.id}>
+                                            <TableCell className="font-medium">{doc.title}</TableCell>
+                                            <TableCell className="text-muted-foreground">{doc.fileName}</TableCell>
+                                            <TableCell className="text-right">
+                                                <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                                    <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                                                </a>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </>
         )}
 
         <div className="space-y-4">

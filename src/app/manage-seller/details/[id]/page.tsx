@@ -135,16 +135,18 @@ export default function SellerDetailsPage() {
             <h1 className="text-2xl font-bold tracking-tight font-headline">Seller Details</h1>
         </div>
 
-        <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleApprove} disabled={isUpdating}>
-                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                Approve
-            </Button>
-            <Button variant="destructive" onClick={handleReject} disabled={isUpdating}>
-                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
-                Reject
-            </Button>
-        </div>
+        {seller.status === 'pending' && (
+            <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={handleApprove} disabled={isUpdating}>
+                    {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                    Approve
+                </Button>
+                <Button variant="destructive" onClick={handleReject} disabled={isUpdating}>
+                    {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                    Reject
+                </Button>
+            </div>
+        )}
         
         <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
