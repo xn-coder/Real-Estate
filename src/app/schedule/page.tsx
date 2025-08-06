@@ -199,11 +199,14 @@ export default function SchedulePage() {
                             <TableCell className="text-right">
                                  <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreHorizontal className="h-4 w-4" />
+                                        <Button variant="ghost" size="icon" disabled={!!isUpdating}>
+                                             {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreHorizontal className="h-4 w-4" />}
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
+                                        <DropdownMenuItem onSelect={() => handleConfirmVisit(appointment.id)}>
+                                            <CheckCircle className="mr-2 h-4 w-4" /> Confirm Visit
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
                                             <Map className="mr-2 h-4 w-4" /> Map View
                                         </DropdownMenuItem>
