@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc, query, where, deleteDoc, collectionGroup } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, setDoc, query, where, deleteDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import Image from "next/image"
 import type { UserDocument } from "@/types/document"
@@ -83,8 +83,6 @@ export default function DocumentManagementPage() {
     const [isViewKycOpen, setIsViewKycOpen] = React.useState(false);
     const [kycToView, setKycToView] = React.useState<{ title: string, number?: string, url?: string } | null>(null);
 
-    const isAdmin = user?.role === 'admin';
-
     const form = useForm<DocumentFormValues>({
         resolver: zodResolver(documentSchema),
         defaultValues: { title: "" },
@@ -94,21 +92,10 @@ export default function DocumentManagementPage() {
         if (!user) return;
         setIsLoading(true);
         try {
-            let docsList: UserDocument[] = [];
-            if (isAdmin) {
-                const docsQuery = query(collectionGroup(db, 'documents'));
-                const snapshot = await getDocs(docsQuery);
-                docsList = snapshot.docs.map(doc => {
-                    const pathParts = doc.ref.path.split('/');
-                    const ownerId = pathParts[1];
-                    return { id: doc.id, ...doc.data(), ownerId } as UserDocument
-                });
-            } else {
-                 const docsRef = collection(db, `users/${user.id}/documents`);
-                 const q = query(docsRef);
-                 const snapshot = await getDocs(q);
-                 docsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserDocument));
-            }
+            const docsRef = collection(db, `users/${user.id}/documents`);
+            const q = query(docsRef);
+            const snapshot = await getDocs(q);
+            const docsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserDocument));
             setDocuments(docsList);
         } catch (error) {
             console.error("Error fetching documents:", error);
@@ -116,7 +103,7 @@ export default function DocumentManagementPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [user, isAdmin, toast]);
+    }, [user, toast]);
 
     React.useEffect(() => {
         if (user) {
@@ -149,12 +136,10 @@ export default function DocumentManagementPage() {
         }
     }
 
-    const handleDelete = async (docId: string, ownerId?: string) => {
-        const docOwnerId = ownerId || user?.id;
-        if (!docOwnerId) return;
-
+    const handleDelete = async (docId: string) => {
+        if (!user) return;
         try {
-            await deleteDoc(doc(db, `users/${docOwnerId}/documents`, docId));
+            await deleteDoc(doc(db, `users/${user.id}/documents`, docId));
             toast({ title: "Document Deleted", description: "The document has been removed." });
             fetchDocuments();
         } catch (error) {
@@ -162,7 +147,7 @@ export default function DocumentManagementPage() {
             toast({ variant: "destructive", title: "Error", description: "Failed to delete document." });
         }
     }
-
+    
     const handleViewKyc = (title: string, number?: string, url?: string) => {
         setKycToView({ title, number, url });
         setIsViewKycOpen(true);
@@ -176,7 +161,6 @@ export default function DocumentManagementPage() {
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
             <h1 className="text-3xl font-bold tracking-tight font-headline">Document Management</h1>
 
-            {!isAdmin && (
             <Card>
                 <CardHeader>
                     <CardTitle>KYC Documents</CardTitle>
@@ -203,63 +187,60 @@ export default function DocumentManagementPage() {
                     </div>
                 </CardContent>
             </Card>
-            )}
-
+            
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>
-                            <CardTitle>{isAdmin ? "All User Documents" : "Other Documents"}</CardTitle>
-                            <CardDescription>{isAdmin ? "View documents uploaded by all users." : "Manage your additional business or personal documents."}</CardDescription>
+                            <CardTitle>Other Documents</CardTitle>
+                            <CardDescription>Manage your additional business or personal documents.</CardDescription>
                         </div>
-                         {!isAdmin && (
-                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button><PlusCircle className="mr-2 h-4 w-4" /> Add Document</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Upload New Document</DialogTitle>
-                                    </DialogHeader>
-                                    <Form {...form}>
-                                        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="title"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Document Title</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g., Business License" {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="file"
-                                                render={({ field: { onChange, ...rest }}) => (
-                                                    <FormItem>
-                                                        <FormLabel>File</FormLabel>
-                                                        <FormControl>
-                                                            <Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <DialogFooter>
-                                                <Button type="submit" disabled={isSubmitting}>
-                                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                    Upload
-                                                </Button>
-                                            </DialogFooter>
-                                        </form>
-                                    </Form>
-                                </DialogContent>
-                            </Dialog>
-                         )}
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button><PlusCircle className="mr-2 h-4 w-4" /> Add Document</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Upload New Document</DialogTitle>
+                                </DialogHeader>
+                                <Form {...form}>
+                                    <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="title"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Document Title</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="e.g., Business License" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="file"
+                                            render={({ field: { onChange, ...rest }}) => (
+                                                <FormItem>
+                                                    <FormLabel>File</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <DialogFooter>
+                                            <Button type="submit" disabled={isSubmitting}>
+                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Upload
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -269,21 +250,19 @@ export default function DocumentManagementPage() {
                                 <TableRow>
                                     <TableHead>Title</TableHead>
                                     <TableHead>File Name</TableHead>
-                                    {isAdmin && <TableHead>Owner ID</TableHead>}
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
-                                    <TableRow><TableCell colSpan={isAdmin ? 4 : 3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
                                 ) : documents.length === 0 ? (
-                                    <TableRow><TableCell colSpan={isAdmin ? 4 : 3} className="h-24 text-center">No documents found.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No documents found.</TableCell></TableRow>
                                 ) : (
                                     documents.map((doc) => (
                                         <TableRow key={doc.id}>
                                             <TableCell className="font-medium">{doc.title}</TableCell>
                                             <TableCell className="text-muted-foreground">{doc.fileName}</TableCell>
-                                            {isAdmin && <TableCell className="font-mono text-xs">{doc.ownerId}</TableCell>}
                                             <TableCell className="text-right">
                                                 <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
                                                     <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
@@ -301,7 +280,7 @@ export default function DocumentManagementPage() {
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDelete(doc.id, doc.ownerId)}>Delete</AlertDialogAction>
+                                                            <AlertDialogAction onClick={() => handleDelete(doc.id)}>Delete</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>

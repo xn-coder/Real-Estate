@@ -4,17 +4,21 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion, ChevronRight } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion, ChevronRight, Eye } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, collection, query, getDocs } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User } from "@/types/user"
+import type { UserDocument } from "@/types/document"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import Image from "next/image"
+import { useUser } from "@/hooks/use-user"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -35,15 +39,20 @@ export default function PartnerProfilePage() {
   const { toast } = useToast()
   const params = useParams()
   const router = useRouter()
+  const { user: adminUser } = useUser();
   const partnerId = params.id as string;
 
   const [partner, setPartner] = React.useState<User | null>(null)
+  const [documents, setDocuments] = React.useState<UserDocument[]>([]);
   const [isLoading, setIsLoading] = React.useState(true)
+  const [isLoadingDocs, setIsLoadingDocs] = React.useState(true);
 
-  const fetchPartner = React.useCallback(async () => {
+  const fetchPartnerData = React.useCallback(async () => {
     if (!partnerId) return;
     setIsLoading(true)
+    setIsLoadingDocs(true)
     try {
+      // Fetch partner data
       const userDocRef = doc(db, "users", partnerId)
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists()) {
@@ -60,6 +69,16 @@ export default function PartnerProfilePage() {
         })
         router.push('/manage-partner');
       }
+
+      // Fetch partner documents if admin
+      if(adminUser?.role === 'admin') {
+          const docsRef = collection(db, `users/${partnerId}/documents`);
+          const q = query(docsRef);
+          const snapshot = await getDocs(q);
+          const docsList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserDocument));
+          setDocuments(docsList);
+      }
+
     } catch (error) {
       console.error("Failed to fetch partner data:", error)
       toast({
@@ -69,12 +88,15 @@ export default function PartnerProfilePage() {
       })
     } finally {
       setIsLoading(false)
+      setIsLoadingDocs(false)
     }
-  }, [partnerId, toast, router])
+  }, [partnerId, toast, router, adminUser?.role])
 
   React.useEffect(() => {
-    fetchPartner()
-  }, [fetchPartner])
+    if(adminUser) { // ensure adminUser is loaded before fetching
+        fetchPartnerData()
+    }
+  }, [fetchPartnerData, adminUser])
 
   if (isLoading) {
     return (
@@ -189,6 +211,46 @@ export default function PartnerProfilePage() {
                 </div>
             </CardContent>
         </Card>
+
+        {adminUser?.role === 'admin' && (
+            <Card>
+                 <CardHeader>
+                    <CardTitle>Uploaded Documents</CardTitle>
+                 </CardHeader>
+                 <CardContent>
+                    <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Title</TableHead>
+                                <TableHead>File Name</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoadingDocs ? (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                            ) : documents.length === 0 ? (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No documents found.</TableCell></TableRow>
+                            ) : (
+                                documents.map((doc) => (
+                                    <TableRow key={doc.id}>
+                                        <TableCell className="font-medium">{doc.title}</TableCell>
+                                        <TableCell className="text-muted-foreground">{doc.fileName}</TableCell>
+                                        <TableCell className="text-right">
+                                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                                                <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
+                                            </a>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                    </div>
+                 </CardContent>
+            </Card>
+        )}
 
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
