@@ -69,7 +69,7 @@ export default function WalletBillingPage() {
   const walletOptions = [
     ...(isAdmin ? [{ name: "Manage Wallet", href: "/wallet-billing/manage" }] : []),
     { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
-    { name: "Claim Reward Points", href: "/wallet-billing/rewards" },
+    { name: isAdmin ? "Send Reward Points" : "Claim Reward Points", href: "/wallet-billing/rewards" },
     { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
     ...(isAdmin ? [
       { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
