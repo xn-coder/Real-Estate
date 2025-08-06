@@ -21,7 +21,7 @@ import { Loader2, ArrowLeft, Gift, Search, User } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, updateDoc, writeBatch, addDoc, Timestamp } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, updateDoc, writeBatch, addDoc, Timestamp, getDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
@@ -109,16 +109,19 @@ export default function RewardsPage() {
           });
           
           const walletRef = doc(db, "wallets", selectedPartner.id);
-          // In a real scenario you would check if the wallet exists first
-          // For now, we assume it does or will be created.
-          const currentBalanceDoc = await doc(walletRef).get();
-          const currentBalance = currentBalanceDoc.data()?.rewardBalance || 0;
-          batch.set(walletRef, { rewardBalance: currentBalance + values.points }, { merge: true });
+          const walletDoc = await getDoc(walletRef);
+          
+          let newBalance = values.points;
+          if (walletDoc.exists()) {
+              newBalance = (walletDoc.data().rewardBalance || 0) + values.points;
+          }
+
+          batch.set(walletRef, { rewardBalance: newBalance }, { merge: true });
 
           await batch.commit();
 
           toast({ title: "Success", description: `${values.points} points sent to ${selectedPartner?.name}.` });
-          sendForm.reset();
+          sendForm.reset({ recipientId: "", points: 0, notes: "" });
           setSelectedPartner(null);
 
       } catch (error) {
@@ -256,7 +259,7 @@ export default function RewardsPage() {
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" disabled={isSubmitting}>
+                        <Button type="submit" disabled={isSubmitting || !selectedPartner}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                             Send Points
                         </Button>
