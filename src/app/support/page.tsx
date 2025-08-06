@@ -17,7 +17,6 @@ import { collection, getDocs, query, where, orderBy } from "firebase/firestore"
 import Link from "next/link"
 import type { Resource } from "@/types/resource"
 import { useUser } from "@/hooks/use-user"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { SupportTicket } from "@/types/team"
 import { format } from "date-fns"
@@ -114,7 +113,7 @@ export default function HelpAndSupportPage() {
   ];
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Help & Support</h1>
          <Button asChild>
@@ -124,77 +123,70 @@ export default function HelpAndSupportPage() {
         </Button>
       </div>
 
-       <Tabs defaultValue="dashboard">
-        <TabsList>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="tickets">My Tickets</TabsTrigger>
-        </TabsList>
-        <TabsContent value="dashboard" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-4">
-                {resourceTypes.map((resType) => {
-                    const Icon = iconMapping[resType.type as keyof typeof iconMapping];
-                    return (
-                        <Card key={resType.type}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">{resType.title}</CardTitle>
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/> : <Icon className={`h-4 w-4 text-muted-foreground`} />}
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">
-                                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : counts[resType.type as keyof typeof counts]}
-                                </div>
-                                <Link href={`/support/list?type=${resType.type}`} className="text-xs text-muted-foreground flex items-center hover:underline">
-                                    View All <ChevronRight className="h-4 w-4 ml-1" />
-                                </Link>
-                            </CardContent>
-                        </Card>
-                    )
-                })}
-            </div>
-        </TabsContent>
-        <TabsContent value="tickets">
-            <Card>
-                <CardHeader>
-                    <CardTitle>My Submitted Tickets</CardTitle>
-                    <CardDescription>Track the status of your support requests.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <div className="border rounded-lg">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Subject</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Last Updated</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                             <TableBody>
-                                {isLoading ? (
-                                    <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                                ) : myTickets.length === 0 ? (
-                                    <TableRow><TableCell colSpan={4} className="h-24 text-center">You haven't submitted any tickets yet.</TableCell></TableRow>
-                                ) : (
-                                    myTickets.map((ticket) => (
-                                        <TableRow key={ticket.id}>
-                                            <TableCell className="font-medium">{ticket.subject}</TableCell>
-                                            <TableCell><Badge variant={statusColors[ticket.status]}>{ticket.status}</Badge></TableCell>
-                                            <TableCell>{format(ticket.updatedAt.toDate(), "PPP")}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="outline" size="sm" onClick={() => { setSelectedTicket(ticket); setIsViewDialogOpen(true); }}>
-                                                    View Details
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-        </TabsContent>
-       </Tabs>
+       <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-4">
+            {resourceTypes.map((resType) => {
+                const Icon = iconMapping[resType.type as keyof typeof iconMapping];
+                return (
+                    <Card key={resType.type}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">{resType.title}</CardTitle>
+                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/> : <Icon className={`h-4 w-4 text-muted-foreground`} />}
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : counts[resType.type as keyof typeof counts]}
+                            </div>
+                            <Link href={`/support/list?type=${resType.type}`} className="text-xs text-muted-foreground flex items-center hover:underline">
+                                View All <ChevronRight className="h-4 w-4 ml-1" />
+                            </Link>
+                        </CardContent>
+                    </Card>
+                )
+            })}
+        </div>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>My Submitted Tickets</CardTitle>
+                <CardDescription>Track the status of your support requests.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Subject</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Last Updated</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                         <TableBody>
+                            {isLoading ? (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                            ) : myTickets.length === 0 ? (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">You haven't submitted any tickets yet.</TableCell></TableRow>
+                            ) : (
+                                myTickets.map((ticket) => (
+                                    <TableRow key={ticket.id}>
+                                        <TableCell className="font-medium">{ticket.subject}</TableCell>
+                                        <TableCell><Badge variant={statusColors[ticket.status]}>{ticket.status}</Badge></TableCell>
+                                        <TableCell>{format(ticket.updatedAt.toDate(), "PPP")}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="outline" size="sm" onClick={() => { setSelectedTicket(ticket); setIsViewDialogOpen(true); }}>
+                                                View Details
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+       </div>
 
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
             <DialogContent className="sm:max-w-2xl">
