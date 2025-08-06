@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User, Send } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,13 +30,17 @@ import {
 } from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, Timestamp } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, doc, updateDoc } from "firebase/firestore"
 import type { Lead } from "@/types/lead"
+import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New': 'default',
@@ -55,6 +59,14 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
   const [isScheduling, setIsScheduling] = React.useState(false);
+
+  // State for "Send to Partner" dialog
+  const [isSendToPartnerDialogOpen, setIsSendToPartnerDialogOpen] = React.useState(false);
+  const [selectedLeadForSending, setSelectedLeadForSending] = React.useState<Lead | null>(null);
+  const [teamMembers, setTeamMembers] = React.useState<User[]>([]);
+  const [selectedPartnerForLead, setSelectedPartnerForLead] = React.useState<string | null>(null);
+  const [isSending, setIsSending] = React.useState(false);
+
 
   const canSendToPartner = user?.role && ['associate', 'channel', 'franchisee'].includes(user.role);
 
@@ -100,11 +112,29 @@ export default function LeadsPage() {
     }
   }, [user, toast]);
 
+  const fetchTeamMembers = React.useCallback(async () => {
+    if (!user || !canSendToPartner) return;
+    try {
+      const usersCollection = collection(db, "users");
+      const teamQuery = query(usersCollection, where("teamLeadId", "==", user.id));
+      const teamSnapshot = await getDocs(teamQuery);
+      const membersList = teamSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+      setTeamMembers(membersList);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not fetch team members." });
+    }
+  }, [user, canSendToPartner, toast]);
+
+
   React.useEffect(() => {
     if(user) {
         fetchLeads();
+        if (canSendToPartner) {
+            fetchTeamMembers();
+        }
     }
-  }, [user, fetchLeads]);
+  }, [user, fetchLeads, canSendToPartner, fetchTeamMembers]);
 
   const handleScheduleClick = (lead: Lead) => {
     setSelectedLead(lead);
@@ -128,6 +158,33 @@ export default function LeadsPage() {
         toast({ variant: "destructive", title: "Scheduling Failed", description: error.message });
     } finally {
         setIsScheduling(false);
+    }
+  };
+
+  const handleSendToPartnerClick = (lead: Lead) => {
+    setSelectedLeadForSending(lead);
+    setIsSendToPartnerDialogOpen(true);
+  };
+
+  const handleSendLeadToPartner = async () => {
+    if (!selectedPartnerForLead || !selectedLeadForSending) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Please select a partner.' });
+        return;
+    }
+    setIsSending(true);
+    try {
+        const leadRef = doc(db, 'leads', selectedLeadForSending.id);
+        await updateDoc(leadRef, {
+            partnerId: selectedPartnerForLead
+        });
+        toast({ title: 'Lead Sent', description: 'The lead has been successfully assigned to the partner.' });
+        setIsSendToPartnerDialogOpen(false);
+        fetchLeads(); // Refresh the leads list
+    } catch (error) {
+        console.error("Error sending lead:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send the lead.' });
+    } finally {
+        setIsSending(false);
     }
   };
 
@@ -192,7 +249,7 @@ export default function LeadsPage() {
                         <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem onSelect={() => router.push(`/manage-customer/${lead.customerId}`)}>
-                            <User className="mr-2 h-4 w-4" />
+                            <UserIcon className="mr-2 h-4 w-4" />
                             View Customer
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleScheduleClick(lead)}>
@@ -200,7 +257,7 @@ export default function LeadsPage() {
                             Schedule Visit
                         </DropdownMenuItem>
                         {canSendToPartner && (
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleSendToPartnerClick(lead)}>
                                 <Send className="mr-2 h-4 w-4" />
                                 Send to Partner
                             </DropdownMenuItem>
@@ -240,6 +297,51 @@ export default function LeadsPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        {/* Send to Partner Dialog */}
+        <Dialog open={isSendToPartnerDialogOpen} onOpenChange={setIsSendToPartnerDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Send Lead to Partner</DialogTitle>
+                    <DialogDescription>
+                        Select a team member to assign this lead to.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    {teamMembers.length > 0 ? (
+                        <RadioGroup onValueChange={setSelectedPartnerForLead}>
+                             <div className="space-y-2 max-h-60 overflow-y-auto">
+                                {teamMembers.map((member) => (
+                                    <Label key={member.id} htmlFor={member.id} className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                                        <RadioGroupItem value={member.id} id={member.id} />
+                                        <Avatar className="h-9 w-9">
+                                            <AvatarImage src={member.profileImage} alt={member.name} />
+                                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1">
+                                            <p className="font-medium">{member.name}</p>
+                                            <p className="text-sm text-muted-foreground">{member.role.replace('_', ' ')}</p>
+                                        </div>
+                                    </Label>
+                                ))}
+                            </div>
+                        </RadioGroup>
+                    ) : (
+                        <p className="text-sm text-center text-muted-foreground py-8">
+                            You have no team members to send this lead to.
+                        </p>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsSendToPartnerDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSendLeadToPartner} disabled={isSending || teamMembers.length === 0}>
+                        {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Assign Lead
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   )
 }
+
+    
