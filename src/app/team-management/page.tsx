@@ -2,18 +2,7 @@
 'use client'
 
 import * as React from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm, useFieldArray } from "react-hook-form"
-import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -25,15 +14,15 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp, orderBy } from "firebase/firestore"
-import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, Users, Send, UserPlus, Search } from "lucide-react"
+import { Loader2, UserPlus, Search, Send } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
 import type { TeamMember, User as PartnerUser } from "@/types/user"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { getAvailablePartners } from "@/services/team-service"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -41,14 +30,6 @@ const roleNameMapping: Record<string, string> = {
   associate: 'Associate Partner',
   channel: 'Channel Partner',
   franchisee: 'Franchisee',
-};
-
-const allPartnerRoles = ['franchisee', 'channel', 'associate', 'super_affiliate', 'affiliate'];
-
-const addableRoles: Record<string, string[]> = {
-  franchisee: ['channel', 'associate', 'super_affiliate', 'affiliate'],
-  channel: ['associate', 'super_affiliate', 'affiliate'],
-  associate: ['super_affiliate', 'affiliate'],
 };
 
 export default function TeamManagementPage() {
@@ -66,55 +47,43 @@ export default function TeamManagementPage() {
   const canManageTeam = user?.role && ['franchisee', 'channel', 'associate'].includes(user.role);
 
   const fetchData = React.useCallback(async () => {
-    if (!user || !canManageTeam) {
-        setIsLoading(false);
-        return;
-    }
+    if (!user) return;
     setIsLoading(true);
     try {
-      const usersCollection = collection(db, "users");
-      const requestsCollection = collection(db, "team_requests");
-
-      // Fetch existing team members
-      const teamQuery = query(usersCollection, where("teamLeadId", "==", user.id));
-      const teamSnapshot = await getDocs(teamQuery);
-      const membersList = teamSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember));
-      setTeamMembers(membersList);
-
-      // Fetch all partners
-      const allPartnersQuery = query(usersCollection, where("role", "in", allPartnerRoles), orderBy("createdAt", "desc"));
-      const allPartnersSnapshot = await getDocs(allPartnersQuery);
+        const usersCollection = collection(db, "users");
+        const requestsCollection = collection(db, "team_requests");
+  
+        // Fetch existing team members
+        const teamQuery = query(usersCollection, where("teamLeadId", "==", user.id));
+        const teamSnapshot = await getDocs(teamQuery);
+        const membersList = teamSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember));
+        setTeamMembers(membersList);
+  
+        // Fetch all partners that can be requested via server action
+        const availablePartners = await getAvailablePartners(user.id, user.role);
+        setAllRequestablePartners(availablePartners);
       
-      const availableRoles = addableRoles[user.role as keyof typeof addableRoles] || [];
-      
-      const requestableList = allPartnersSnapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
-        .filter(p => 
-            !p.teamLeadId &&                     // Not already in a team
-            p.id !== user.id &&                   // Not the user themselves
-            availableRoles.includes(p.role)       // Is a role the user can add
-        );
+        // Fetch pending request count
+        const pendingRequestsQuery = query(requestsCollection, where("requesterId", "==", user.id), where("status", "==", "pending"));
+        const pendingRequestsSnapshot = await getDocs(pendingRequestsQuery);
+        setPendingRequestCount(pendingRequestsSnapshot.size);
+  
+      } catch (error) {
+        console.error("Error fetching team data:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to fetch team data." });
+      } finally {
+        setIsLoading(false);
+      }
+  }, [user, toast]);
 
-      setAllRequestablePartners(requestableList);
-
-      // Fetch pending request count
-      const pendingRequestsQuery = query(requestsCollection, where("requesterId", "==", user.id), where("status", "==", "pending"));
-      const pendingRequestsSnapshot = await getDocs(pendingRequestsQuery);
-      setPendingRequestCount(pendingRequestsSnapshot.size);
-
-    } catch (error) {
-      console.error("Error fetching team data:", error);
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch team data." });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, canManageTeam, toast]);
 
   React.useEffect(() => {
-    if(user) {
+    if(user && canManageTeam) {
         fetchData();
+    } else if (!isUserLoading) {
+        setIsLoading(false);
     }
-  }, [user, fetchData]);
+  }, [user, canManageTeam, isUserLoading, fetchData]);
 
   const handleSendRequest = async (partner: TeamMember) => {
     if (!user) return;
@@ -139,14 +108,16 @@ export default function TeamManagementPage() {
   }
 
   const partnersToDisplay = React.useMemo(() => {
-    if (!searchTerm) {
-        return allRequestablePartners.slice(0, 8);
-    }
-    
-    return allRequestablePartners.filter(partner => 
+    const filteredPartners = allRequestablePartners.filter(partner => 
         partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         partner.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    if (!searchTerm) {
+        return filteredPartners.slice(0, 8);
+    }
+    
+    return filteredPartners;
   }, [allRequestablePartners, searchTerm]);
 
 
