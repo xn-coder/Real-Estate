@@ -114,10 +114,6 @@ const partnerNavItems: NavItem[] = [
       icon: Users, 
       label: 'Team Management', 
       allowedRoles: ['franchisee', 'channel', 'associate'],
-      subItems: [
-        { href: '/team-management', label: 'My Team', exact: true },
-        { href: '/team-management/requests', label: 'Requests' }
-      ]
   },
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
   { href: '/support-ticket', icon: Ticket, label: 'Support Ticket' },
