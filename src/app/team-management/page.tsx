@@ -24,16 +24,16 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc, query, where } from "firebase/firestore"
-import bcrypt from "bcryptjs"
+import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, Users } from "lucide-react"
+import { Loader2, PlusCircle, Users, Send, UserPlus } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
 import type { User as TeamMember } from "@/types/user"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -43,38 +43,25 @@ const roleNameMapping: Record<string, string> = {
   franchisee: 'Franchisee',
 };
 
-const addableRoles = {
+const addableRoles: Record<string, string[]> = {
   franchisee: ['channel', 'associate', 'super_affiliate', 'affiliate'],
   channel: ['channel', 'associate', 'super_affiliate', 'affiliate'],
   associate: ['super_affiliate', 'affiliate'],
 };
 
-const formSchema = z.object({
-  name: z.string().min(1, "Full name is required."),
-  email: z.string().email("A valid email is required."),
-  phone: z.string().min(10, "A valid phone number is required."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
-  role: z.string().min(1, "Please select a role."),
-})
-
-type AddTeamMemberForm = z.infer<typeof formSchema>
-
 export default function TeamManagementPage() {
   const { user, isLoading: isUserLoading } = useUser();
   const { toast } = useToast();
   const [teamMembers, setTeamMembers] = React.useState<TeamMember[]>([]);
+  const [requestablePartners, setRequestablePartners] = React.useState<TeamMember[]>([]);
+  const [pendingRequestCount, setPendingRequestCount] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
-  const form = useForm<AddTeamMemberForm>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { name: "", email: "", phone: "", password: "" },
-  });
-
   const canManageTeam = user?.role && ['franchisee', 'channel', 'associate'].includes(user.role);
 
-  const fetchTeamMembers = React.useCallback(async () => {
+  const fetchData = React.useCallback(async () => {
     if (!user || !canManageTeam) {
         setIsLoading(false);
         return;
@@ -82,66 +69,64 @@ export default function TeamManagementPage() {
     setIsLoading(true);
     try {
       const usersCollection = collection(db, "users");
-      const q = query(usersCollection, where("teamLeadId", "==", user.id));
-      const snapshot = await getDocs(q);
-      const membersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember));
+      const requestsCollection = collection(db, "team_requests");
+
+      // Fetch existing team members
+      const teamQuery = query(usersCollection, where("teamLeadId", "==", user.id));
+      const teamSnapshot = await getDocs(teamQuery);
+      const membersList = teamSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamMember));
       setTeamMembers(membersList);
+
+      // Fetch requestable partners
+      const availableRoles = addableRoles[user.role as keyof typeof addableRoles] || [];
+      if (availableRoles.length > 0) {
+        const requestableQuery = query(usersCollection, where("role", "in", availableRoles), where("teamLeadId", "==", null));
+        const requestableSnapshot = await getDocs(requestableQuery);
+        const requestableList = requestableSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as TeamMember))
+            .filter(p => p.id !== user.id); // Can't request yourself
+        setRequestablePartners(requestableList);
+      }
+
+      // Fetch pending request count
+      const pendingRequestsQuery = query(requestsCollection, where("requesterId", "==", user.id), where("status", "==", "pending"));
+      const pendingRequestsSnapshot = await getDocs(pendingRequestsQuery);
+      setPendingRequestCount(pendingRequestsSnapshot.size);
+
     } catch (error) {
-      console.error("Error fetching team members:", error);
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch team members." });
+      console.error("Error fetching team data:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to fetch team data." });
     } finally {
       setIsLoading(false);
     }
   }, [user, canManageTeam, toast]);
 
   React.useEffect(() => {
-    fetchTeamMembers();
-  }, [fetchTeamMembers]);
+    fetchData();
+  }, [fetchData]);
 
-  const onSubmit = async (values: AddTeamMemberForm) => {
+  const handleSendRequest = async (partner: TeamMember) => {
     if (!user) return;
     setIsSubmitting(true);
     try {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", values.email));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            toast({ variant: "destructive", title: "Error", description: "A user with this email already exists." });
-            setIsSubmitting(false);
-            return;
-        }
-        
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(values.password, salt);
-        const [firstName, ...lastNameParts] = values.name.split(' ');
-        const lastName = lastNameParts.join(' ');
-        const userId = generateUserId("P");
-
-        await setDoc(doc(db, "users", userId), {
-            id: userId,
-            name: values.name,
-            firstName,
-            lastName,
-            email: values.email,
-            phone: values.phone,
-            password: hashedPassword,
-            role: values.role,
-            status: 'active',
-            teamLeadId: user.id,
+        await addDoc(collection(db, "team_requests"), {
+            requesterId: user.id,
+            requesterName: user.name,
+            recipientId: partner.id,
+            recipientName: partner.name,
+            status: "pending",
+            requestedAt: Timestamp.now(),
         });
-
-        toast({ title: "Team Member Added", description: "The new member has been added to your team." });
-        setIsDialogOpen(false);
-        form.reset();
-        fetchTeamMembers();
-    } catch (error) {
-        console.error("Error adding team member:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to add team member." });
+        toast({ title: "Request Sent", description: `Your request to add ${partner.name} has been sent.` });
+        fetchData(); // Refresh data
+    } catch(error) {
+        console.error("Error sending request:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to send team request." });
     } finally {
         setIsSubmitting(false);
     }
   }
+
 
   if (isUserLoading) {
     return <div className="flex-1 p-4 md:p-8 pt-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -162,46 +147,62 @@ export default function TeamManagementPage() {
     );
   }
 
-  const availableRoles = addableRoles[user!.role as keyof typeof addableRoles] || [];
-
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Team Management</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button><PlusCircle className="mr-2 h-4 w-4" /> Add Team Member</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Team Member</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="role" render={({ field }) => (<FormItem><FormLabel>Role</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                            {availableRoles.map(role => (
-                                <SelectItem key={role} value={role}>{roleNameMapping[role]}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                <FormMessage /></FormItem>)} />
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Add Member
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+            <Button variant="outline" asChild>
+                <Link href="/team-management/requests">
+                    Pending Requests 
+                    {pendingRequestCount > 0 && <Badge className="ml-2">{pendingRequestCount}</Badge>}
+                </Link>
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button><UserPlus className="mr-2 h-4 w-4" /> Request Partner</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Request Partner to Join Team</DialogTitle>
+                  <DialogDescription>Select a partner from the list to send them a request.</DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[60vh] overflow-y-auto border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Partner</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead className="text-right">Action</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                            ) : requestablePartners.length === 0 ? (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No partners available to request.</TableCell></TableRow>
+                            ) : (
+                                requestablePartners.map(partner => (
+                                    <TableRow key={partner.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{partner.name}</div>
+                                            <div className="text-sm text-muted-foreground font-mono">{partner.id}</div>
+                                        </TableCell>
+                                        <TableCell><Badge variant="outline">{roleNameMapping[partner.role]}</Badge></TableCell>
+                                        <TableCell className="text-right">
+                                            <Button size="sm" onClick={() => handleSendRequest(partner)} disabled={isSubmitting}>
+                                                <Send className="mr-2 h-4 w-4" /> Request
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+              </DialogContent>
+            </Dialog>
+        </div>
       </div>
 
       <Card>
