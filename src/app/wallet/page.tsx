@@ -65,8 +65,8 @@ export default function WalletPage() {
 
     const walletOptions = [
         { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
-        { name: "Claim Reward Points", href: "#" },
-        { name: "Reward Points History", href: "#" },
+        { name: "Claim Reward Points", href: "/wallet-billing/rewards" },
+        { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
         { name: "Payment History", href: "#" },
     ]
 
