@@ -69,6 +69,7 @@ type NavItem = {
   label: string;
   subItems?: SubNavItem[];
   exact?: boolean;
+  allowedRoles?: string[];
 }
 
 type SubNavItem = {
@@ -108,7 +109,7 @@ const partnerNavItems: NavItem[] = [
   { href: '/booking-management', icon: CheckSquare, label: 'Booking Management' },
   { href: '/document-management', icon: FileText, label: 'Document Management' },
   { href: '/reports-analytics', icon: BarChart2, label: 'Reports & Analytics' },
-  { href: '/team-management', icon: Users, label: 'Team Management' },
+  { href: '/team-management', icon: Users, label: 'Team Management', allowedRoles: ['franchisee', 'channel', 'associate'] },
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
   { href: '/support-ticket', icon: Ticket, label: 'Support Ticket' },
   { href: '/support', icon: Headset, label: 'Help & Support' },
@@ -147,12 +148,14 @@ const userNavItems: NavItem[] = [
 ];
 
 
-const NavList = ({ items }: { items: NavItem[] }) => {
+const NavList = ({ items, role }: { items: NavItem[], role: string }) => {
     const pathname = usePathname();
+    
+    const filteredItems = items.filter(item => !item.allowedRoles || item.allowedRoles.includes(role));
     
     return (
         <SidebarMenu>
-            {items.map((item) => (
+            {filteredItems.map((item) => (
                 item.subItems ? (
                     <Collapsible key={`${item.href}-${item.label}`} className="w-full" defaultOpen={pathname.startsWith(item.href)}>
                         <SidebarMenuItem>
@@ -230,5 +233,5 @@ export function AppShellNav({role}: {role: string}) {
         break;
   }
   
-  return <NavList items={navItems} />;
+  return <NavList items={navItems} role={role} />;
 }

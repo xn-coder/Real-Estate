@@ -37,6 +37,7 @@ export type User = {
   reactivationReason?: string;
   rejectionReason?: string;
   kycStatus?: 'verified' | 'pending' | 'rejected';
+  teamLeadId?: string;
   website?: {
     businessProfile?: {
         businessName: string;
