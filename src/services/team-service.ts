@@ -2,7 +2,7 @@
 'use server'
 
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
 import type { User } from "@/types/user";
 
 const addableRoles: Record<string, string[]> = {
@@ -17,7 +17,7 @@ export async function getAvailablePartners(currentUserId: string, currentUserRol
     try {
         const usersCollection = collection(db, "users");
         
-        // Fetch all users that have a partner role, without ordering by a potentially missing field
+        // Fetch all users that have a partner role
         const q = query(
             usersCollection, 
             where("role", "in", allPartnerRoles)
@@ -30,9 +30,19 @@ export async function getAvailablePartners(currentUserId: string, currentUserRol
 
         const availableRoles = addableRoles[currentUserRole as keyof typeof addableRoles] || [];
 
-        // Filter on the server side
+        // Filter on the server side and serialize the data
         const requestableList = allPartnersSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as User))
+            .map(doc => {
+                const data = doc.data();
+                // Convert Firestore Timestamps to serializable format (ISO string)
+                if (data.dob && data.dob instanceof Timestamp) {
+                    data.dob = data.dob.toDate().toISOString();
+                }
+                if (data.createdAt && data.createdAt instanceof Timestamp) {
+                    data.createdAt = data.createdAt.toDate().toISOString();
+                }
+                return { id: doc.id, ...data } as User;
+            })
             .filter(partner => 
                 !partner.teamLeadId &&                  // Not already in a team
                 partner.id !== currentUserId &&        // Not the user themselves
