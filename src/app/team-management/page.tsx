@@ -137,12 +137,15 @@ export default function TeamManagementPage() {
   }
 
   const partnersToDisplay = React.useMemo(() => {
+    const filteredPartners = allRequestablePartners.filter(partner => 
+        partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        partner.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
     if (searchTerm) {
-        return allRequestablePartners.filter(partner => 
-            partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            partner.id.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        return filteredPartners;
     }
+    
     return allRequestablePartners.slice(0, 8);
   }, [allRequestablePartners, searchTerm]);
 
