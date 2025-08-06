@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User, Send } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +55,8 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
   const [isScheduling, setIsScheduling] = React.useState(false);
+
+  const canSendToPartner = user?.role && ['associate', 'channel', 'franchisee'].includes(user.role);
 
   const fetchLeads = React.useCallback(async () => {
     if (!user) return;
@@ -197,6 +199,12 @@ export default function LeadsPage() {
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             Schedule Visit
                         </DropdownMenuItem>
+                        {canSendToPartner && (
+                            <DropdownMenuItem>
+                                <Send className="mr-2 h-4 w-4" />
+                                Send to Partner
+                            </DropdownMenuItem>
+                        )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                     </TableCell>
