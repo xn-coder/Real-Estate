@@ -4,13 +4,23 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, ArrowLeft, Phone, Mail, MapPin, MessageSquare, Briefcase } from "lucide-react"
+import { Loader2, ArrowLeft, Phone, Mail, MapPin, MessageSquare, Briefcase, Eye, Building } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User as CustomerUser } from "@/types/user"
+import type { Lead } from "@/types/lead"
+import type { Property } from "@/types/property"
 import { useParams, useRouter } from "next/navigation"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { format } from "date-fns"
+import Link from "next/link"
+
+type EnrichedLead = Lead & {
+  property?: Property
+}
 
 export default function CustomerProfilePage() {
   const { toast } = useToast()
@@ -20,16 +30,43 @@ export default function CustomerProfilePage() {
 
   const [customer, setCustomer] = React.useState<CustomerUser | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
+  const [leadHistory, setLeadHistory] = React.useState<EnrichedLead[]>([])
+  const [isHistoryLoading, setIsHistoryLoading] = React.useState(true)
 
-  const fetchCustomer = React.useCallback(async () => {
+  const fetchCustomerAndHistory = React.useCallback(async () => {
     if (!customerId) return;
     setIsLoading(true)
+    setIsHistoryLoading(true)
+
     try {
+      // Fetch customer data
       const userDocRef = doc(db, "users", customerId)
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists() && userDoc.data().role === 'customer') {
         const data = userDoc.data();
         setCustomer({ id: userDoc.id, ...data } as CustomerUser)
+
+        // Fetch lead history
+        const leadsCollection = collection(db, "leads");
+        const q = query(leadsCollection, where("customerId", "==", customerId));
+        const leadsSnapshot = await getDocs(q);
+
+        const historyPromises = leadsSnapshot.docs.map(async (leadDoc) => {
+            const leadData = { id: leadDoc.id, ...leadDoc.data() } as Lead;
+            
+            let propertyData: Property | undefined;
+            if (leadData.propertyId) {
+                const propDoc = await getDoc(doc(db, "properties", leadData.propertyId));
+                if (propDoc.exists()) {
+                    propertyData = { id: propDoc.id, ...propDoc.data() } as Property;
+                }
+            }
+            return { ...leadData, property: propertyData };
+        });
+
+        const resolvedHistory = await Promise.all(historyPromises);
+        setLeadHistory(resolvedHistory.sort((a,b) => (b.createdAt as any).seconds - (a.createdAt as any).seconds));
+        
       } else {
         toast({
           variant: "destructive",
@@ -47,12 +84,13 @@ export default function CustomerProfilePage() {
       })
     } finally {
       setIsLoading(false)
+      setIsHistoryLoading(false)
     }
   }, [customerId, toast, router])
 
   React.useEffect(() => {
-    fetchCustomer()
-  }, [fetchCustomer])
+    fetchCustomerAndHistory()
+  }, [fetchCustomerAndHistory])
 
   if (isLoading) {
     return (
@@ -140,10 +178,65 @@ export default function CustomerProfilePage() {
                 <CardTitle>Lead & Enquiry History</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground">Lead and enquiry history will be displayed here.</p>
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Property</TableHead>
+                                <TableHead>Enquiry Date</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isHistoryLoading ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">
+                                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                                    </TableCell>
+                                </TableRow>
+                            ) : leadHistory.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">
+                                        No lead history found for this customer.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                leadHistory.map((lead) => (
+                                    <TableRow key={lead.id}>
+                                        <TableCell className="font-medium">
+                                            {lead.property ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Building className="h-4 w-4 text-muted-foreground" />
+                                                    <span>{lead.property.catalogTitle}</span>
+                                                </div>
+                                            ) : (
+                                                <span>Property not found</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {lead.createdAt ? format((lead.createdAt as any).toDate(), "PPP") : 'N/A'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">{lead.status}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {lead.propertyId && (
+                                                <Button variant="ghost" size="icon" asChild>
+                                                    <Link href={`/listings/${lead.propertyId}`}>
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
-
     </div>
   )
 }
