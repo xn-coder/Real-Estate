@@ -87,6 +87,7 @@ const adminNavItems: NavItem[] = [
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
     { href: '/deals', icon: Handshake, label: 'Manage Deals' },
     { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
+    { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
     { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
     { href: '/support-ticket', icon: Headset, label: 'Manage Support' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
@@ -117,16 +118,15 @@ const partnerNavItems: NavItem[] = [
 
 const sellerNavItems: NavItem[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/listings', icon: Building, label: 'Manage Properties' },
-    { href: '/listings/add', icon: PlusCircle, label: 'Add Properties' },
-    { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
+    { href: '/listings', icon: Building, label: 'Properties' },
+    { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
+    { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
+    { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
+    { href: '/deals', icon: Handshake, label: 'Manage Deals' },
     { href: '/manage-customer', icon: Users, label: 'Manage Customer' },
-    { href: '/marketing-kit', icon: ShoppingBag, label: 'Manage Marketing Kits' },
-    { href: '/site-visit', icon: MapPin, label: 'Site Visit Management' },
-    { href: '/negotiation', icon: Handshake, label: 'Negotiation Manage' },
-    { href: '/manage-partner', icon: Handshake, label: 'Partner Manage' },
-    { href: '/booking-quotation', icon: FileText, label: 'Booking & Quotation' },
-    { href: '/document-management', icon: FileText, label: 'Document Manage' },
+    { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
+    { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
+    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
 ];
 
 const customerNavItems: NavItem[] = [
