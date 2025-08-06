@@ -192,9 +192,10 @@ export default function HelpAndSupportPage() {
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{selectedTicket?.subject}</DialogTitle>
-                    <DialogDescription>
-                        Ticket Status: <Badge variant={selectedTicket ? statusColors[selectedTicket.status] : 'default'}>{selectedTicket?.status}</Badge>
-                    </DialogDescription>
+                    <div className="flex items-center gap-2 pt-1">
+                      <DialogDescription>Ticket Status:</DialogDescription>
+                      <Badge variant={selectedTicket ? statusColors[selectedTicket.status] : 'default'}>{selectedTicket?.status}</Badge>
+                    </div>
                 </DialogHeader>
                 <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                     <div className="p-4 border rounded-md bg-muted text-sm">
