@@ -4,7 +4,7 @@
 import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle, Ban } from "lucide-react"
+import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle, Ban, Building } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc, updateDoc } from "firebase/firestore"
@@ -13,6 +13,7 @@ import type { Property } from "@/types/property"
 import type { Lead } from "@/types/lead"
 import { format } from "date-fns"
 import dynamic from "next/dynamic"
+import Link from "next/link"
 import {
   Dialog,
   DialogContent,
@@ -206,7 +207,7 @@ export default function SchedulePage() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Date & Time</TableHead>
+                        <TableHead>Date</TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Property</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -222,9 +223,20 @@ export default function SchedulePage() {
                     ) : upcomingAppointments.length > 0 ? (
                         upcomingAppointments.map((appointment) => (
                         <TableRow key={appointment.id}>
-                            <TableCell className="font-medium">{format(appointment.visitDate as Date, "PPp")}</TableCell>
+                            <TableCell className="font-medium">{format(appointment.visitDate as Date, "PPP")}</TableCell>
                             <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>
-                            <TableCell className="text-muted-foreground">{appointment.property?.catalogTitle || 'N/A'}</TableCell>
+                            <TableCell>
+                                {appointment.property ? (
+                                    <Button variant="link" asChild className="p-0 h-auto font-normal">
+                                        <Link href={`/listings/${appointment.propertyId}`}>
+                                            <Building className="mr-2 h-4 w-4" />
+                                            {appointment.property.catalogTitle}
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <span className="text-muted-foreground">N/A</span>
+                                )}
+                            </TableCell>
                             <TableCell className="text-right">
                                  <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
