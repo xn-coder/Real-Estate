@@ -10,19 +10,11 @@ import { useUser } from "@/hooks/use-user"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore"
+import { collection, query, where, getDocs, orderBy, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
+import type { RewardTransaction } from "@/types/wallet"
 
-type RewardTransaction = {
-    id: string;
-    date: Date;
-    type: 'Sent' | 'Claimed';
-    from: string; // Name of sender
-    to: string; // Name of receiver
-    points: number;
-    notes: string;
-}
 
 export default function RewardHistoryPage() {
     const { user } = useUser();
@@ -37,15 +29,47 @@ export default function RewardHistoryPage() {
         setIsLoading(true);
 
         try {
-            // This is a placeholder. In a real app, you would have a dedicated 'reward_transactions' collection.
-            // For now, we continue with dummy data as the backend logic is not yet in place.
-            const dummyHistory = [
-                { id: '1', date: new Date(), type: 'Sent', to: user.name, from: 'Admin', points: 500, notes: 'Performance Bonus' },
-                { id: '2', date: new Date(new Date().setDate(new Date().getDate() - 1)), type: 'Claimed', to: 'Wallet', from: user.name, points: 200, notes: 'Redeemed for cash' },
-                { id: '3', date: new Date(new Date().setDate(new Date().getDate() - 5)), type: 'Sent', to: user.name, from: 'Admin', points: 1000, notes: 'Referral Reward' },
-                { id: '4', date: new Date(new Date().setDate(new Date().getDate() - 10)), type: 'Claimed', to: 'Wallet', from: user.name, points: 500, notes: 'Redeemed for cash' },
-            ];
-            setHistory(isAdmin ? [] : dummyHistory); // Show dummy data only for partners for now
+            const transactionsRef = collection(db, "reward_transactions");
+            let q;
+
+            if (isAdmin) {
+                // Admin sees all transactions
+                q = query(transactionsRef, orderBy("date", "desc"));
+            } else {
+                // Partner sees transactions where they are the sender or receiver
+                const receivedQuery = query(transactionsRef, where("toId", "==", user.id));
+                const sentQuery = query(transactionsRef, where("fromId", "==", user.id));
+
+                const [receivedSnapshot, sentSnapshot] = await Promise.all([
+                    getDocs(receivedQuery),
+                    getDocs(sentQuery)
+                ]);
+
+                const combined = [...receivedSnapshot.docs, ...sentSnapshot.docs];
+                const uniqueDocs = Array.from(new Set(combined.map(doc => doc.id))).map(id => {
+                    return combined.find(doc => doc.id === id)!;
+                });
+                
+                const historyList = uniqueDocs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    date: (doc.data().date as Timestamp).toDate(),
+                } as RewardTransaction));
+
+                setHistory(historyList.sort((a,b) => b.date.getTime() - a.date.getTime()));
+                setIsLoading(false);
+                return; // Exit here for non-admins
+            }
+            
+            // This part runs only for admin
+            const snapshot = await getDocs(q);
+            const historyList = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                date: (doc.data().date as Timestamp).toDate(),
+            } as RewardTransaction));
+            setHistory(historyList);
+
         } catch (error) {
             console.error("Error fetching reward history:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch reward history.' });
@@ -73,7 +97,7 @@ export default function RewardHistoryPage() {
       <Card>
           <CardHeader>
               <CardTitle>Transaction History</CardTitle>
-              <CardDescription>A log of all your reward point transactions.</CardDescription>
+              <CardDescription>A log of all reward point transactions.</CardDescription>
           </CardHeader>
           <CardContent>
               <div className="border rounded-lg">
@@ -82,34 +106,40 @@ export default function RewardHistoryPage() {
                         <TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>Description</TableHead>
+                            {isAdmin && <TableHead>From</TableHead>}
+                            {isAdmin && <TableHead>To</TableHead>}
                             <TableHead className="text-right">Points</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                            <TableRow><TableCell colSpan={isAdmin ? 5 : 3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                         ) : history.length === 0 ? (
-                            <TableRow><TableCell colSpan={3} className="h-24 text-center">No reward history found.</TableCell></TableRow>
-                        ) : history.map(item => (
-                            <TableRow key={item.id}>
-                                <TableCell>{format(item.date, 'PPP')}</TableCell>
-                                <TableCell>
-                                    <div className="font-medium">
-                                        {item.type === 'Sent' ? `Points Received from ${item.from}` : `Points Claimed`}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground">{item.notes}</div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <span className={`font-medium flex items-center justify-end ${item.type === 'Sent' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {item.type === 'Sent' ? 
-                                            <ArrowDown className="mr-1 h-4 w-4"/> : 
-                                            <ArrowUp className="mr-1 h-4 w-4"/>
-                                        }
-                                        {item.type === 'Sent' ? '+' : '-'} {item.points.toLocaleString()}
-                                    </span>
-                                </TableCell>
-                            </TableRow>
-                        ))}
+                            <TableRow><TableCell colSpan={isAdmin ? 5 : 3} className="h-24 text-center">No reward history found.</TableCell></TableRow>
+                        ) : history.map(item => {
+                            const isCredit = !isAdmin && item.toId === user?.id;
+                            const isDebit = !isAdmin && item.fromId === user?.id;
+                            
+                            return (
+                                <TableRow key={item.id}>
+                                    <TableCell>{format(item.date, 'PPP')}</TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">
+                                            {item.notes || (item.type === 'Sent' ? 'Points Sent' : 'Points Claimed')}
+                                        </div>
+                                    </TableCell>
+                                    {isAdmin && <TableCell>{item.fromName}</TableCell>}
+                                    {isAdmin && <TableCell>{item.toName}</TableCell>}
+                                    <TableCell className="text-right">
+                                        <span className={`font-medium flex items-center justify-end ${isCredit ? 'text-green-600' : isDebit ? 'text-red-600' : ''}`}>
+                                            {isCredit && <ArrowDown className="mr-1 h-4 w-4"/>}
+                                            {isDebit && <ArrowUp className="mr-1 h-4 w-4"/>}
+                                            {isCredit ? '+' : isDebit ? '-' : ''} {item.points.toLocaleString()}
+                                        </span>
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })}
                     </TableBody>
                 </Table>
               </div>
