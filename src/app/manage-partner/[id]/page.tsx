@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion, ChevronRight, Eye } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, updateDoc, collection, query, getDocs } from "firebase/firestore"
+import { doc, getDoc, updateDoc, collection, query, getDocs, Timestamp } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User } from "@/types/user"
@@ -58,8 +58,11 @@ export default function PartnerProfilePage() {
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists()) {
         const data = userDoc.data();
-        if (data.dob && data.dob.toDate) {
-          data.dob = data.dob.toDate();
+        if (data.dob && data.dob instanceof Timestamp) {
+            data.dob = data.dob.toDate();
+        }
+        if (data.createdAt && data.createdAt instanceof Timestamp) {
+            data.createdAt = data.createdAt.toDate();
         }
         setPartner({ id: userDoc.id, ...data } as User)
       } else {

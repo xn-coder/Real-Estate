@@ -5,8 +5,8 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, ArrowLeft, Building, Briefcase, FileText, User, Phone, Mail, CheckCircle, XCircle } from "lucide-react"
-import { db, deleteDoc } from "@/lib/firebase"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { doc, getDoc, updateDoc, deleteDoc, Timestamp } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User as SellerUser } from "@/types/user"
@@ -35,8 +35,11 @@ export default function SellerDetailsPage() {
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists()) {
         const data = userDoc.data();
-        if (data.dob && data.dob.toDate) {
-          data.dob = data.dob.toDate();
+        if (data.dob && data.dob instanceof Timestamp) {
+            data.dob = data.dob.toDate();
+        }
+        if (data.createdAt && data.createdAt instanceof Timestamp) {
+            data.createdAt = data.createdAt.toDate();
         }
         setSeller({ id: userDoc.id, ...data } as SellerUser)
       } else {
