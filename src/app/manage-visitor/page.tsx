@@ -20,22 +20,22 @@ import type { Appointment } from "@/types/appointment"
 import type { Property } from "@/types/property"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
-import { format } from "date-fns"
 import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
 
-type DetailedVisit = {
-  id: string;
+type AggregatedVisit = {
+  id: string; // Unique key for aggregation
   customer?: UserType;
   partner?: UserType;
   property?: Property;
-  visitDate: Date;
+  visitCount: number;
 };
 
 export default function ManageVisitorPage() {
   const { toast } = useToast()
   const router = useRouter();
   const { user } = useUser();
-  const [visits, setVisits] = React.useState<DetailedVisit[]>([])
+  const [visits, setVisits] = React.useState<AggregatedVisit[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
   const fetchConfirmedVisits = React.useCallback(async () => {
@@ -68,7 +68,7 @@ export default function ManageVisitorPage() {
       
       const appointmentsSnapshot = await getDocs(appointmentsQuery);
       
-      const detailedVisits = await Promise.all(appointmentsSnapshot.docs.map(async (appointmentDoc) => {
+      const detailedVisitsPromises = appointmentsSnapshot.docs.map(async (appointmentDoc) => {
         const appointmentData = appointmentDoc.data() as Appointment;
         const customerId = (appointmentData as any).customerId;
         
@@ -83,11 +83,32 @@ export default function ManageVisitorPage() {
             customer: customerDoc?.exists() ? { id: customerDoc.id, ...customerDoc.data() } as UserType : undefined,
             partner: partnerDoc.exists() ? { id: partnerDoc.id, ...partnerDoc.data() } as UserType : undefined,
             property: propertyDoc.exists() ? { id: propertyDoc.id, ...propertyDoc.data() } as Property : undefined,
-            visitDate: (appointmentData.visitDate as Timestamp).toDate(),
         };
-      }));
+      });
 
-      setVisits(detailedVisits.sort((a,b) => b.visitDate.getTime() - a.visitDate.getTime()));
+      const detailedVisits = await Promise.all(detailedVisitsPromises);
+
+      const aggregatedVisitsMap = new Map<string, AggregatedVisit>();
+
+      for (const visit of detailedVisits) {
+          if (!visit.customer || !visit.partner || !visit.property) continue;
+
+          const key = `${visit.customer.id}-${visit.partner.id}-${visit.property.id}`;
+          if (aggregatedVisitsMap.has(key)) {
+              const existing = aggregatedVisitsMap.get(key)!;
+              existing.visitCount += 1;
+          } else {
+              aggregatedVisitsMap.set(key, {
+                  id: key,
+                  customer: visit.customer,
+                  partner: visit.partner,
+                  property: visit.property,
+                  visitCount: 1,
+              });
+          }
+      }
+
+      setVisits(Array.from(aggregatedVisitsMap.values()));
 
     } catch (error) {
       console.error("Error fetching visitors:", error)
@@ -119,7 +140,7 @@ export default function ManageVisitorPage() {
               <TableHead>Visitor Name</TableHead>
               <TableHead>Associated Partner</TableHead>
               <TableHead>Property Visited</TableHead>
-              <TableHead>Visit Date</TableHead>
+              <TableHead>No. of Visits</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -164,7 +185,9 @@ export default function ManageVisitorPage() {
                         'Property not found'
                     )}
                 </TableCell>
-                 <TableCell>{format(visit.visitDate, "PPP")}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{visit.visitCount}</Badge>
+                </TableCell>
                 <TableCell className="text-right">
                     <Button variant="ghost" size="icon" disabled={!visit.customer} onClick={() => router.push(`/manage-customer/${visit.customer?.id}`)}>
                         <Eye className="h-4 w-4" />
