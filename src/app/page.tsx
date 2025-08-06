@@ -14,8 +14,12 @@ export default function LoginPage() {
     useEffect(() => {
         if (!isLoading && user) {
             let redirectPath = '/dashboard'; // Default for admin
-            if (user.role === 'partner') redirectPath = '/dashboard'; // Or a partner specific dashboard
             if (user.role === 'seller') redirectPath = '/listings';
+            else if (['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role)) {
+                redirectPath = '/dashboard';
+            }
+            else if (user.role === 'customer') redirectPath = '/listings/list';
+            
 
             router.push(redirectPath);
         }

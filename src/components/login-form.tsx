@@ -109,7 +109,16 @@ export function LoginForm() {
       const userDoc = querySnapshot.docs[0]
       const user = userDoc.data() as User
       
-      const isPasswordValid = await bcrypt.compare(values.password, user.password!)
+      if (!user.password) {
+        toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: "This account does not have a password set.",
+        });
+        return;
+      }
+
+      const isPasswordValid = await bcrypt.compare(values.password, user.password)
       
       if (isPasswordValid) {
         const userData = { id: userDoc.id, ...user };
@@ -124,6 +133,7 @@ export function LoginForm() {
         // Redirect logic from page.tsx
         let redirectPath = '/dashboard'; // Default
         if (user.role === 'seller') redirectPath = '/listings';
+        if (user.role === 'customer') redirectPath = '/listings/list';
         if (user.role === 'user') redirectPath = '/listings'; // Assuming general user also goes to listings
 
         router.push(redirectPath)
