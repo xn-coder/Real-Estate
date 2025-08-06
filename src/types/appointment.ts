@@ -11,4 +11,5 @@ export type Appointment = {
     status: 'Scheduled' | 'Completed' | 'Cancelled';
     createdAt: Date | Timestamp;
     notes?: string;
+    visitProofUrl?: string;
 };

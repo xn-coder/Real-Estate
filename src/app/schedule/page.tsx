@@ -4,7 +4,7 @@
 import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle, Ban, Building } from "lucide-react"
+import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle, Ban, Building, Upload } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc, updateDoc } from "firebase/firestore"
@@ -40,6 +40,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
+import { Input } from "@/components/ui/input"
+import Image from "next/image"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -51,6 +53,19 @@ type DetailedAppointment = Appointment & {
   lead?: Lead;
 };
 
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 export default function SchedulePage() {
   const { user } = useUser()
   const { toast } = useToast();
@@ -60,8 +75,12 @@ export default function SchedulePage() {
   const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null)
   const [isMapOpen, setIsMapOpen] = React.useState(false)
   const [isRescheduleOpen, setIsRescheduleOpen] = React.useState(false);
+  const [isConfirmVisitOpen, setIsConfirmVisitOpen] = React.useState(false);
   const [selectedAppointment, setSelectedAppointment] = React.useState<DetailedAppointment | null>(null);
   const [newVisitDate, setNewVisitDate] = React.useState<Date | undefined>(new Date());
+  const [visitProofFile, setVisitProofFile] = React.useState<File | null>(null);
+  const [visitProofPreview, setVisitProofPreview] = React.useState<string | null>(null);
+
 
   const fetchAppointments = React.useCallback(async () => {
       if (!user) return
@@ -134,14 +153,21 @@ export default function SchedulePage() {
     setSelectedProperty(property);
     setIsMapOpen(true);
   }
-
-  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Cancelled') => {
+  
+  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Cancelled', visitProofUrl?: string) => {
       setIsUpdating(appointmentId);
       try {
           const appointmentRef = doc(db, "appointments", appointmentId);
-          await updateDoc(appointmentRef, { status });
+          const updateData: { status: string; visitProofUrl?: string } = { status };
+          if (visitProofUrl) {
+              updateData.visitProofUrl = visitProofUrl;
+          }
+          await updateDoc(appointmentRef, updateData);
           toast({ title: `Visit ${status}`, description: `The appointment status has been updated to '${status}'.`});
-          fetchAppointments(); // Re-fetch to update the UI
+          fetchAppointments();
+          if (status === 'Completed') {
+              setIsConfirmVisitOpen(false);
+          }
       } catch (error) {
           console.error(`Error updating visit to ${status}:`, error);
           toast({ variant: 'destructive', title: "Update Failed", description: `Could not update the visit status.`});
@@ -149,6 +175,21 @@ export default function SchedulePage() {
           setIsUpdating(null);
       }
   }
+
+  const handleConfirmVisitClick = (appointment: DetailedAppointment) => {
+      setSelectedAppointment(appointment);
+      setIsConfirmVisitOpen(true);
+  }
+
+  const handleConfirmVisitSubmit = async () => {
+    if (!selectedAppointment || !visitProofFile) {
+        toast({ variant: 'destructive', title: "Missing Proof", description: "Please upload an image as proof of visit." });
+        return;
+    }
+    const visitProofUrl = await fileToDataUrl(visitProofFile);
+    await handleUpdateStatus(selectedAppointment.id, 'Completed', visitProofUrl);
+  };
+
 
   const handleRescheduleClick = (appointment: DetailedAppointment) => {
       setSelectedAppointment(appointment);
@@ -243,7 +284,7 @@ export default function SchedulePage() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleUpdateStatus(appointment.id, 'Completed')}>
+                                        <DropdownMenuItem onSelect={() => handleConfirmVisitClick(appointment)}>
                                             <CheckCircle className="mr-2 h-4 w-4" /> Confirm Visit
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
@@ -318,7 +359,7 @@ export default function SchedulePage() {
                             <TableCell>{statusBadge(appointment.status)}</TableCell>
                             <TableCell className="text-right">
                                 {appointment.status === 'Scheduled' ? (
-                                    <Button size="sm" onClick={() => handleUpdateStatus(appointment.id, 'Completed')} disabled={!!isUpdating}>
+                                    <Button size="sm" onClick={() => handleConfirmVisitClick(appointment)} disabled={!!isUpdating}>
                                         {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
                                         Confirm Visit
                                     </Button>
@@ -376,6 +417,46 @@ export default function SchedulePage() {
                      <Button onClick={handleReschedule} disabled={!!isUpdating}>
                         {isUpdating === selectedAppointment?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Confirm Reschedule
+                     </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        
+        <Dialog open={isConfirmVisitOpen} onOpenChange={(open) => { if(!open) { setVisitProofFile(null); setVisitProofPreview(null); } setIsConfirmVisitOpen(open); }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Confirm Site Visit</DialogTitle>
+                    <DialogDescription>
+                        Upload proof of the visit for {selectedAppointment?.lead?.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                 <div className="py-4 space-y-4">
+                     {visitProofPreview && (
+                        <div className="border rounded-md p-2">
+                            <Image src={visitProofPreview} alt="Visit Proof Preview" width={400} height={225} className="w-full h-auto object-contain rounded-md" />
+                        </div>
+                     )}
+                     <Input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                setVisitProofFile(file);
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    setVisitProofPreview(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        }}
+                    />
+                </div>
+                <DialogFooter>
+                     <Button variant="outline" onClick={() => setIsConfirmVisitOpen(false)}>Cancel</Button>
+                     <Button onClick={handleConfirmVisitSubmit} disabled={!!isUpdating || !visitProofFile}>
+                        {isUpdating === selectedAppointment?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm & Upload
                      </Button>
                 </DialogFooter>
             </DialogContent>
