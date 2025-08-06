@@ -13,10 +13,10 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp, orderBy, onSnapshot } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp, orderBy, onSnapshot, updateDoc } from "firebase/firestore"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, UserPlus, Search, Send } from "lucide-react"
+import { Loader2, UserPlus, Search, Send, UserRoundPlus } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useUser } from "@/hooks/use-user"
 import type { User as PartnerUser } from "@/types/user"
@@ -38,7 +38,6 @@ export default function TeamManagementPage() {
   const { toast } = useToast();
   const [teamMembers, setTeamMembers] = React.useState<PartnerUser[]>([]);
   const [allRequestablePartners, setAllRequestablePartners] = React.useState<PartnerUser[]>([]);
-  const [pendingRequestCount, setPendingRequestCount] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -83,40 +82,28 @@ export default function TeamManagementPage() {
   React.useEffect(() => {
     if(user && canManageTeam) {
         fetchData();
-        
-        const requestsCollection = collection(db, "team_requests");
-        const pendingRequestsQuery = query(requestsCollection, where("requesterId", "==", user.id), where("status", "==", "pending"));
-
-        const unsubscribe = onSnapshot(pendingRequestsQuery, (snapshot) => {
-            setPendingRequestCount(snapshot.size);
-        });
-
-        return () => unsubscribe();
     } else if (!isUserLoading) {
         setIsLoading(false);
     }
   }, [user, canManageTeam, isUserLoading, fetchData]);
 
 
-  const handleSendRequest = async () => {
+  const handleAddPartner = async () => {
     if (!user || !selectedPartner) return;
     setIsSubmitting(true);
     try {
-        await addDoc(collection(db, "team_requests"), {
-            requesterId: user.id,
-            requesterName: user.name,
-            recipientId: selectedPartner.id,
-            recipientName: selectedPartner.name,
-            status: "pending",
-            requestedAt: Timestamp.now(),
+        const partnerDocRef = doc(db, "users", selectedPartner.id);
+        await updateDoc(partnerDocRef, {
+            teamLeadId: user.id
         });
-        toast({ title: "Request Sent", description: `Your request to add ${selectedPartner.name} has been sent.` });
+
+        toast({ title: "Partner Added", description: `${selectedPartner.name} has been added to your team.` });
         fetchData(); // Refresh data
         setIsDialogOpen(false); // Close dialog
         setSelectedPartner(null); // Reset selection
     } catch(error) {
-        console.error("Error sending request:", error);
-        toast({ variant: "destructive", title: "Error", description: "Failed to send team request." });
+        console.error("Error adding partner:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to add partner to team." });
     } finally {
         setIsSubmitting(false);
     }
@@ -160,12 +147,6 @@ export default function TeamManagementPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Team Management</h1>
         <div className="flex gap-2">
-            <Button variant="outline" asChild>
-                <Link href="/team-management/requests">
-                    Pending Requests 
-                    {pendingRequestCount > 0 && <Badge className="ml-2">{pendingRequestCount}</Badge>}
-                </Link>
-            </Button>
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
                 setIsDialogOpen(open);
                 if (!open) {
@@ -174,16 +155,16 @@ export default function TeamManagementPage() {
                 }
             }}>
               <DialogTrigger asChild>
-                <Button><UserPlus className="mr-2 h-4 w-4" /> Request Partner</Button>
+                <Button><UserPlus className="mr-2 h-4 w-4" /> Add Partner</Button>
               </DialogTrigger>
               <DialogContent className="max-w-xl">
                 <DialogHeader>
-                  <DialogTitle>Request Partner to Join Team</DialogTitle>
-                  <DialogDescription>Select a partner from the list to send them a request.</DialogDescription>
+                  <DialogTitle>Add Partner to Team</DialogTitle>
+                  <DialogDescription>Select a partner from the list to add them to your team.</DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Recipient</label>
+                    <label className="text-sm font-medium">Partner</label>
                     {selectedPartner ? (
                         <div className="flex items-center gap-4 p-2 border rounded-md">
                             <Avatar>
@@ -222,9 +203,9 @@ export default function TeamManagementPage() {
                     )}
                 </div>
                 <DialogFooter>
-                    <Button onClick={handleSendRequest} disabled={isSubmitting || !selectedPartner}>
-                        <Send className="mr-2 h-4 w-4" />
-                        {isSubmitting ? "Sending..." : "Send Request"}
+                    <Button onClick={handleAddPartner} disabled={isSubmitting || !selectedPartner}>
+                        <UserRoundPlus className="mr-2 h-4 w-4" />
+                        {isSubmitting ? "Adding..." : "Add to Team"}
                     </Button>
                 </DialogFooter>
               </DialogContent>
