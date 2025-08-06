@@ -11,40 +11,42 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye } from "lucide-react"
+import { Loader2, Eye, Building } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, documentId } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore"
 import type { User as CustomerUser } from "@/types/user"
 import type { Appointment } from "@/types/appointment"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import type { Lead } from "@/types/lead"
+import type { Property } from "@/types/property"
+import { format } from 'date-fns'
+import Link from 'next/link'
+import { Badge } from "@/components/ui/badge"
 
-type Visitor = {
-  id: string;
-  name: string;
-  visitCount: number;
-};
+type ConfirmedVisit = Appointment & {
+  customer?: CustomerUser;
+  property?: Property;
+}
 
 export default function ManageVisitorPage() {
   const { toast } = useToast()
   const router = useRouter();
   const { user } = useUser();
-  const [visitors, setVisitors] = React.useState<Visitor[]>([])
+  const [confirmedVisits, setConfirmedVisits] = React.useState<ConfirmedVisit[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
-  const fetchVisitors = React.useCallback(async () => {
+  const fetchConfirmedVisits = React.useCallback(async () => {
     if (!user) return;
     setIsLoading(true)
     try {
       const appointmentsCollection = collection(db, "appointments");
-      const usersCollection = collection(db, "users");
       
       let appointmentsQuery;
-
+      
       if (user.role === 'admin') {
-        appointmentsQuery = query(appointmentsCollection);
+        appointmentsQuery = query(appointmentsCollection, where("status", "==", "Completed"));
       } else if (user.role === 'seller') {
           const propertiesCollection = collection(db, "properties");
           const sellerPropertiesQuery = query(propertiesCollection, where("email", "==", user.email));
@@ -52,74 +54,53 @@ export default function ManageVisitorPage() {
           const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(doc => doc.id);
 
           if (sellerPropertyIds.length === 0) {
-              setVisitors([]);
+              setConfirmedVisits([]);
               setIsLoading(false);
               return;
           }
-          appointmentsQuery = query(appointmentsCollection, where("propertyId", "in", sellerPropertyIds));
+          appointmentsQuery = query(appointmentsCollection, where("propertyId", "in", sellerPropertyIds), where("status", "==", "Completed"));
       } else {
-        // No access for other roles for now
-        setVisitors([]);
+        setConfirmedVisits([]);
         setIsLoading(false);
         return;
       }
       
       const appointmentsSnapshot = await getDocs(appointmentsQuery);
-      const appointments = appointmentsSnapshot.docs.map(doc => doc.data() as Appointment);
-
-      if (appointments.length === 0) {
-        setVisitors([]);
-        setIsLoading(false);
-        return;
-      }
       
-      // Aggregate visits by customer ID
-      const visitsByCustomer = new Map<string, Set<string>>();
-      const leadIds = [...new Set(appointments.map(a => a.leadId))];
-      
-      if(leadIds.length === 0) {
-        setVisitors([]);
-        setIsLoading(false);
-        return;
-      }
+      const visitsPromises = appointmentsSnapshot.docs.map(async (appointmentDoc) => {
+        const appointmentData = appointmentDoc.data() as Appointment;
+        
+        let customerData: CustomerUser | undefined;
+        let propertyData: Property | undefined;
 
-      // Fetch all relevant leads in one go
-      const leadsQuery = query(collection(db, 'leads'), where(documentId(), 'in', leadIds));
-      const leadsSnapshot = await getDocs(leadsQuery);
-      const leadsMap = new Map<string, Lead>();
-      leadsSnapshot.docs.forEach(doc => leadsMap.set(doc.id, doc.data() as Lead));
-
-      for (const appointment of appointments) {
-        const lead = leadsMap.get(appointment.leadId);
-        if (!lead || !lead.customerId) continue;
-
-        const customerId = lead.customerId;
-        if (!visitsByCustomer.has(customerId)) {
-          visitsByCustomer.set(customerId, new Set());
+        // Fetch Lead to get Customer ID
+        const leadDoc = await getDoc(doc(db, "leads", appointmentData.leadId));
+        if (leadDoc.exists()) {
+            const leadData = leadDoc.data() as Lead;
+            if(leadData.customerId) {
+                const customerDoc = await getDoc(doc(db, "users", leadData.customerId));
+                if (customerDoc.exists()) {
+                    customerData = { id: customerDoc.id, ...customerDoc.data() } as CustomerUser;
+                }
+            }
         }
-        visitsByCustomer.get(customerId)?.add(appointment.propertyId);
-      }
-      
-      const customerIds = Array.from(visitsByCustomer.keys());
-      if (customerIds.length === 0) {
-        setVisitors([]);
-        setIsLoading(false);
-        return;
-      }
-      
-      const customerQuery = query(usersCollection, where(documentId(), "in", customerIds));
-      const customerSnapshot = await getDocs(customerQuery);
-      
-      const visitorList = customerSnapshot.docs.map(doc => {
-        const customer = doc.data() as CustomerUser;
+
+        // Fetch Property
+        const propDoc = await getDoc(doc(db, "properties", appointmentData.propertyId));
+        if(propDoc.exists()) {
+            propertyData = { id: propDoc.id, ...propDoc.data() } as Property;
+        }
+
         return {
-          id: customer.id,
-          name: customer.name,
-          visitCount: visitsByCustomer.get(customer.id)?.size || 0,
+            ...appointmentData,
+            id: appointmentDoc.id,
+            customer: customerData,
+            property: propertyData
         };
       });
 
-      setVisitors(visitorList.sort((a,b) => b.visitCount - a.visitCount));
+      const resolvedVisits = await Promise.all(visitsPromises);
+      setConfirmedVisits(resolvedVisits.sort((a,b) => (b.visitDate as any).seconds - (a.visitDate as any).seconds));
 
     } catch (error) {
       console.error("Error fetching visitors:", error)
@@ -135,9 +116,9 @@ export default function ManageVisitorPage() {
 
   React.useEffect(() => {
     if (user) {
-        fetchVisitors()
+        fetchConfirmedVisits()
     }
-  }, [user, fetchVisitors])
+  }, [user, fetchConfirmedVisits])
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -149,8 +130,8 @@ export default function ManageVisitorPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Visitor Name</TableHead>
-              <TableHead>Visitor ID</TableHead>
-              <TableHead className="text-center">No. of Visits</TableHead>
+              <TableHead>Property Visited</TableHead>
+              <TableHead>Visit Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -161,22 +142,35 @@ export default function ManageVisitorPage() {
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : visitors.length === 0 ? (
+            ) : confirmedVisits.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                    No visitor data found.
+                    No confirmed visits found.
                     </TableCell>
                 </TableRow>
-            ) : visitors.map((visitor) => (
-              <TableRow key={visitor.id}>
-                <TableCell className="font-medium">{visitor.name}</TableCell>
-                <TableCell className="font-mono text-xs">{visitor.id}</TableCell>
-                <TableCell className="text-center font-semibold">{visitor.visitCount}</TableCell>
+            ) : confirmedVisits.map((visit) => (
+              <TableRow key={visit.id}>
+                <TableCell className="font-medium">{visit.customer?.name || 'N/A'}</TableCell>
+                <TableCell>
+                    {visit.property ? (
+                        <Button variant="link" asChild className="p-0 h-auto font-normal">
+                            <Link href={`/listings/${visit.property.id}`}>
+                                <Building className="mr-2 h-4 w-4" />
+                                {visit.property.catalogTitle}
+                            </Link>
+                        </Button>
+                    ) : (
+                        'N/A'
+                    )}
+                </TableCell>
+                <TableCell>{visit.visitDate ? format((visit.visitDate as any).toDate(), "PPP") : 'N/A'}</TableCell>
                 <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => router.push(`/manage-customer/${visitor.id}`)}>
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">View Profile</span>
-                    </Button>
+                    {visit.customer && (
+                        <Button variant="ghost" size="icon" onClick={() => router.push(`/manage-customer/${visit.customer?.id}`)}>
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">View Profile</span>
+                        </Button>
+                    )}
                 </TableCell>
               </TableRow>
             ))}

@@ -306,7 +306,17 @@ export default function SchedulePage() {
                         <TableRow key={appointment.id}>
                             <TableCell className="font-medium">{format(appointment.visitDate as Date, "PPP")}</TableCell>
                             <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>
-                            <TableCell className="text-muted-foreground">{appointment.property?.catalogTitle || 'N/A'}</TableCell>
+                            <TableCell>
+                                {appointment.property ? (
+                                     <Button variant="link" asChild className="p-0 h-auto font-normal text-muted-foreground">
+                                        <Link href={`/listings/${appointment.propertyId}`}>
+                                            {appointment.property.catalogTitle}
+                                        </Link>
+                                    </Button>
+                                ) : (
+                                    <span>N/A</span>
+                                )}
+                            </TableCell>
                             <TableCell>{statusBadge(appointment.status)}</TableCell>
                             <TableCell className="text-right">
                                 {appointment.status === 'Scheduled' ? (
