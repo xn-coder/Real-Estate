@@ -6,7 +6,7 @@ export type Appointment = {
     leadId: string;
     propertyId: string;
     partnerId: string;
-    customerId: string; // Add this line
+    customerId: string;
     visitDate: Date | Timestamp;
     status: 'Scheduled' | 'Completed' | 'Cancelled';
     createdAt: Date | Timestamp;
