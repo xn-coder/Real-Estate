@@ -226,15 +226,15 @@ export default function ManageVisitorPage() {
                                                     <DialogTrigger asChild>
                                                         <Button variant="outline" size="sm">View Proof</Button>
                                                     </DialogTrigger>
-                                                    <DialogContent>
+                                                    <DialogContent className="max-h-[90vh] overflow-y-auto">
                                                         <DialogHeader>
                                                             <DialogTitle>Visit Proof</DialogTitle>
                                                             <DialogDescription>
                                                                 Image uploaded for visit on {format(v.date, "PPP")}.
                                                             </DialogDescription>
                                                         </DialogHeader>
-                                                        <div className="flex justify-center p-4">
-                                                            <Image src={v.proofUrl} alt="Visit proof" width={400} height={400} className="max-w-full h-auto rounded-lg" />
+                                                        <div className="p-4 flex justify-center">
+                                                            <Image src={v.proofUrl} alt="Visit proof" width={600} height={800} className="max-w-full max-h-[70vh] h-auto rounded-lg object-contain" />
                                                         </div>
                                                     </DialogContent>
                                                 </Dialog>
