@@ -53,14 +53,45 @@ type DetailedAppointment = Appointment & {
   lead?: Lead;
 };
 
-const fileToDataUrl = (file: File): Promise<string> => {
+const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
     return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
+        if (!file.type.startsWith('image/')) {
+            reject(new Error('File is not an image.'));
             return;
         }
+
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onload = (e) => {
+            const img = document.createElement('img');
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let { width, height } = img;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Could not get canvas context.'));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL(file.type, 0.9)); // Get data URL, quality 0.9
+            };
+            img.onerror = reject;
+            img.src = e.target?.result as string;
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
@@ -78,8 +109,7 @@ export default function SchedulePage() {
   const [isConfirmVisitOpen, setIsConfirmVisitOpen] = React.useState(false);
   const [selectedAppointment, setSelectedAppointment] = React.useState<DetailedAppointment | null>(null);
   const [newVisitDate, setNewVisitDate] = React.useState<Date | undefined>(new Date());
-  const [visitProofFile, setVisitProofFile] = React.useState<File | null>(null);
-  const [visitProofPreview, setVisitProofPreview] = React.useState<string | null>(null);
+  const [visitProofUrl, setVisitProofUrl] = React.useState<string | null>(null);
 
 
   const fetchAppointments = React.useCallback(async () => {
@@ -154,13 +184,13 @@ export default function SchedulePage() {
     setIsMapOpen(true);
   }
   
-  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Cancelled', visitProofUrl?: string) => {
+  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Cancelled', proofUrl?: string) => {
       setIsUpdating(appointmentId);
       try {
           const appointmentRef = doc(db, "appointments", appointmentId);
           const updateData: { status: string; visitProofUrl?: string } = { status };
-          if (visitProofUrl) {
-              updateData.visitProofUrl = visitProofUrl;
+          if (proofUrl) {
+              updateData.visitProofUrl = proofUrl;
           }
           await updateDoc(appointmentRef, updateData);
           toast({ title: `Visit ${status}`, description: `The appointment status has been updated to '${status}'.`});
@@ -182,11 +212,10 @@ export default function SchedulePage() {
   }
 
   const handleConfirmVisitSubmit = async () => {
-    if (!selectedAppointment || !visitProofFile) {
+    if (!selectedAppointment || !visitProofUrl) {
         toast({ variant: 'destructive', title: "Missing Proof", description: "Please upload an image as proof of visit." });
         return;
     }
-    const visitProofUrl = await fileToDataUrl(visitProofFile);
     await handleUpdateStatus(selectedAppointment.id, 'Completed', visitProofUrl);
   };
 
@@ -226,6 +255,23 @@ export default function SchedulePage() {
               return <Badge variant="outline">{status}</Badge>;
       }
   }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        try {
+            const resizedDataUrl = await resizeImage(file, 800, 800); // Max width/height 800px
+            setVisitProofUrl(resizedDataUrl);
+        } catch (error) {
+            console.error("Error resizing image:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Image Error',
+                description: 'Could not process the selected image.',
+            });
+        }
+    }
+  };
 
 
   return (
@@ -422,7 +468,7 @@ export default function SchedulePage() {
             </DialogContent>
         </Dialog>
         
-        <Dialog open={isConfirmVisitOpen} onOpenChange={(open) => { if(!open) { setVisitProofFile(null); setVisitProofPreview(null); } setIsConfirmVisitOpen(open); }}>
+        <Dialog open={isConfirmVisitOpen} onOpenChange={(open) => { if(!open) { setVisitProofUrl(null); } setIsConfirmVisitOpen(open); }}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Confirm Site Visit</DialogTitle>
@@ -431,30 +477,20 @@ export default function SchedulePage() {
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4">
-                     {visitProofPreview && (
+                     {visitProofUrl && (
                         <div className="border rounded-md p-2">
-                            <Image src={visitProofPreview} alt="Visit Proof Preview" width={400} height={225} className="w-full h-auto object-contain rounded-md" />
+                            <Image src={visitProofUrl} alt="Visit Proof Preview" width={400} height={225} className="w-full h-auto object-contain rounded-md" />
                         </div>
                      )}
                      <Input 
                         type="file" 
                         accept="image/*"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                                setVisitProofFile(file);
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                    setVisitProofPreview(reader.result as string);
-                                };
-                                reader.readAsDataURL(file);
-                            }
-                        }}
+                        onChange={handleFileChange}
                     />
                 </div>
                 <DialogFooter>
                      <Button variant="outline" onClick={() => setIsConfirmVisitOpen(false)}>Cancel</Button>
-                     <Button onClick={handleConfirmVisitSubmit} disabled={!!isUpdating || !visitProofFile}>
+                     <Button onClick={handleConfirmVisitSubmit} disabled={!!isUpdating || !visitProofUrl}>
                         {isUpdating === selectedAppointment?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Confirm & Upload
                      </Button>
