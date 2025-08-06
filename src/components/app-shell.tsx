@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History, Globe, Contact, Wallet, LifeBuoy, Headset } from "lucide-react"
+import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History, Globe, Contact, Wallet, LifeBuoy, Headset, FilePlus, Home } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import Link from "next/link"
@@ -52,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
     const isSeller = user?.role === 'seller';
+    const isCustomer = user?.role === 'customer';
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -94,6 +95,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
             <div className="flex items-center gap-4">
+                {isCustomer && (
+                     <Button>
+                        <FilePlus className="mr-2 h-4 w-4" /> Post Requirements
+                    </Button>
+                )}
                <Button variant="ghost" size="icon" asChild>
                   <Link href="/updates">
                     <Bell className="h-5 w-5" />
@@ -181,6 +187,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                              <DropdownMenuItem asChild>
                                 <Link href="/support">
                                     <Headset className="mr-2 h-4 w-4" />
+                                    <span>Help & Support</span>
+                                </Link>
+                            </DropdownMenuItem>
+                        </>
+                    )}
+                    {isCustomer && (
+                        <>
+                            <DropdownMenuItem>
+                                <Home className="mr-2 h-4 w-4" />
+                                <span>My Properties</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem>
+                                <Users className="mr-2 h-4 w-4" />
+                                <span>My Consultant</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href="/support">
+                                    <LifeBuoy className="mr-2 h-4 w-4" />
                                     <span>Help & Support</span>
                                 </Link>
                             </DropdownMenuItem>

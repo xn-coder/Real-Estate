@@ -57,6 +57,9 @@ import {
   PanelTop,
   PlusCircle,
   MapPin,
+  Banknote,
+  Calculator,
+  Gift,
 } from 'lucide-react'
 import { useUser } from '@/hooks/use-user'
 
@@ -125,6 +128,19 @@ const sellerNavItems: NavItem[] = [
     { href: '/booking-quotation', icon: FileText, label: 'Booking & Quotation' },
     { href: '/document-management', icon: FileText, label: 'Document Manage' },
     { href: '/send-message', icon: MessageSquare, label: 'Send Message' },
+];
+
+const customerNavItems: NavItem[] = [
+    { href: '/listings/list', icon: Home, label: 'Home' },
+    { href: '/schedule', icon: Calendar, label: 'Site Visit Schedules' },
+    { href: '/home-loans', icon: Banknote, label: 'Home Loans' },
+    { href: '/post-requirements', icon: FileText, label: 'Post Your Requirements' },
+    { href: '/manage-requirements', icon: Settings, label: 'Manage Requirements' },
+    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
+    { href: '/document-management', icon: FileText, label: 'Manage Documents' },
+    { href: '/emi-calculator', icon: Calculator, label: 'EMI Calculator' },
+    { href: '/refer-earn', icon: Gift, label: 'Refer & Earn' },
+    { href: '/upgrade', icon: Award, label: 'Upgrade' },
 ];
 
 const userNavItems: NavItem[] = [
@@ -206,6 +222,9 @@ export function AppShellNav({role}: {role: string}) {
       break;
     case 'seller':
         navItems = sellerNavItems;
+        break;
+    case 'customer':
+        navItems = customerNavItems;
         break;
     default:
         navItems = userNavItems;

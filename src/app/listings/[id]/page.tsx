@@ -28,6 +28,7 @@ import { sendOtp, verifyOtp } from "@/services/otp-service"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
 import { generateUserId } from "@/lib/utils"
+import bcrypt from "bcryptjs"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -111,6 +112,9 @@ export default function PropertyDetailsPage() {
             const [firstName, ...lastNameParts] = values.name.split(' ');
             const lastName = lastNameParts.join(' ');
             
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash("password", salt);
+
             await setDoc(doc(db, "users", customerId), {
                 id: customerId,
                 name: values.name,
@@ -118,6 +122,7 @@ export default function PropertyDetailsPage() {
                 lastName: lastName,
                 email: values.email,
                 phone: values.phone,
+                password: hashedPassword,
                 role: 'customer',
                 status: 'active',
                 address: '', // Customers from leads might not have full address initially
