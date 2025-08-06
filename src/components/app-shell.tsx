@@ -179,6 +179,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {isSeller && (
                         <>
                             <DropdownMenuItem asChild>
+                                <Link href="/send-message">
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    <span>Send Message</span>
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
                                 <Link href="/wallet-billing">
                                     <Wallet className="mr-2 h-4 w-4" />
                                     <span>Manage Wallet</span>
