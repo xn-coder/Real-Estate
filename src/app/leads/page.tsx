@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -189,9 +189,9 @@ export default function LeadsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => router.push(`/listings/${lead.propertyId}`)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Property
+                        <DropdownMenuItem onSelect={() => router.push(`/manage-customer/${lead.customerId}`)}>
+                            <User className="mr-2 h-4 w-4" />
+                            View Customer
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleScheduleClick(lead)}>
                             <CalendarIcon className="mr-2 h-4 w-4" />

@@ -22,6 +22,8 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { format } from "date-fns"
 
 type AggregatedVisit = {
   id: string; // Unique key for aggregation
@@ -29,6 +31,7 @@ type AggregatedVisit = {
   partner?: UserType;
   property?: Property;
   visitCount: number;
+  visitDates: Date[];
 };
 
 export default function ManageVisitorPage() {
@@ -83,6 +86,7 @@ export default function ManageVisitorPage() {
             customer: customerDoc?.exists() ? { id: customerDoc.id, ...customerDoc.data() } as UserType : undefined,
             partner: partnerDoc.exists() ? { id: partnerDoc.id, ...partnerDoc.data() } as UserType : undefined,
             property: propertyDoc.exists() ? { id: propertyDoc.id, ...propertyDoc.data() } as Property : undefined,
+            visitDate: (appointmentData.visitDate as Timestamp).toDate(),
         };
       });
 
@@ -97,6 +101,7 @@ export default function ManageVisitorPage() {
           if (aggregatedVisitsMap.has(key)) {
               const existing = aggregatedVisitsMap.get(key)!;
               existing.visitCount += 1;
+              existing.visitDates.push(visit.visitDate);
           } else {
               aggregatedVisitsMap.set(key, {
                   id: key,
@@ -104,6 +109,7 @@ export default function ManageVisitorPage() {
                   partner: visit.partner,
                   property: visit.property,
                   visitCount: 1,
+                  visitDates: [visit.visitDate],
               });
           }
       }
@@ -189,10 +195,31 @@ export default function ManageVisitorPage() {
                   <Badge variant="secondary">{visit.visitCount}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" disabled={!visit.customer} onClick={() => router.push(`/manage-customer/${visit.customer?.id}`)}>
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">View Customer Profile</span>
-                    </Button>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <Eye className="h-4 w-4" />
+                                <span className="sr-only">View Visit Dates</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Visit History</DialogTitle>
+                                <DialogDescription>
+                                    All confirmed visit dates for {visit.customer?.name} at {visit.property?.catalogTitle}.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="max-h-60 overflow-y-auto">
+                                <ul className="space-y-2">
+                                    {visit.visitDates.sort((a,b) => b.getTime() - a.getTime()).map((date, index) => (
+                                        <li key={index} className="text-sm p-2 bg-muted rounded-md">
+                                            {format(date, "PPP")}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </TableCell>
               </TableRow>
             ))}
