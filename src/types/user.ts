@@ -1,4 +1,6 @@
 
+import type { Timestamp } from "firebase/firestore";
+
 export type User = {
   id: string
   name: string
@@ -37,7 +39,8 @@ export type User = {
   reactivationReason?: string;
   rejectionReason?: string;
   kycStatus?: 'verified' | 'pending' | 'rejected';
-  teamLeadId?: string;
+  teamLeadId?: string | null;
+  createdAt?: Timestamp;
   website?: {
     businessProfile?: {
         businessName: string;

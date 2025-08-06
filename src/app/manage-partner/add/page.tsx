@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, doc, setDoc, query, where, getDoc, updateDoc } from "firebase/firestore"
+import { collection, getDocs, doc, setDoc, query, where, getDoc, updateDoc, Timestamp } from "firebase/firestore"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -249,6 +249,8 @@ export default function AddPartnerPage() {
             aadharFile: values.aadharFile ? await fileToDataUrl(values.aadharFile) : '',
             panNumber: values.panNumber,
             panFile: values.panFile ? await fileToDataUrl(values.panFile) : '',
+            teamLeadId: null,
+            createdAt: Timestamp.now(),
         };
 
         const selectedRole = form.watch("role");

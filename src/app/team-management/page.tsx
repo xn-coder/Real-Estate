@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp, orderBy } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -85,7 +85,8 @@ export default function TeamManagementPage() {
         const requestableQuery = query(
             usersCollection, 
             where("role", "in", availableRoles), 
-            where("teamLeadId", "==", null)
+            where("teamLeadId", "==", null),
+            orderBy("createdAt", "desc")
         );
         const requestableSnapshot = await getDocs(requestableQuery);
         const requestableList = requestableSnapshot.docs
@@ -133,11 +134,14 @@ export default function TeamManagementPage() {
     }
   }
 
-  const filteredPartners = React.useMemo(() => {
-    return requestablePartners.filter(partner => 
-        partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        partner.id.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+  const partnersToDisplay = React.useMemo(() => {
+    if (searchTerm) {
+        return requestablePartners.filter(partner => 
+            partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            partner.id.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }
+    return requestablePartners.slice(0, 8);
   }, [requestablePartners, searchTerm]);
 
 
@@ -183,7 +187,7 @@ export default function TeamManagementPage() {
                 <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Search by name or ID..."
+                        placeholder="Search by name or ID to see all available partners..."
                         className="pl-8"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -201,10 +205,10 @@ export default function TeamManagementPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                            ) : filteredPartners.length === 0 ? (
+                            ) : partnersToDisplay.length === 0 ? (
                                 <TableRow><TableCell colSpan={3} className="h-24 text-center">No partners available to request.</TableCell></TableRow>
                             ) : (
-                                filteredPartners.map(partner => (
+                                partnersToDisplay.map(partner => (
                                     <TableRow key={partner.id}>
                                         <TableCell>
                                             <div className="font-medium">{partner.name}</div>
