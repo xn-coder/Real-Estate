@@ -4,7 +4,7 @@
 import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle } from "lucide-react"
+import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle, Ban } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc, updateDoc } from "firebase/firestore"
@@ -117,11 +117,11 @@ export default function SchedulePage() {
     now.setHours(0, 0, 0, 0); // Set to beginning of today
 
     const upcoming = appointments
-        .filter(a => new Date(a.visitDate as Date) >= now)
+        .filter(a => new Date(a.visitDate as Date) >= now && a.status === 'Scheduled')
         .sort((a,b) => (a.visitDate as Date).getTime() - (b.visitDate as Date).getTime());
         
     const past = appointments
-        .filter(a => new Date(a.visitDate as Date) < now)
+        .filter(a => new Date(a.visitDate as Date) < now || a.status !== 'Scheduled')
         .sort((a,b) => (b.visitDate as Date).getTime() - (a.visitDate as Date).getTime());
 
     return { upcomingAppointments: upcoming, pastAppointments: past };
@@ -133,16 +133,16 @@ export default function SchedulePage() {
     setIsMapOpen(true);
   }
 
-  const handleConfirmVisit = async (appointmentId: string) => {
+  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Cancelled') => {
       setIsUpdating(appointmentId);
       try {
           const appointmentRef = doc(db, "appointments", appointmentId);
-          await updateDoc(appointmentRef, { status: 'Completed' });
-          toast({ title: "Visit Confirmed", description: "The appointment status has been updated to 'Completed'."});
+          await updateDoc(appointmentRef, { status });
+          toast({ title: `Visit ${status}`, description: `The appointment status has been updated to '${status}'.`});
           fetchAppointments(); // Re-fetch to update the UI
       } catch (error) {
-          console.error("Error confirming visit:", error);
-          toast({ variant: 'destructive', title: "Update Failed", description: "Could not confirm the visit."});
+          console.error(`Error updating visit to ${status}:`, error);
+          toast({ variant: 'destructive', title: "Update Failed", description: `Could not update the visit status.`});
       } finally {
           setIsUpdating(null);
       }
@@ -233,7 +233,7 @@ export default function SchedulePage() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleConfirmVisit(appointment.id)}>
+                                        <DropdownMenuItem onSelect={() => handleUpdateStatus(appointment.id, 'Completed')}>
                                             <CheckCircle className="mr-2 h-4 w-4" /> Confirm Visit
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
@@ -241,6 +241,9 @@ export default function SchedulePage() {
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => handleRescheduleClick(appointment)}>
                                             <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleUpdateStatus(appointment.id, 'Cancelled')} className="text-destructive">
+                                            <Ban className="mr-2 h-4 w-4" /> Cancel Visit
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -295,9 +298,9 @@ export default function SchedulePage() {
                             <TableCell>{statusBadge(appointment.status)}</TableCell>
                             <TableCell className="text-right">
                                 {appointment.status === 'Scheduled' ? (
-                                    <Button size="sm" onClick={() => handleConfirmVisit(appointment.id)} disabled={!!isUpdating}>
+                                    <Button size="sm" onClick={() => handleUpdateStatus(appointment.id, 'Completed')} disabled={!!isUpdating}>
                                         {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                        Confirm
+                                        Confirm Visit
                                     </Button>
                                 ) : (
                                     <span>-</span>
