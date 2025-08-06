@@ -141,7 +141,7 @@ export default function AddSellerPage() {
 
       const salt = await bcrypt.genSalt(10)
       const hashedPassword = await bcrypt.hash(values.password, salt)
-      const userId = generateUserId("SEL")
+      const userId = generateUserId("ADM")
 
       const [firstName, ...lastNameParts] = values.fullName.split(' ');
       const lastName = lastNameParts.join(' ');
