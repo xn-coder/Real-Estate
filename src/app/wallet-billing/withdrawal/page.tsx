@@ -32,7 +32,12 @@ const requestFormSchema = z.object({
   amount: z.coerce.number().min(100, "Withdrawal amount must be at least ₹100."),
   sellerId: z.string().optional(),
   notes: z.string().optional(),
-})
+}).refine(data => {
+    // This refine is a placeholder as we will check the role in the component.
+    // A more complex schema could be used but this is simpler.
+    return true;
+});
+
 type RequestFormValues = z.infer<typeof requestFormSchema>
 
 const statusColors: Record<WithdrawalRequest['status'], "default" | "secondary" | "destructive"> = {
@@ -64,9 +69,15 @@ export default function WithdrawalRequestPage() {
     if (!user) return;
     setIsLoading(true);
     try {
-        const q = canManage 
-            ? query(collection(db, "withdrawal_requests"), orderBy("requestedAt", "desc"))
-            : query(collection(db, "withdrawal_requests"), where("userId", "==", user.id), orderBy("requestedAt", "desc"));
+        let q;
+        const requestsCollection = collection(db, "withdrawal_requests");
+        if (isAdmin) {
+             q = query(requestsCollection, orderBy("requestedAt", "desc"));
+        } else if(isSeller) {
+             q = query(requestsCollection, where("sellerId", "==", user.id), orderBy("requestedAt", "desc"));
+        } else { // Partner or other roles
+            q = query(requestsCollection, where("userId", "==", user.id), orderBy("requestedAt", "desc"));
+        }
         
         const snapshot = await getDocs(q);
         const requestList = snapshot.docs.map(d => ({
@@ -82,7 +93,7 @@ export default function WithdrawalRequestPage() {
     } finally {
         setIsLoading(false);
     }
-  }, [user, canManage, toast]);
+  }, [user, isAdmin, isSeller, toast]);
 
   React.useEffect(() => {
     if(user) fetchRequests();
@@ -90,6 +101,12 @@ export default function WithdrawalRequestPage() {
 
   async function onSubmit(values: RequestFormValues) {
     if (!user) return;
+
+    if (isPartner && !values.sellerId) {
+        form.setError("sellerId", { message: "Seller ID is required." });
+        return;
+    }
+
     setIsSubmitting(true)
     try {
         await addDoc(collection(db, "withdrawal_requests"), {
@@ -176,9 +193,9 @@ export default function WithdrawalRequestPage() {
                         name="sellerId"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Seller ID (Optional)</FormLabel>
+                            <FormLabel>Seller ID</FormLabel>
                             <FormControl>
-                            <Input placeholder="Enter Seller ID if applicable" {...field} disabled={isSubmitting} />
+                            <Input placeholder="Enter the Seller ID to request funds from" {...field} disabled={isSubmitting} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
