@@ -51,14 +51,14 @@ export default function ListingsDashboardPage() {
 
   const statCards = [
     { title: "Total Properties", count: counts.total, icon: Building, color: "text-blue-500" },
-    { title: "Pending Verification", count: counts.pending, icon: Hourglass, color: "text-yellow-500" },
-  ];
+    { title: "Pending Verification", count: counts.pending, icon: Hourglass, color: "text-yellow-500", adminOnly: true },
+  ].filter(card => !card.adminOnly || isAdmin);
 
   const dashboardItems = [
     { name: "List of All Properties", href: "/listings/list", icon: Building },
     { name: "My Properties", href: "/listings/my-properties", icon: Home },
-    { name: "Pending Properties", href: "/listings/pending", icon: Hourglass },
-  ];
+    { name: "Pending Properties", href: "/listings/pending", icon: Hourglass, adminOnly: true },
+  ].filter(item => !item.adminOnly || isAdmin);
   
   const adminDashboardItems = [
     { name: "List of All Properties", href: "/listings/list", icon: Building },
