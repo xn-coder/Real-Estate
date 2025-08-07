@@ -6,14 +6,12 @@ import { useParams } from "next/navigation"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { User } from "@/types/user"
-import { Loader2 } from "lucide-react"
+import { Loader2, Menu, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
 import Link from "next/link"
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import Autoplay from "embla-carousel-autoplay"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import DigitalCard from "@/components/digital-card"
+import { Button } from "@/components/ui/button"
 
 
 const PartnerWebsitePage = () => {
@@ -23,10 +21,8 @@ const PartnerWebsitePage = () => {
     const [partner, setPartner] = React.useState<User | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
     const [websiteData, setWebsiteData] = React.useState<User['website']>({});
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     
-    const plugin = React.useRef(
-        Autoplay({ delay: 3000, stopOnInteraction: true })
-    )
 
     const fetchPartner = React.useCallback(async () => {
         if (!partnerId) return
@@ -74,14 +70,9 @@ const PartnerWebsitePage = () => {
 
 
     const scrollTo = (id: string) => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            // If on a different page, navigate first then scroll.
-            // For this simple case we assume we are on the main site page
-            window.location.href = `/site/${partnerId}#${id}`;
-        }
+        // If on a different page, navigate first then scroll.
+        // For this simple case we assume we are on the main site page
+        window.location.href = `/site/${partnerId}#${id}`;
     }
 
     if (isLoading) {
@@ -116,11 +107,37 @@ const PartnerWebsitePage = () => {
                             </Avatar>
                             <span className="font-bold text-lg font-headline">{partnerName}</span>
                         </Link>
-                        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+                         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
                             <button onClick={() => scrollTo('catalog')} className="hover:text-primary transition-colors">Catalog</button>
                             <Link href={`/site/${partner.id}/card`} className="hover:text-primary transition-colors">Digital Card</Link>
                             <button onClick={() => scrollTo('contact')} className="hover:text-primary transition-colors">Contact Us</button>
                         </nav>
+                        <div className="md:hidden">
+                           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                        <Menu className="h-6 w-6"/>
+                                        <span className="sr-only">Open menu</span>
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="w-full">
+                                    <div className="p-4">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <span className="font-bold text-lg font-headline">{partnerName}</span>
+                                            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+                                                <X className="h-6 w-6"/>
+                                                <span className="sr-only">Close menu</span>
+                                            </Button>
+                                        </div>
+                                        <nav className="flex flex-col gap-4 text-lg">
+                                             <button onClick={() => { scrollTo('catalog'); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">Catalog</button>
+                                             <Link href={`/site/${partner.id}/card`} onClick={() => setIsMobileMenuOpen(false)} className="text-left hover:text-primary transition-colors">Digital Card</Link>
+                                             <button onClick={() => { scrollTo('contact'); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">Contact Us</button>
+                                        </nav>
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -151,9 +168,9 @@ const PartnerWebsitePage = () => {
                          <div>
                             <h4 className="font-bold text-lg mb-2">Legal</h4>
                              <ul className="space-y-1 text-sm">
-                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms & Conditions</a></li>}
-                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy Policy</a></li>}
-                                {aboutLegal?.disclaimerLink && <li><a href={aboutLegal.disclaimerLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Disclaimer</a></li>}
+                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms & Conditions</a></li>}
+                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy Policy</a></li>}
+                                {aboutLegal?.disclaimerLink && <li><a href={aboutLegal.disclaimerLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Disclaimer</a></li>}
                             </ul>
                         </div>
                     </div>

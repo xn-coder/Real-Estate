@@ -6,7 +6,7 @@ import { useParams } from "next/navigation"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { User } from "@/types/user"
-import { Loader2, Phone, Mail, MapPin, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Home, Contact, Newspaper, ArrowRight } from "lucide-react"
+import { Loader2, Phone, Mail, MapPin, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Home, Contact, Newspaper, ArrowRight, Menu, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import Autoplay from "embla-carousel-autoplay"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 
 const PartnerWebsitePage = () => {
@@ -24,6 +25,7 @@ const PartnerWebsitePage = () => {
     const [partner, setPartner] = React.useState<User | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
     const [websiteData, setWebsiteData] = React.useState<User['website']>({});
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     
     const plugin = React.useRef(
         Autoplay({ delay: 3000, stopOnInteraction: true })
@@ -126,7 +128,30 @@ const PartnerWebsitePage = () => {
                             <button onClick={() => scrollTo('contact')} className="hover:text-primary transition-colors">Contact Us</button>
                         </nav>
                         <div className="md:hidden">
-                            {/* Mobile menu can be added here */}
+                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                        <Menu className="h-6 w-6"/>
+                                        <span className="sr-only">Open menu</span>
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="w-full">
+                                    <div className="p-4">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <span className="font-bold text-lg font-headline">{partnerName}</span>
+                                            <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+                                                <X className="h-6 w-6"/>
+                                                <span className="sr-only">Close menu</span>
+                                            </Button>
+                                        </div>
+                                        <nav className="flex flex-col gap-4 text-lg">
+                                             <button onClick={() => { scrollTo('catalog'); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">Catalog</button>
+                                             <Link href={`/site/${partner.id}/card`} onClick={() => setIsMobileMenuOpen(false)} className="text-left hover:text-primary transition-colors">Digital Card</Link>
+                                             <button onClick={() => { scrollTo('contact'); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">Contact Us</button>
+                                        </nav>
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
                         </div>
                     </div>
                 </div>
@@ -309,9 +334,9 @@ const PartnerWebsitePage = () => {
                          <div>
                             <h4 className="font-bold text-lg mb-2">Legal</h4>
                              <ul className="space-y-1 text-sm">
-                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms & Conditions</a></li>}
-                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy Policy</a></li>}
-                                {aboutLegal?.disclaimerLink && <li><a href={aboutLegal.disclaimerLink} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Disclaimer</a></li>}
+                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms & Conditions</a></li>}
+                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy Policy</a></li>}
+                                {aboutLegal?.disclaimerLink && <li><a href={aboutLegal.disclaimerLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Disclaimer</a></li>}
                             </ul>
                         </div>
                     </div>
