@@ -42,8 +42,6 @@ export default function ListingsPage() {
     const [listings, setListings] = React.useState<Property[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const canAddProperties = user?.role === 'seller' || user?.role === 'admin';
-    const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
-
 
     React.useEffect(() => {
         const fetchListings = async () => {
@@ -117,21 +115,23 @@ export default function ListingsPage() {
                             width="400"
                             data-ai-hint="house exterior"
                         />
-                        <div className="absolute top-2 right-2">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Toggle menu</span>
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem>Edit</DropdownMenuItem>
-                                <DropdownMenuItem>Delete</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
+                        {canAddProperties && (
+                            <div className="absolute top-2 right-2">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button aria-haspopup="true" size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                        <span className="sr-only">Toggle menu</span>
+                                    </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem>Edit</DropdownMenuItem>
+                                    <DropdownMenuItem>Delete</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        )}
                     </CardHeader>
                     <CardContent className="p-4 flex-grow">
                         <Badge variant={statusColors[listing.status] || 'default'} className="mb-2">{listing.status}</Badge>

@@ -202,13 +202,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     )}
                     {isCustomer && (
                         <>
-                            <DropdownMenuItem>
-                                <Building className="mr-2 h-4 w-4" />
-                                <span>My Properties</span>
+                            <DropdownMenuItem asChild>
+                                <Link href="/my-properties">
+                                    <Building className="mr-2 h-4 w-4" />
+                                    <span>My Properties</span>
+                                </Link>
                             </DropdownMenuItem>
-                             <DropdownMenuItem>
-                                <Users className="mr-2 h-4 w-4" />
-                                <span>My Consultant</span>
+                             <DropdownMenuItem asChild>
+                                <Link href="/my-consultant">
+                                    <Users className="mr-2 h-4 w-4" />
+                                    <span>My Consultant</span>
+                                </Link>
                             </DropdownMenuItem>
                              <DropdownMenuItem asChild>
                                 <Link href="/support">
