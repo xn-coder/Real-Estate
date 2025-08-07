@@ -111,6 +111,7 @@ export default function SchedulePage() {
   const [newVisitDate, setNewVisitDate] = React.useState<Date | undefined>(new Date());
   const [visitProofUrl, setVisitProofUrl] = React.useState<string | null>(null);
 
+  const isCustomer = user?.role === 'customer';
 
   const fetchAppointments = React.useCallback(async () => {
       if (!user) return
@@ -120,7 +121,9 @@ export default function SchedulePage() {
         let q;
         if (user.role === 'admin' || user.role === 'seller') {
             q = query(appointmentsCollection)
-        } else {
+        } else if (user.role === 'customer') {
+            q = query(appointmentsCollection, where("customerId", "==", user.id));
+        } else { // Partner roles
             q = query(appointmentsCollection, where("partnerId", "==", user.id))
         }
 
@@ -277,7 +280,7 @@ export default function SchedulePage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Schedule</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">My Schedule</h1>
       </div>
       
       <Card>
@@ -293,15 +296,15 @@ export default function SchedulePage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Client</TableHead>
+                        {!isCustomer && <TableHead>Client</TableHead>}
                         <TableHead>Property</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        {!isCustomer && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                      {isLoading ? (
                         <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">
+                            <TableCell colSpan={isCustomer ? 2 : 4} className="h-24 text-center">
                                 <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                             </TableCell>
                         </TableRow>
@@ -309,7 +312,7 @@ export default function SchedulePage() {
                         upcomingAppointments.map((appointment) => (
                         <TableRow key={appointment.id}>
                             <TableCell className="font-medium">{format(appointment.visitDate as Date, "PPP")}</TableCell>
-                            <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>
+                            {!isCustomer && <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>}
                             <TableCell>
                                 {appointment.property ? (
                                     <Button variant="link" asChild className="p-0 h-auto font-normal">
@@ -322,34 +325,36 @@ export default function SchedulePage() {
                                     <span className="text-muted-foreground">N/A</span>
                                 )}
                             </TableCell>
-                            <TableCell className="text-right">
-                                 <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" disabled={!!isUpdating}>
-                                             {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreHorizontal className="h-4 w-4" />}
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleConfirmVisitClick(appointment)}>
-                                            <CheckCircle className="mr-2 h-4 w-4" /> Confirm Visit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
-                                            <Map className="mr-2 h-4 w-4" /> Map View
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleRescheduleClick(appointment)}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleUpdateStatus(appointment.id, 'Cancelled')} className="text-destructive">
-                                            <Ban className="mr-2 h-4 w-4" /> Cancel Visit
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
+                            {!isCustomer && (
+                                <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" disabled={!!isUpdating}>
+                                                {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <MoreHorizontal className="h-4 w-4" />}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onSelect={() => handleConfirmVisitClick(appointment)}>
+                                                <CheckCircle className="mr-2 h-4 w-4" /> Confirm Visit
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => appointment.property && handleMapView(appointment.property)}>
+                                                <Map className="mr-2 h-4 w-4" /> Map View
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleRescheduleClick(appointment)}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" /> Reschedule
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleUpdateStatus(appointment.id, 'Cancelled')} className="text-destructive">
+                                                <Ban className="mr-2 h-4 w-4" /> Cancel Visit
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            )}
                         </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">
+                            <TableCell colSpan={isCustomer ? 2 : 4} className="text-center h-24 text-muted-foreground">
                                 No upcoming appointments.
                             </TableCell>
                          </TableRow>
@@ -373,16 +378,16 @@ export default function SchedulePage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Client</TableHead>
+                        {!isCustomer && <TableHead>Client</TableHead>}
                         <TableHead>Property</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        {!isCustomer && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                      {isLoading ? (
                         <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center">
+                            <TableCell colSpan={isCustomer ? 3 : 5} className="h-24 text-center">
                                 <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                             </TableCell>
                         </TableRow>
@@ -390,7 +395,7 @@ export default function SchedulePage() {
                         pastAppointments.map((appointment) => (
                         <TableRow key={appointment.id}>
                             <TableCell className="font-medium">{format(appointment.visitDate as Date, "PPP")}</TableCell>
-                            <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>
+                            {!isCustomer && <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>}
                             <TableCell>
                                 {appointment.property ? (
                                      <Button variant="link" asChild className="p-0 h-auto font-normal text-muted-foreground">
@@ -403,21 +408,23 @@ export default function SchedulePage() {
                                 )}
                             </TableCell>
                             <TableCell>{statusBadge(appointment.status)}</TableCell>
-                            <TableCell className="text-right">
-                                {appointment.status === 'Scheduled' ? (
-                                    <Button size="sm" onClick={() => handleConfirmVisitClick(appointment)} disabled={!!isUpdating}>
-                                        {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                        Confirm Visit
-                                    </Button>
-                                ) : (
-                                    <span>-</span>
-                                )}
-                            </TableCell>
+                            {!isCustomer && (
+                                <TableCell className="text-right">
+                                    {appointment.status === 'Scheduled' ? (
+                                        <Button size="sm" onClick={() => handleConfirmVisitClick(appointment)} disabled={!!isUpdating}>
+                                            {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                                            Confirm Visit
+                                        </Button>
+                                    ) : (
+                                        <span>-</span>
+                                    )}
+                                </TableCell>
+                            )}
                         </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                            <TableCell colSpan={isCustomer ? 3 : 5} className="text-center h-24 text-muted-foreground">
                                 No past appointments.
                             </TableCell>
                          </TableRow>
