@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, Timestamp, doc, updateDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc } from "firebase/firestore"
 import type { Lead } from "@/types/lead"
 import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
@@ -173,16 +173,21 @@ export default function LeadsPage() {
     }
     setIsSending(true);
     try {
-        const leadRef = doc(db, 'leads', selectedLeadForSending.id);
-        await updateDoc(leadRef, {
-            partnerId: selectedPartnerForLead
-        });
-        toast({ title: 'Lead Sent', description: 'The lead has been successfully assigned to the partner.' });
+        const { id, ...leadData } = selectedLeadForSending;
+        
+        const newLead = {
+            ...leadData,
+            partnerId: selectedPartnerForLead,
+        };
+
+        await addDoc(collection(db, 'leads'), newLead);
+        
+        toast({ title: 'Lead Copy Sent', description: 'A copy of the lead has been sent to the partner.' });
         setIsSendToPartnerDialogOpen(false);
-        fetchLeads(); // Refresh the leads list
+        // No need to fetchLeads() for the sender, as their list doesn't change
     } catch (error) {
-        console.error("Error sending lead:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send the lead.' });
+        console.error("Error sending lead copy:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send the lead copy.' });
     } finally {
         setIsSending(false);
     }
@@ -343,5 +348,3 @@ export default function LeadsPage() {
     </div>
   )
 }
-
-    
