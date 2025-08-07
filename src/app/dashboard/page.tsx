@@ -190,27 +190,19 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
              {isLoading ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-                <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Client</TableHead>
-                          <TableHead>Property</TableHead>
-                          <TableHead>Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {appointments.slice(0, 5).map((appointment) => (
-                          <TableRow key={appointment.id}>
-                            <TableCell>
-                              <div className="font-medium">{appointment.lead?.name || 'N/A'}</div>
-                            </TableCell>
-                            <TableCell><Badge variant="outline">{appointment.property?.catalogTitle || 'N/A'}</Badge></TableCell>
-                            <TableCell>{format(appointment.visitDate as Date, "PPP")}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                <div className="space-y-4">
+                  {appointments.slice(0, 5).map((appointment) => (
+                    <div key={appointment.id} className="flex items-center p-3 border rounded-md bg-muted/50">
+                        <div className="flex-1 space-y-1">
+                          <p className="font-medium">{appointment.lead?.name || 'N/A'}</p>
+                          <p className="text-sm text-muted-foreground">{appointment.property?.catalogTitle || 'N/A'}</p>
+                        </div>
+                        <div className="text-right">
+                           <p className="font-medium text-sm">{format(appointment.visitDate as Date, "PPP")}</p>
+                        </div>
+                    </div>
+                  ))}
+                   {appointments.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No upcoming appointments.</p>}
                 </div>
              )}
           </CardContent>
