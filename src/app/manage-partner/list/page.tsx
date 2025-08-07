@@ -197,42 +197,35 @@ export default function ManagePartnerListPage() {
                 <TableCell className="hidden md:table-cell">{partner.email}</TableCell>
                 <TableCell className="hidden md:table-cell">{partner.phone}</TableCell>
                 <TableCell className="text-right">
-                    {isSeller ? (
-                        <div className="flex gap-2 justify-end">
-                            <Button variant="outline" size="sm" onClick={() => router.push(`/manage-partner/${partner.id}`)}>
-                                <Eye className="mr-2 h-4 w-4" /> View Profile
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => router.push(`/send-message?recipientId=${partner.id}&type=to_partner`)}>
-                                <MessageSquare className="mr-2 h-4 w-4" /> Send Message
-                            </Button>
-                        </div>
-                    ) : (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => router.push(`/manage-partner/${partner.id}`)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => router.push(`/send-message?recipientId=${partner.id}&type=to_partner`)}>
-                                <MessageSquare className="mr-2 h-4 w-4" />
-                                Send Message
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => handleDeactivateClick(partner)} className="text-destructive">
-                                <UserX className="mr-2 h-4 w-4" />
-                                Deactivate
-                            </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => router.push(`/manage-partner/${partner.id}`)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => router.push(`/send-message?recipientId=${partner.id}&type=to_partner`)}>
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Send Message
+                        </DropdownMenuItem>
+                        {isAdmin && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => handleDeactivateClick(partner)} className="text-destructive">
+                                    <UserX className="mr-2 h-4 w-4" />
+                                    Deactivate
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}

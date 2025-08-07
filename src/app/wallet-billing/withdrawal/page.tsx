@@ -49,6 +49,9 @@ export default function WithdrawalRequestPage() {
   const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
   
   const isAdmin = user?.role === 'admin';
+  const isSeller = user?.role === 'seller';
+  const canManage = isAdmin || isSeller;
+
 
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestFormSchema),
@@ -59,7 +62,7 @@ export default function WithdrawalRequestPage() {
     if (!user) return;
     setIsLoading(true);
     try {
-        const q = isAdmin 
+        const q = canManage 
             ? query(collection(db, "withdrawal_requests"), orderBy("requestedAt", "desc"))
             : query(collection(db, "withdrawal_requests"), where("userId", "==", user.id), orderBy("requestedAt", "desc"));
         
@@ -77,7 +80,7 @@ export default function WithdrawalRequestPage() {
     } finally {
         setIsLoading(false);
     }
-  }, [user, isAdmin, toast]);
+  }, [user, canManage, toast]);
 
   React.useEffect(() => {
     if(user) fetchRequests();
@@ -142,7 +145,7 @@ export default function WithdrawalRequestPage() {
         <h1 className="text-2xl font-bold tracking-tight font-headline">Withdrawal Request</h1>
       </div>
       
-      {!isAdmin && (
+      {!canManage && (
         <Card className="max-w-2xl">
             <CardHeader>
             <CardTitle>Request a Withdrawal</CardTitle>
@@ -189,41 +192,41 @@ export default function WithdrawalRequestPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>{isAdmin ? "Manage Requests" : "My Request History"}</CardTitle>
+            <CardTitle>{canManage ? "Manage Requests" : "My Request History"}</CardTitle>
         </CardHeader>
         <CardContent>
              <div className="border rounded-lg">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            {isAdmin && <TableHead>User</TableHead>}
+                            {canManage && <TableHead>User</TableHead>}
                             <TableHead>Amount</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Status</TableHead>
-                            {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                            {canManage && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                                <TableCell colSpan={canManage ? 5 : 4} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                                 </TableCell>
                             </TableRow>
                         ) : requests.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                                <TableCell colSpan={canManage ? 5 : 4} className="h-24 text-center">
                                     No requests found.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             requests.map((request) => (
                                 <TableRow key={request.id}>
-                                    {isAdmin && <TableCell>{request.userName}</TableCell>}
+                                    {canManage && <TableCell>{request.userName}</TableCell>}
                                     <TableCell className="font-medium">₹{request.amount.toLocaleString()}</TableCell>
                                     <TableCell>{format(request.requestedAt, 'PPP')}</TableCell>
                                     <TableCell><Badge variant={statusColors[request.status]}>{request.status}</Badge></TableCell>
-                                    {isAdmin && (
+                                    {canManage && (
                                         <TableCell className="text-right">
                                             {request.status === 'Pending' ? (
                                                 <div className="space-x-2">

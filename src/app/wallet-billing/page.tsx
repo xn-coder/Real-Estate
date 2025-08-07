@@ -23,6 +23,7 @@ type WalletStats = {
 export default function WalletBillingPage() {
   const { user } = useUser();
   const isAdmin = user?.role === 'admin';
+  const isSeller = user?.role === 'seller';
   const [stats, setStats] = React.useState<WalletStats>({
       totalBalance: 0,
       totalRevenue: 0,
@@ -33,7 +34,7 @@ export default function WalletBillingPage() {
 
   React.useEffect(() => {
       const fetchStats = async () => {
-          if (!isAdmin) {
+          if (!isAdmin && !isSeller) {
               setIsLoading(false);
               return;
           };
@@ -67,7 +68,7 @@ export default function WalletBillingPage() {
           }
       }
       fetchStats();
-  }, [isAdmin]);
+  }, [isAdmin, isSeller]);
 
   const walletStats = [
     { title: "Total Balance", amount: stats.totalBalance.toLocaleString(), description: "Across all wallets" },
@@ -77,11 +78,11 @@ export default function WalletBillingPage() {
   ]
 
   const walletOptions = [
-    ...(isAdmin ? [{ name: "Manage Wallet", href: "/wallet-billing/manage" }] : []),
+    ...(isAdmin || isSeller ? [{ name: "Manage Wallet", href: "/wallet-billing/manage" }] : []),
     { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
-    { name: isAdmin ? "Send Reward Points" : "Claim Reward Points", href: "/wallet-billing/rewards" },
+    { name: (isAdmin || isSeller) ? "Send Reward Points" : "Claim Reward Points", href: "/wallet-billing/rewards" },
     { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
-    ...(isAdmin ? [
+    ...(isAdmin || isSeller ? [
       { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
       { name: "Payable List", href: "/wallet-billing/payable" },
       { name: "Renew Billing & Invoice, Quotation", href: "/wallet-billing/billing" },
@@ -94,22 +95,24 @@ export default function WalletBillingPage() {
        <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Wallet & Billing</h1>
       </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {walletStats.map((stat) => (
-                <Card key={stat.title}>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `₹${stat.amount}`}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{stat.description}</p>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
+        
+        {(isAdmin || isSeller) && (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {walletStats.map((stat) => (
+                    <Card key={stat.title}>
+                        <CardHeader>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `₹${stat.amount}`}
+                            </div>
+                            <p className="text-xs text-muted-foreground">{stat.description}</p>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        )}
 
         <Card>
             <CardContent className="p-0">
