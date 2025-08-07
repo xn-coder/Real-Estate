@@ -29,6 +29,7 @@ export default function PaymentHistoryPage() {
     const [isLoading, setIsLoading] = React.useState(true);
     
     const isAdmin = user?.role === 'admin';
+    const isSeller = user?.role === 'seller';
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
 
     const fetchHistory = React.useCallback(async () => {
@@ -37,10 +38,15 @@ export default function PaymentHistoryPage() {
 
         try {
             const requestsRef = collection(db, "withdrawal_requests");
-            const q = isAdmin 
-                ? query(requestsRef, orderBy("requestedAt", "desc"))
-                : query(requestsRef, where("userId", "==", user.id), orderBy("requestedAt", "desc"));
-
+            let q;
+            if (isAdmin) {
+                q = query(requestsRef, orderBy("requestedAt", "desc"));
+            } else if (isSeller) {
+                q = query(requestsRef, where("sellerId", "==", user.id), orderBy("requestedAt", "desc"));
+            } else { // Partner or other roles
+                q = query(requestsRef, where("userId", "==", user.id), orderBy("requestedAt", "desc"));
+            }
+            
             const snapshot = await getDocs(q);
 
             const historyListPromises = snapshot.docs.map(async (docData) => {
@@ -69,7 +75,7 @@ export default function PaymentHistoryPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [user, isAdmin, toast]);
+    }, [user, isAdmin, isSeller, toast]);
 
     React.useEffect(() => {
         if (user) {
@@ -103,7 +109,7 @@ export default function PaymentHistoryPage() {
                     <TableHeader>
                         <TableRow>
                             {isAdmin && <TableHead>User</TableHead>}
-                            {isPartner && <TableHead>Requested From (Seller)</TableHead>}
+                            {(isPartner || isSeller) && <TableHead>Requested From (Seller)</TableHead>}
                             <TableHead>Amount</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Requested On</TableHead>
@@ -112,14 +118,14 @@ export default function PaymentHistoryPage() {
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            <TableRow><TableCell colSpan={isAdmin ? 5 : (isPartner ? 5 : 4)} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                            <TableRow><TableCell colSpan={isAdmin || isPartner || isSeller ? 5 : 4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                         ) : history.length === 0 ? (
-                            <TableRow><TableCell colSpan={isAdmin ? 5 : (isPartner ? 5 : 4)} className="h-24 text-center">No payment history found.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={isAdmin || isPartner || isSeller ? 5 : 4} className="h-24 text-center">No payment history found.</TableCell></TableRow>
                         ) : (
                             history.map(item => (
                                 <TableRow key={item.id}>
                                     {isAdmin && <TableCell>{item.userName}</TableCell>}
-                                    {isPartner && <TableCell>{item.sellerName || 'N/A'}</TableCell>}
+                                    {(isPartner || isSeller) && <TableCell>{item.sellerName || 'N/A'}</TableCell>}
                                     <TableCell className="font-medium">₹{item.amount.toLocaleString()}</TableCell>
                                     <TableCell><Badge variant={statusColors[item.status]}>{item.status}</Badge></TableCell>
                                     <TableCell>{format(item.requestedAt, 'PPP')}</TableCell>

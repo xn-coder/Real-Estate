@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useUser } from "@/hooks/use-user"
 
 const statusColors: Record<Receivable['status'], "default" | "secondary" | "destructive"> = {
   Paid: 'default',
@@ -46,6 +47,7 @@ const receivableSchema = z.object({
 type ReceivableFormValues = z.infer<typeof receivableSchema>;
 
 export default function ReceivableCashPage() {
+    const { user } = useUser();
     const { toast } = useToast()
     const router = useRouter()
     const [receivables, setReceivables] = React.useState<Receivable[]>([])
@@ -68,9 +70,14 @@ export default function ReceivableCashPage() {
     });
 
     const fetchReceivables = React.useCallback(async () => {
+        if (!user) return;
         setIsLoading(true);
         try {
-            const q = query(collection(db, "receivables"), orderBy("date", "desc"));
+            const receivablesRef = collection(db, "receivables");
+            const q = user.role === 'admin'
+              ? query(receivablesRef, orderBy("date", "desc"))
+              : query(receivablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
+
             const snapshot = await getDocs(q);
             const receivablesList = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -84,7 +91,7 @@ export default function ReceivableCashPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [toast]);
+    }, [toast, user]);
     
     const fetchUsers = React.useCallback(async () => {
         setIsLoadingUsers(true);

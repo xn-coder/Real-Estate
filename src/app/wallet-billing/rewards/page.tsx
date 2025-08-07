@@ -48,7 +48,8 @@ export default function RewardsPage() {
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
   const [wallet, setWallet] = React.useState<Wallet | null>(null);
 
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin';
+  const isSeller = user?.role === 'seller';
 
   const sendForm = useForm<SendRewardsForm>({
     resolver: zodResolver(sendRewardsSchema),
@@ -67,7 +68,7 @@ export default function RewardsPage() {
   })
 
   React.useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin || isSeller) {
       const fetchPartners = async () => {
         try {
           const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
@@ -89,7 +90,7 @@ export default function RewardsPage() {
         }
         fetchWallet();
     }
-  }, [isAdmin, user])
+  }, [isAdmin, isSeller, user])
   
   const filteredPartners = React.useMemo(() => {
     if (!searchTerm) return partners;
@@ -115,7 +116,7 @@ export default function RewardsPage() {
               toId: selectedPartner.id,
               toName: selectedPartner.name,
               points: values.points,
-              notes: values.notes || "Points sent by admin",
+              notes: values.notes || "Points sent",
               type: "Sent",
               date: Timestamp.now(),
           });
@@ -205,7 +206,7 @@ export default function RewardsPage() {
           </Link>
         </Button>
         <h1 className="text-2xl font-bold tracking-tight font-headline">
-            {isAdmin ? "Send Reward Points" : "Claim Reward Points"}
+            {(isAdmin || isSeller) ? "Send Reward Points" : "Claim Reward Points"}
         </h1>
       </div>
       
@@ -213,14 +214,14 @@ export default function RewardsPage() {
         <CardHeader>
             <CardTitle className="flex items-center gap-2">
                 <Gift className="h-5 w-5 text-primary"/>
-                {isAdmin ? "Send Rewards" : "Claim My Rewards"}
+                {(isAdmin || isSeller) ? "Send Rewards" : "Claim My Rewards"}
             </CardTitle>
             <CardDescription>
-                {isAdmin ? "Select a partner and send them reward points." : "Convert your available reward points into your wallet balance."}
+                {(isAdmin || isSeller) ? "Select a partner and send them reward points." : "Convert your available reward points into your wallet balance."}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            {isAdmin ? (
+            {(isAdmin || isSeller) ? (
                 <Form {...sendForm}>
                     <form onSubmit={sendForm.handleSubmit(onSendSubmit)} className="space-y-6">
                        <FormField

@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useUser } from "@/hooks/use-user"
 
 const statusColors: Record<Payable['status'], "default" | "secondary" | "destructive"> = {
   Paid: 'default',
@@ -45,6 +46,7 @@ const payableSchema = z.object({
 type PayableFormValues = z.infer<typeof payableSchema>;
 
 export default function PayableListPage() {
+    const { user } = useUser();
     const { toast } = useToast()
     const router = useRouter()
     const [payables, setPayables] = React.useState<Payable[]>([])
@@ -67,9 +69,14 @@ export default function PayableListPage() {
     });
 
     const fetchPayables = React.useCallback(async () => {
+        if (!user) return;
         setIsLoading(true);
         try {
-            const q = query(collection(db, "payables"), orderBy("date", "desc"));
+            const payablesRef = collection(db, "payables");
+            const q = user.role === 'admin'
+              ? query(payablesRef, orderBy("date", "desc"))
+              : query(payablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
+            
             const snapshot = await getDocs(q);
             const payablesList = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -83,7 +90,7 @@ export default function PayableListPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [toast]);
+    }, [toast, user]);
     
     const fetchUsers = React.useCallback(async () => {
         setIsLoadingUsers(true);

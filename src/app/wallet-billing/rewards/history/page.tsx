@@ -23,6 +23,7 @@ export default function RewardHistoryPage() {
     const [isLoading, setIsLoading] = React.useState(true);
     
     const isAdmin = user?.role === 'admin';
+    const isSeller = user?.role === 'seller';
 
     const fetchHistory = React.useCallback(async () => {
         if (!user) return;
@@ -32,9 +33,9 @@ export default function RewardHistoryPage() {
             const transactionsRef = collection(db, "reward_transactions");
             let q;
 
-            if (isAdmin) {
-                // Admin sees all transactions
-                q = query(transactionsRef, orderBy("date", "desc"));
+            if (isAdmin || isSeller) {
+                // Admin and sellers see all transactions they initiated
+                q = query(transactionsRef, where("fromId", "==", user.id), orderBy("date", "desc"));
             } else {
                 // Partner sees transactions where they are the sender or receiver
                 const receivedQuery = query(transactionsRef, where("toId", "==", user.id));
@@ -58,10 +59,9 @@ export default function RewardHistoryPage() {
 
                 setHistory(historyList.sort((a,b) => b.date.getTime() - a.date.getTime()));
                 setIsLoading(false);
-                return; // Exit here for non-admins
+                return; // Exit here for non-admins/sellers
             }
             
-            // This part runs only for admin
             const snapshot = await getDocs(q);
             const historyList = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -77,11 +77,13 @@ export default function RewardHistoryPage() {
             setIsLoading(false);
         }
 
-    }, [user, isAdmin, toast]);
+    }, [user, isAdmin, isSeller, toast]);
 
     React.useEffect(() => {
-        fetchHistory();
-    }, [fetchHistory]);
+        if(user) {
+            fetchHistory();
+        }
+    }, [user, fetchHistory]);
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -106,19 +108,18 @@ export default function RewardHistoryPage() {
                         <TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>Description</TableHead>
-                            {isAdmin && <TableHead>From</TableHead>}
-                            {isAdmin && <TableHead>To</TableHead>}
+                            {(isAdmin || isSeller) && <TableHead>To</TableHead>}
                             <TableHead className="text-right">Points</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            <TableRow><TableCell colSpan={isAdmin ? 5 : 3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                            <TableRow><TableCell colSpan={(isAdmin || isSeller) ? 4 : 3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                         ) : history.length === 0 ? (
-                            <TableRow><TableCell colSpan={isAdmin ? 5 : 3} className="h-24 text-center">No reward history found.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={(isAdmin || isSeller) ? 4 : 3} className="h-24 text-center">No reward history found.</TableCell></TableRow>
                         ) : history.map(item => {
-                            const isCredit = !isAdmin && item.toId === user?.id;
-                            const isDebit = !isAdmin && item.fromId === user?.id;
+                            const isCredit = !isAdmin && !isSeller && item.toId === user?.id;
+                            const isDebit = !isAdmin && !isSeller && item.fromId === user?.id;
                             
                             return (
                                 <TableRow key={item.id}>
@@ -128,13 +129,12 @@ export default function RewardHistoryPage() {
                                             {item.notes || (item.type === 'Sent' ? 'Points Sent' : 'Points Claimed')}
                                         </div>
                                     </TableCell>
-                                    {isAdmin && <TableCell>{item.fromName}</TableCell>}
-                                    {isAdmin && <TableCell>{item.toName}</TableCell>}
+                                    {(isAdmin || isSeller) && <TableCell>{item.toName}</TableCell>}
                                     <TableCell className="text-right">
-                                        <span className={`font-medium flex items-center justify-end ${isCredit ? 'text-green-600' : isDebit ? 'text-red-600' : ''}`}>
+                                        <span className={`font-medium flex items-center justify-end ${isCredit ? 'text-green-600' : (isDebit || isAdmin || isSeller) ? 'text-red-600' : ''}`}>
                                             {isCredit && <ArrowDown className="mr-1 h-4 w-4"/>}
-                                            {isDebit && <ArrowUp className="mr-1 h-4 w-4"/>}
-                                            {isCredit ? '+' : isDebit ? '-' : ''} {item.points.toLocaleString()}
+                                            {(isDebit || isAdmin || isSeller) && <ArrowUp className="mr-1 h-4 w-4"/>}
+                                            {isCredit ? '+' : '-'} {item.points.toLocaleString()}
                                         </span>
                                     </TableCell>
                                 </TableRow>
