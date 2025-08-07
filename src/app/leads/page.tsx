@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc, deleteDoc } from "firebase/firestore"
 import type { Lead } from "@/types/lead"
 import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
@@ -47,6 +47,7 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Contacted': 'secondary',
   'Qualified': 'outline',
   'Lost': 'destructive',
+  'Forwarded': 'outline',
 }
 
 export default function LeadsPage() {
@@ -92,7 +93,7 @@ export default function LeadsPage() {
         }
         q = query(leadsCollection, where("propertyId", "in", sellerPropertyIds));
       } else { // Partner roles
-        q = query(leadsCollection, where("partnerId", "==", user.id));
+        q = query(leadsCollection, where("partnerId", "==", user.id), where("isCopy", "==", undefined));
       }
       const snapshot = await getDocs(q);
       const leadsData = snapshot.docs.map(doc => {
@@ -167,7 +168,8 @@ export default function LeadsPage() {
   };
 
   const handleSendLeadToPartner = async () => {
-    if (!selectedPartnerForLead || !selectedLeadForSending) {
+    const partner = teamMembers.find(m => m.id === selectedPartnerForLead);
+    if (!selectedPartnerForLead || !selectedLeadForSending || !partner) {
         toast({ variant: 'destructive', title: 'Error', description: 'Please select a partner.' });
         return;
     }
@@ -175,23 +177,59 @@ export default function LeadsPage() {
     try {
         const { id, ...leadData } = selectedLeadForSending;
         
-        const newLead = {
+        const newLeadData = {
             ...leadData,
             partnerId: selectedPartnerForLead,
+            isCopy: true,
+            originalLeadId: id,
         };
 
-        await addDoc(collection(db, 'leads'), newLead);
+        const leadCopyRef = await addDoc(collection(db, 'leads'), newLeadData);
+
+        const originalLeadRef = doc(db, 'leads', id);
+        await updateDoc(originalLeadRef, {
+            status: 'Forwarded',
+            forwardedTo: {
+                partnerId: selectedPartnerForLead,
+                partnerName: partner.name,
+                leadCopyId: leadCopyRef.id
+            }
+        });
         
-        toast({ title: 'Lead Copy Sent', description: 'A copy of the lead has been sent to the partner.' });
+        toast({ title: 'Lead Forwarded', description: `Lead has been forwarded to ${partner.name}.` });
+        fetchLeads(); // Refresh leads
         setIsSendToPartnerDialogOpen(false);
-        // No need to fetchLeads() for the sender, as their list doesn't change
     } catch (error) {
-        console.error("Error sending lead copy:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to send the lead copy.' });
+        console.error("Error forwarding lead:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to forward the lead.' });
     } finally {
         setIsSending(false);
     }
   };
+  
+  const handleRetakeLead = async (lead: Lead) => {
+    if (!lead.forwardedTo?.leadCopyId) return;
+    setIsSending(true);
+    try {
+        const leadCopyRef = doc(db, 'leads', lead.forwardedTo.leadCopyId);
+        await deleteDoc(leadCopyRef);
+
+        const originalLeadRef = doc(db, 'leads', lead.id);
+        await updateDoc(originalLeadRef, {
+            status: 'New', // Or whatever its original status was
+            forwardedTo: null,
+        });
+        
+        toast({ title: 'Lead Retaken', description: `Lead has been retaken from ${lead.forwardedTo.partnerName}.` });
+        fetchLeads();
+
+    } catch(error) {
+        console.error("Error retaking lead:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to retake the lead.' });
+    } finally {
+        setIsSending(false);
+    }
+  }
 
 
   return (
@@ -241,7 +279,10 @@ export default function LeadsPage() {
                     <TableCell>{lead.email}</TableCell>
                     <TableCell>{lead.phone}</TableCell>
                     <TableCell>
-                    <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
+                        <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
+                        {lead.status === 'Forwarded' && (
+                            <p className="text-xs text-muted-foreground">to {lead.forwardedTo?.partnerName}</p>
+                        )}
                     </TableCell>
                     <TableCell>
                     <DropdownMenu>
@@ -257,15 +298,22 @@ export default function LeadsPage() {
                             <UserIcon className="mr-2 h-4 w-4" />
                             View Customer
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleScheduleClick(lead)}>
+                        <DropdownMenuItem onClick={() => handleScheduleClick(lead)} disabled={lead.status === 'Forwarded'}>
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             Schedule Visit
                         </DropdownMenuItem>
                         {canSendToPartner && (
-                            <DropdownMenuItem onSelect={() => handleSendToPartnerClick(lead)}>
-                                <Send className="mr-2 h-4 w-4" />
-                                Send to Partner
-                            </DropdownMenuItem>
+                            lead.status === 'Forwarded' ? (
+                                <DropdownMenuItem onSelect={() => handleRetakeLead(lead)}>
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Retake Lead
+                                </DropdownMenuItem>
+                            ) : (
+                                <DropdownMenuItem onSelect={() => handleSendToPartnerClick(lead)}>
+                                    <Send className="mr-2 h-4 w-4" />
+                                    Send to Partner
+                                </DropdownMenuItem>
+                            )
                         )}
                         </DropdownMenuContent>
                     </DropdownMenu>

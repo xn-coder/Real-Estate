@@ -12,6 +12,14 @@ export type Lead = {
     propertyId: string;
     partnerId: string;
     customerId: string;
-    status: 'New' | 'Contacted' | 'Qualified' | 'Lost';
+    status: 'New' | 'Contacted' | 'Qualified' | 'Lost' | 'Forwarded';
     createdAt: Date | Timestamp;
+    forwardedTo?: {
+        partnerId: string;
+        partnerName: string;
+        leadCopyId: string;
+    } | null;
+    isCopy?: boolean;
+    originalLeadId?: string;
 };
+
