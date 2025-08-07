@@ -149,7 +149,7 @@ export default function Dashboard() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">
           Dashboard
         </h1>
       </div>
@@ -159,8 +159,8 @@ export default function Dashboard() {
         {renderStatCard("Deals in Progress", stats.dealsInProgress, Briefcase, "+1 closed this week")}
         {renderStatCard("Upcoming Appointments", stats.upcomingAppointments, Calendar, `${appointments.filter(a => format(a.visitDate as Date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')).length} today`)}
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+      <div className="grid gap-4 lg:grid-cols-7">
+        <Card className="lg:col-span-4">
           <CardHeader>
             <CardTitle>Lead Generation Overview</CardTitle>
             <CardDescription>Last 6 months</CardDescription>
@@ -181,7 +181,7 @@ export default function Dashboard() {
              )}
           </CardContent>
         </Card>
-        <Card className="col-span-4 lg:col-span-3">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>Upcoming Appointments</CardTitle>
             <CardDescription>
@@ -190,26 +190,28 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
              {isLoading ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Property</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {appointments.slice(0, 5).map((appointment) => (
-                      <TableRow key={appointment.id}>
-                        <TableCell>
-                          <div className="font-medium">{appointment.lead?.name || 'N/A'}</div>
-                        </TableCell>
-                        <TableCell><Badge variant="outline">{appointment.property?.catalogTitle || 'N/A'}</Badge></TableCell>
-                        <TableCell>{format(appointment.visitDate as Date, "PPP")}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Property</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {appointments.slice(0, 5).map((appointment) => (
+                          <TableRow key={appointment.id}>
+                            <TableCell>
+                              <div className="font-medium">{appointment.lead?.name || 'N/A'}</div>
+                            </TableCell>
+                            <TableCell><Badge variant="outline">{appointment.property?.catalogTitle || 'N/A'}</Badge></TableCell>
+                            <TableCell>{format(appointment.visitDate as Date, "PPP")}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                </div>
              )}
           </CardContent>
         </Card>

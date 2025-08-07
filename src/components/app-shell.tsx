@@ -83,7 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-10 flex items-center justify-between p-2 pr-4 border-b h-16 bg-background/80 backdrop-blur-sm">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <SidebarTrigger />
             <div className="relative hidden md:block">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -94,10 +94,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               />
             </div>
           </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
                 {isCustomer && (
-                     <Button>
-                        <FilePlus className="mr-2 h-4 w-4" /> Post Requirements
+                     <Button size="sm">
+                        <FilePlus className="mr-0 md:mr-2 h-4 w-4" />
+                        <span className="hidden md:inline">Post Requirements</span>
                     </Button>
                 )}
                <Button variant="ghost" size="icon" asChild>

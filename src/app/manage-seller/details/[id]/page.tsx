@@ -173,7 +173,7 @@ export default function SellerDetailsPage() {
                             <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground"/><span>{seller.phone}</span></div>
                             <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground"/><span>{seller.email}</span></div>
                             <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground"/><span>DOB: {seller.dob ? format(seller.dob, "PPP") : 'N/A'}</span></div>
-                             <div className="flex items-center gap-2 col-span-2"><FileText className="h-4 w-4 text-muted-foreground"/><span>{`${seller.address}, ${seller.city}, ${seller.state} - ${seller.pincode}`}</span></div>
+                             <div className="flex items-center gap-2 sm:col-span-2"><FileText className="h-4 w-4 text-muted-foreground"/><span>{`${seller.address}, ${seller.city}, ${seller.state} - ${seller.pincode}`}</span></div>
                         </div>
                     </CardContent>
                 </Card>
@@ -205,7 +205,7 @@ export default function SellerDetailsPage() {
                         <CardTitle>KYC Documents</CardTitle>
                     </CardHeader>
                      <CardContent className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                             <div>
                                 <Label className="text-sm font-medium">Aadhar Card</Label>
                                 <p className="text-sm text-muted-foreground font-mono mt-1">{seller.aadharNumber}</p>

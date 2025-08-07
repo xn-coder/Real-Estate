@@ -221,7 +221,7 @@ export default function PartnerProfilePage() {
                 <Card>
                     <CardHeader><CardTitle>KYC Documents</CardTitle></CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid sm:grid-cols-2 gap-4">
                             <div>
                                 <Label className="text-sm font-medium">Aadhar Card</Label>
                                 <p className="text-sm text-muted-foreground font-mono mt-1">{partner.aadharNumber || 'Not Provided'}</p>
@@ -244,7 +244,7 @@ export default function PartnerProfilePage() {
                         <CardTitle>Other Uploaded Documents</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="border rounded-lg">
+                        <div className="border rounded-lg overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>

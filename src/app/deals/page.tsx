@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { dealsByStage } from "@/lib/data"
@@ -15,7 +16,7 @@ export default function DealsPage() {
           Add Deal
         </Button>
       </header>
-      <main className="flex-1 overflow-x-auto p-4">
+      <main className="flex-1 p-4 overflow-x-auto">
         <div className="flex gap-4 pb-4 min-w-max">
           {dealStages.map((stage) => (
             <div key={stage} className="w-72 flex-shrink-0">
