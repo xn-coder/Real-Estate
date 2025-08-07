@@ -37,6 +37,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useUser } from "@/hooks/use-user"
+
 
 const partnerRoles = {
   'affiliate': 'Affiliate Partner',
@@ -64,12 +66,16 @@ const statusColors: { [key: string]: "default" | "secondary" | "destructive" } =
 export default function ManagePartnerListPage() {
   const { toast } = useToast()
   const router = useRouter();
+  const { user } = useUser();
   const [partners, setPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
   const [isDeactivating, setIsDeactivating] = React.useState(false)
   const [deactivationReason, setDeactivationReason] = React.useState("")
   const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = React.useState(false)
+
+  const isAdmin = user?.role === 'admin';
+  const isSeller = user?.role === 'seller';
 
   const fetchPartners = React.useCallback(async () => {
     setIsLoading(true)
@@ -142,11 +148,13 @@ export default function ManagePartnerListPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Partners</h1>
-        <Button asChild>
-            <Link href="/manage-partner/add">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Partner
-            </Link>
-        </Button>
+        {isAdmin && (
+          <Button asChild>
+              <Link href="/manage-partner/add">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Partner
+              </Link>
+          </Button>
+        )}
       </div>
       <div className="border rounded-lg">
         <Table>
@@ -188,32 +196,43 @@ export default function ManagePartnerListPage() {
                 </TableCell>
                 <TableCell className="hidden md:table-cell">{partner.email}</TableCell>
                 <TableCell className="hidden md:table-cell">{partner.phone}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => router.push(`/manage-partner/${partner.id}`)}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Profile
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => router.push(`/send-message?recipientId=${partner.id}&type=to_partner`)}>
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Send Message
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onSelect={() => handleDeactivateClick(partner)} className="text-destructive">
-                        <UserX className="mr-2 h-4 w-4" />
-                        Deactivate
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <TableCell className="text-right">
+                    {isSeller ? (
+                        <div className="flex gap-2 justify-end">
+                            <Button variant="outline" size="sm" onClick={() => router.push(`/manage-partner/${partner.id}`)}>
+                                <Eye className="mr-2 h-4 w-4" /> View Profile
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => router.push(`/send-message?recipientId=${partner.id}&type=to_partner`)}>
+                                <MessageSquare className="mr-2 h-4 w-4" /> Send Message
+                            </Button>
+                        </div>
+                    ) : (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => router.push(`/manage-partner/${partner.id}`)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => router.push(`/send-message?recipientId=${partner.id}&type=to_partner`)}>
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                Send Message
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => handleDeactivateClick(partner)} className="text-destructive">
+                                <UserX className="mr-2 h-4 w-4" />
+                                Deactivate
+                            </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </TableCell>
               </TableRow>
             ))}

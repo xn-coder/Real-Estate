@@ -37,7 +37,7 @@ import { Loader2, PlusCircle, Upload, Paperclip, Download, Search } from "lucide
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, setDoc, query, where } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -110,8 +110,9 @@ export default function MarketingKitPage() {
 
   const featureImageRef = React.useRef<HTMLInputElement>(null)
   const filesRef = React.useRef<HTMLInputElement>(null)
-
-  const canAddKits = user?.role === 'admin' || user?.role === 'seller';
+  
+  const isSeller = user?.role === 'seller';
+  const canAddKits = user?.role === 'admin' || isSeller;
 
   const form = useForm<MarketingKitForm>({
     resolver: zodResolver(marketingKitSchema),
@@ -121,19 +122,28 @@ export default function MarketingKitPage() {
   })
   
   const fetchKits = React.useCallback(async () => {
+    if (!user) return;
     setIsLoadingKits(true)
     try {
       const kitsCollection = collection(db, "marketing_kits")
-      const kitsSnapshot = await getDocs(kitsCollection)
-      const kitsList = kitsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Kit))
-      if (kitsList.length > 0) {
-        setKits(kitsList)
+      let q;
+      if (isSeller) {
+          q = query(kitsCollection, where("ownerId", "==", user.id));
       } else {
+          q = query(kitsCollection);
+      }
+      
+      const kitsSnapshot = await getDocs(q)
+      const kitsList = kitsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Kit))
+      
+      if (!isSeller && kitsList.length === 0) {
         setKits(initialKits);
+      } else {
+        setKits(kitsList)
       }
     } catch (error) {
       console.error("Error fetching kits:", error)
-      setKits(initialKits);
+      if (!isSeller) setKits(initialKits);
       toast({
         variant: "destructive",
         title: "Error",
@@ -142,11 +152,13 @@ export default function MarketingKitPage() {
     } finally {
       setIsLoadingKits(false)
     }
-  }, [toast])
+  }, [toast, user, isSeller])
 
   React.useEffect(() => {
-    fetchKits()
-  }, [fetchKits])
+    if (user) {
+        fetchKits();
+    }
+  }, [user, fetchKits])
 
 
   async function onSubmit(values: MarketingKitForm) {
@@ -353,5 +365,3 @@ export default function MarketingKitPage() {
     </div>
   )
 }
-
-    
