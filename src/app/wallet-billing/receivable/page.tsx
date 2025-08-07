@@ -74,9 +74,12 @@ export default function ReceivableCashPage() {
         setIsLoading(true);
         try {
             const receivablesRef = collection(db, "receivables");
-            const q = user.role === 'admin'
-              ? query(receivablesRef, orderBy("date", "desc"))
-              : query(receivablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
+            let q;
+            if (user.role === 'admin' || user.role === 'seller') {
+                q = query(receivablesRef, orderBy("date", "desc"));
+            } else {
+                q = query(receivablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
+            }
 
             const snapshot = await getDocs(q);
             const receivablesList = snapshot.docs.map(doc => ({

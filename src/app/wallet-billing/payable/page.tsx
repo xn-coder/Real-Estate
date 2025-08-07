@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, ArrowLeft, PlusCircle, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, orderBy, Timestamp, addDoc, doc, where } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, Timestamp, addDoc, where } from "firebase/firestore"
 import type { Payable } from "@/types/wallet"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -73,9 +73,12 @@ export default function PayableListPage() {
         setIsLoading(true);
         try {
             const payablesRef = collection(db, "payables");
-            const q = user.role === 'admin'
-              ? query(payablesRef, orderBy("date", "desc"))
-              : query(payablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
+            let q;
+             if (user.role === 'admin' || user.role === 'seller') {
+                q = query(payablesRef, orderBy("date", "desc"));
+            } else {
+                q = query(payablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
+            }
             
             const snapshot = await getDocs(q);
             const payablesList = snapshot.docs.map(doc => ({
