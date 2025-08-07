@@ -10,7 +10,7 @@ import {
   CardDescription
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building, CheckCircle, ChevronRight, Loader2, PlusCircle, Hourglass, Eye, Pencil, Trash2, Tag } from "lucide-react"
+import { Building, CheckCircle, ChevronRight, Loader2, PlusCircle, Hourglass, Eye, Pencil, Trash2, Tag, Home } from "lucide-react"
 import Link from "next/link"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore"
@@ -55,16 +55,20 @@ export default function ListingsDashboardPage() {
   ];
 
   const dashboardItems = [
-    { name: "List of Properties", href: "/listings/list", icon: Building },
+    { name: "List of All Properties", href: "/listings/list", icon: Building },
+    { name: "My Properties", href: "/listings/my-properties", icon: Home },
     { name: "Pending Properties", href: "/listings/pending", icon: Hourglass },
   ];
   
   const adminDashboardItems = [
-    { name: "List of Properties", href: "/listings/list", icon: Building },
+    { name: "List of All Properties", href: "/listings/list", icon: Building },
+    { name: "My Properties", href: "/listings/my-properties", icon: Home },
     { name: "Admin View Properties", href: "/listings/admin-list", icon: Eye },
     { name: "Pending Properties", href: "/listings/pending", icon: Hourglass },
     { name: "Manage Property Types", href: "/listings/property-types", icon: Tag },
   ]
+
+  const finalDashboardItems = isAdmin ? adminDashboardItems : dashboardItems;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -102,7 +106,7 @@ export default function ListingsDashboardPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
-            {(isAdmin ? adminDashboardItems : dashboardItems).map((option) => (
+            {finalDashboardItems.map((option) => (
               <Link href={option.href} key={option.name}>
                 <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50">
                     <div className="flex items-center gap-4">
