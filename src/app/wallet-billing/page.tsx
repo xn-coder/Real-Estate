@@ -34,32 +34,41 @@ export default function WalletBillingPage() {
 
   React.useEffect(() => {
       const fetchStats = async () => {
-          if (!isAdmin && !isSeller) {
-              setIsLoading(false);
-              return;
-          };
+          if (!user) return;
+
           setIsLoading(true);
           try {
-              const walletsSnapshot = await getDocs(collection(db, "wallets"));
-              let totalBalance = 0, totalRevenue = 0;
-              walletsSnapshot.forEach(doc => {
-                  const data = doc.data();
-                  totalBalance += data.balance || 0;
-                  totalRevenue += data.revenue || 0;
-              });
+              let totalBalance = 0, totalRevenue = 0, totalReceivable = 0, totalPayable = 0;
 
-              const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("status", "==", "Pending")));
-              let totalReceivable = 0;
-              receivablesSnapshot.forEach(doc => {
-                  totalReceivable += doc.data().amount || 0;
-              });
+              if (isAdmin) {
+                  const walletsSnapshot = await getDocs(collection(db, "wallets"));
+                  walletsSnapshot.forEach(doc => {
+                      const data = doc.data();
+                      totalBalance += data.balance || 0;
+                      totalRevenue += data.revenue || 0;
+                  });
+
+                  const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("status", "==", "Pending")));
+                  receivablesSnapshot.forEach(doc => {
+                      totalReceivable += doc.data().amount || 0;
+                  });
+                  
+                  const payablesSnapshot = await getDocs(query(collection(db, "payables"), where("status", "==", "Pending")));
+                  payablesSnapshot.forEach(doc => {
+                      totalPayable += doc.data().amount || 0;
+                  });
+              } else if (isSeller) {
+                  const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("userId", "==", user.id)));
+                  receivablesSnapshot.forEach(doc => {
+                      totalReceivable += doc.data().amount || 0;
+                  });
+                  
+                  const payablesSnapshot = await getDocs(query(collection(db, "payables"), where("userId", "==", user.id)));
+                   payablesSnapshot.forEach(doc => {
+                      totalPayable += doc.data().amount || 0;
+                  });
+              }
               
-              const payablesSnapshot = await getDocs(query(collection(db, "payables"), where("status", "==", "Pending")));
-              let totalPayable = 0;
-              payablesSnapshot.forEach(doc => {
-                  totalPayable += doc.data().amount || 0;
-              });
-
               setStats({ totalBalance, totalRevenue, totalReceivable, totalPayable });
           } catch(e) {
               console.error("Error fetching wallet stats:", e);
@@ -68,7 +77,7 @@ export default function WalletBillingPage() {
           }
       }
       fetchStats();
-  }, [isAdmin, isSeller]);
+  }, [isAdmin, isSeller, user]);
 
   const walletStats = [
     { title: "Total Balance", amount: stats.totalBalance.toLocaleString(), description: "Across all wallets" },
