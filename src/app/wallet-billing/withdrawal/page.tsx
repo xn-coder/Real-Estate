@@ -30,6 +30,7 @@ import { format } from "date-fns"
 
 const requestFormSchema = z.object({
   amount: z.coerce.number().min(100, "Withdrawal amount must be at least ₹100."),
+  sellerId: z.string().optional(),
   notes: z.string().optional(),
 })
 type RequestFormValues = z.infer<typeof requestFormSchema>
@@ -51,6 +52,7 @@ export default function WithdrawalRequestPage() {
   const isAdmin = user?.role === 'admin';
   const isSeller = user?.role === 'seller';
   const canManage = isAdmin || isSeller;
+  const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
 
 
   const form = useForm<RequestFormValues>({
@@ -94,6 +96,7 @@ export default function WithdrawalRequestPage() {
             userId: user.id,
             userName: user.name,
             amount: values.amount,
+            sellerId: values.sellerId || null,
             notes: values.notes,
             status: "Pending",
             requestedAt: Timestamp.now(),
@@ -167,6 +170,21 @@ export default function WithdrawalRequestPage() {
                     </FormItem>
                     )}
                 />
+                 {isPartner && (
+                    <FormField
+                        control={form.control}
+                        name="sellerId"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Seller ID (Optional)</FormLabel>
+                            <FormControl>
+                            <Input placeholder="Enter Seller ID if applicable" {...field} disabled={isSubmitting} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                )}
                  <FormField
                     control={form.control}
                     name="notes"

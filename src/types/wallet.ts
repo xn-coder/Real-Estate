@@ -10,6 +10,7 @@ export type WithdrawalRequest = {
     requestedAt: Date | Timestamp;
     processedAt?: Date | Timestamp;
     notes?: string;
+    sellerId?: string;
 };
 
 export type RewardTransaction = {
