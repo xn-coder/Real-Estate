@@ -58,7 +58,6 @@ import {
   PlusCircle,
   MapPin,
   Banknote,
-  Calculator,
   Gift,
 } from 'lucide-react'
 import { useUser } from '@/hooks/use-user'
@@ -136,7 +135,7 @@ const sellerNavItems: NavItem[] = [
 
 const customerNavItems: NavItem[] = [
     { href: '/listings/list', icon: Home, label: 'Home' },
-    { href: '#', icon: Building, label: 'My Properties' },
+    { href: '/my-properties', icon: Building, label: 'My Properties' },
     { href: '/schedule', icon: Calendar, label: 'Site Visit Schedules' },
     { href: '/home-loans', icon: Banknote, label: 'Home Loans' },
     { href: '/post-requirements', icon: FileText, label: 'Post Your Requirements' },
