@@ -160,7 +160,8 @@ export default function PropertyDetailsPage() {
     };
     
     const handleInitiateEnquiry = async () => {
-        const email = enquiryForm.getValues("email");
+        if (!user) return;
+        
         const isFormValid = await enquiryForm.trigger(["name", "phone", "email", "city", "state", "country"]);
 
         if (!isFormValid) {
@@ -169,17 +170,17 @@ export default function PropertyDetailsPage() {
 
         setIsOtpSending(true);
         try {
-            // Check if email already exists
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, where("email", "==", email));
+            // Check if a lead already exists for this user and this property
+            const leadsRef = collection(db, "leads");
+            const q = query(leadsRef, where("partnerId", "==", user.id), where("propertyId", "==", propertyId));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
-                enquiryForm.setError("email", { message: "This email is already registered." });
-                toast({ variant: "destructive", title: "Email Exists", description: "A user with this email already exists." });
+                toast({ variant: "destructive", title: "Already Enquired", description: "You have already submitted an enquiry for this property." });
                 return;
             }
             
+            const email = enquiryForm.getValues("email");
             await sendOtp(email);
             setIsOtpDialogOpen(true);
             toast({ title: "OTP Sent", description: `An OTP has been sent to ${email}.` });
@@ -529,3 +530,5 @@ export default function PropertyDetailsPage() {
         </div>
     )
 }
+
+    
