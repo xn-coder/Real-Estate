@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History, Globe, Contact, Wallet, LifeBuoy, Headset, FilePlus, Home } from "lucide-react"
+import { Settings, LogOut, Bell, Search, User, MessageSquare, BookUser, History, Globe, Contact, Wallet, LifeBuoy, Headset, FilePlus, Home, Users } from "lucide-react"
 import Image from "next/image"
 import { AppShellNav } from "./app-shell-nav"
 import Link from "next/link"
