@@ -136,13 +136,13 @@ const sellerNavItems: NavItem[] = [
 
 const customerNavItems: NavItem[] = [
     { href: '/listings/list', icon: Home, label: 'Home' },
+    { href: '#', icon: Building, label: 'My Properties' },
     { href: '/schedule', icon: Calendar, label: 'Site Visit Schedules' },
     { href: '/home-loans', icon: Banknote, label: 'Home Loans' },
     { href: '/post-requirements', icon: FileText, label: 'Post Your Requirements' },
     { href: '/manage-requirements', icon: Settings, label: 'Manage Requirements' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/document-management', icon: FileText, label: 'Manage Documents' },
-    { href: '/emi-calculator', icon: Calculator, label: 'EMI Calculator' },
     { href: '/refer-earn', icon: Gift, label: 'Refer & Earn' },
     { href: '/upgrade', icon: Award, label: 'Upgrade' },
 ];
