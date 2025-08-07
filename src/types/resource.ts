@@ -16,9 +16,12 @@ export type Resource = {
     videoUrl: string | null;
     faqs: FaqItem[] | null;
     createdAt: Date | Timestamp;
+    ownerId?: string;
 };
 
 export type PropertyType = {
     id: string;
     name: string;
 };
+
+    

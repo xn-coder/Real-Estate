@@ -62,6 +62,7 @@ type Kit = {
   type: string;
   featureImage: string;
   files: KitFile[];
+  ownerId?: string;
 };
 
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -149,6 +150,7 @@ export default function MarketingKitPage() {
 
 
   async function onSubmit(values: MarketingKitForm) {
+    if (!user) return;
     setIsSubmitting(true)
     try {
         const kitId = generateUserId("KIT");
@@ -156,6 +158,7 @@ export default function MarketingKitPage() {
             id: kitId,
             title: values.title,
             type: values.kitType.charAt(0).toUpperCase() + values.kitType.slice(1),
+            ownerId: user.id, // Assign ownership
         });
 
       setIsSubmitting(false)
@@ -350,3 +353,5 @@ export default function MarketingKitPage() {
     </div>
   )
 }
+
+    

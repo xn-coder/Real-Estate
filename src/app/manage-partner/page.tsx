@@ -15,11 +15,13 @@ import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where } from "firebase/firestore"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { useUser } from "@/hooks/use-user"
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
 
 export default function ManagePartnerDashboardPage() {
   const { toast } = useToast()
+  const { user } = useUser()
   const [counts, setCounts] = React.useState({
     active: 0,
     activation: 0,
@@ -27,6 +29,9 @@ export default function ManagePartnerDashboardPage() {
     deactivated: 0,
   })
   const [isLoading, setIsLoading] = React.useState(true)
+
+  const isSeller = user?.role === 'seller';
+  const isAdmin = user?.role === 'admin';
 
   const fetchCounts = React.useCallback(async () => {
     setIsLoading(true)
@@ -70,27 +75,29 @@ export default function ManagePartnerDashboardPage() {
 
   const dashboardItems = [
     { name: "Active Partners", href: "/manage-partner/list", count: counts.active },
-    { name: "Partner Activation", href: "/manage-partner/activation", count: counts.activation },
-    { name: "Suspended Partners", href: "/manage-partner/suspended", count: counts.suspended },
-    { name: "Deactivated Partners", href: "/manage-partner/deactivated", count: counts.deactivated },
-  ];
+    { name: "Partner Activation", href: "/manage-partner/activation", count: counts.activation, adminOnly: true },
+    { name: "Suspended Partners", href: "/manage-partner/suspended", count: counts.suspended, adminOnly: true },
+    { name: "Deactivated Partners", href: "/manage-partner/deactivated", count: counts.deactivated, adminOnly: true },
+  ].filter(item => isSeller ? !item.adminOnly : true);
 
   const statCards = [
     { title: "Active Partners", count: counts.active, icon: UserCheck, color: "text-green-500" },
-    { title: "Pending Activation", count: counts.activation, icon: UserPlus, color: "text-yellow-500" },
-    { title: "Suspended", count: counts.suspended, icon: Ban, color: "text-orange-500" },
-    { title: "Deactivated", count: counts.deactivated, icon: UserX, color: "text-red-500" },
-  ];
+    { title: "Pending Activation", count: counts.activation, icon: UserPlus, color: "text-yellow-500", adminOnly: true },
+    { title: "Suspended", count: counts.suspended, icon: Ban, color: "text-orange-500", adminOnly: true },
+    { title: "Deactivated", count: counts.deactivated, icon: UserX, color: "text-red-500", adminOnly: true },
+  ].filter(item => isSeller ? !item.adminOnly : true);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Partner Management</h1>
-         <Button asChild>
-            <Link href="/manage-partner/add">
-              <UserPlus className="mr-2 h-4 w-4" /> Add Partner
-            </Link>
-        </Button>
+         {isAdmin && (
+            <Button asChild>
+                <Link href="/manage-partner/add">
+                <UserPlus className="mr-2 h-4 w-4" /> Add Partner
+                </Link>
+            </Button>
+         )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -128,3 +135,5 @@ export default function ManagePartnerDashboardPage() {
     </div>
   )
 }
+
+    

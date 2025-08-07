@@ -154,7 +154,10 @@ export default function ResourceCenterPage() {
   const [editingResource, setEditingResource] = React.useState<Resource | null>(null);
   const [viewingResource, setViewingResource] = React.useState<Resource | null>(null);
 
-  const isAdminOrSeller = user?.role === 'admin' || user?.role === 'seller';
+  const isAdmin = user?.role === 'admin';
+  const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+  const isSeller = user?.role === 'seller';
+  const canManage = isAdmin || isSeller;
 
   const resourceForm = useForm<ResourceFormValues>({
     resolver: zodResolver(resourceFormSchema),
@@ -210,6 +213,7 @@ export default function ResourceCenterPage() {
   }
 
   const onResourceSubmit = async (values: ResourceFormValues) => {
+    if (!user) return;
     setIsSubmitting(true);
     try {
       let featureImageUrl = editingResource?.featureImage || '';
@@ -224,7 +228,7 @@ export default function ResourceCenterPage() {
         return;
       }
   
-      const resourceData: Omit<Resource, 'id' | 'createdAt'> & { id?: string; createdAt?: Timestamp } = {
+      const resourceData: Omit<Resource, 'id' | 'createdAt'> & { id?: string; createdAt?: Timestamp; ownerId?: string } = {
         title: values.title,
         propertyTypeId: values.propertyTypeId,
         contentType: values.contentType,
@@ -241,6 +245,7 @@ export default function ResourceCenterPage() {
         const resourceId = generateUserId("RES");
         resourceData.id = resourceId;
         resourceData.createdAt = Timestamp.now();
+        resourceData.ownerId = user.id;
         await setDoc(doc(db, "resources", resourceId), resourceData);
         toast({ title: "Resource Created", description: "The new resource has been added." });
       }
@@ -280,22 +285,29 @@ export default function ResourceCenterPage() {
     terms_condition: 'Terms & Condition'
   }
 
+  const renderFAQs = (resource: Resource) => (
+    <div className="mt-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Frequently Asked Questions</CardTitle>
+          <CardDescription>Find answers to common questions about this topic.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+              {(resource.faqs || []).map((faq, index) => (
+                  <AccordionItem value={`item-${index}`} key={index}>
+                      <AccordionTrigger>{faq.question}</AccordionTrigger>
+                      <AccordionContent>{faq.answer}</AccordionContent>
+                  </AccordionItem>
+              ))}
+          </Accordion>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const renderViewDialogContent = () => {
     if (!viewingResource) return null;
-
-    const renderFAQs = (resource: Resource) => (
-      <div className="mt-8">
-        <h3 className="font-semibold mb-2">Frequently Asked Questions</h3>
-        <Accordion type="single" collapsible className="w-full">
-          {(resource.faqs || []).map((faq, index) => (
-            <AccordionItem value={`item-${index}`} key={index}>
-              <AccordionTrigger>{faq.question}</AccordionTrigger>
-              <AccordionContent>{faq.answer}</AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
-    );
 
     const renderContent = () => {
       switch (viewingResource.contentType) {
@@ -373,10 +385,10 @@ export default function ResourceCenterPage() {
             <div>
                 <CardTitle>Resources</CardTitle>
                 <CardDescription>
-                    {isAdminOrSeller ? "Add and manage your educational content." : "Browse available resources."}
+                    {canManage ? "Add and manage your educational content." : "Browse available resources."}
                 </CardDescription>
             </div>
-            {isAdminOrSeller && (
+            {canManage && (
                 <Dialog open={isResourceDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) closeResourceDialog(); else setIsResourceDialogOpen(true); }}>
                     <DialogTrigger asChild>
                         <Button onClick={() => openResourceDialog(null)}>
@@ -576,46 +588,48 @@ export default function ResourceCenterPage() {
                 ) : resources.length === 0 ? (
                         <TableRow><TableCell colSpan={5} className="h-24 text-center">No resources found.</TableCell></TableRow>
                 ) : (
-                    resources.map(resource => (
-                        <TableRow key={resource.id}>
-                            <TableCell>
-                                <Image src={resource.featureImage} alt={resource.title} width={40} height={40} className="rounded-md object-cover" />
-                            </TableCell>
-                            <TableCell>{resource.title}</TableCell>
-                            <TableCell>{getPropertyTypeName(resource.propertyTypeId)}</TableCell>
-                            <TableCell className="capitalize">{contentTypeDisplay[resource.contentType]}</TableCell>
-                            <TableCell className="text-right">
-                                {isAdminOrSeller ? (
-                                    <>
-                                        <Button variant="ghost" size="icon" onClick={() => openResourceDialog(resource)}>
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently delete the resource.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => deleteResource(resource.id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </>
-                                ) : (
-                                    <Button variant="outline" size="sm" onClick={() => setViewingResource(resource)}>
-                                        <Eye className="mr-2 h-4 w-4" /> View
+                    resources.map(resource => {
+                        const isOwner = user?.id === resource.ownerId;
+                        return (
+                            <TableRow key={resource.id}>
+                                <TableCell>
+                                    <Image src={resource.featureImage} alt={resource.title} width={40} height={40} className="rounded-md object-cover" />
+                                </TableCell>
+                                <TableCell>{resource.title}</TableCell>
+                                <TableCell>{getPropertyTypeName(resource.propertyTypeId)}</TableCell>
+                                <TableCell className="capitalize">{contentTypeDisplay[resource.contentType]}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => setViewingResource(resource)}>
+                                        <Eye className="h-4 w-4" />
                                     </Button>
-                                )}
-                            </TableCell>
-                        </TableRow>
-                    ))
+                                    {(isAdmin || isOwner) && (
+                                        <>
+                                            <Button variant="ghost" size="icon" onClick={() => openResourceDialog(resource)}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete the resource.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => deleteResource(resource.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        )
+                    })
                 )}
             </TableBody>
             </Table>
@@ -629,3 +643,5 @@ export default function ResourceCenterPage() {
     </div>
   )
 }
+
+    
