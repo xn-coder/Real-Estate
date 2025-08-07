@@ -5,8 +5,8 @@ import * as React from "react"
 import { useUser } from "@/hooks/use-user"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle, ArrowRight, Star } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Loader2, CheckCircle, ArrowRight, Star, Handshake } from "lucide-react"
+import Link from "next/link"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -14,6 +14,7 @@ const roleNameMapping: Record<string, string> = {
   associate: 'Associate Partner',
   channel: 'Channel Partner',
   franchisee: 'Franchisee',
+  customer: 'Customer',
 };
 
 const upgradePaths: Record<string, string[]> = {
@@ -22,6 +23,7 @@ const upgradePaths: Record<string, string[]> = {
   associate: ['channel'],
   channel: [],
   franchisee: [],
+  customer: [], // Customers have a different upgrade path
 };
 
 const planFeatures: Record<string, string[]> = {
@@ -45,13 +47,46 @@ export default function UpgradePage() {
   if (!user || !user.role || !roleNameMapping[user.role]) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p>Could not determine your current partnership plan.</p>
+        <p>Could not determine your current plan.</p>
       </div>
     )
   }
 
   const currentRole = user.role;
+  const isCustomer = currentRole === 'customer';
   const availableUpgrades = upgradePaths[currentRole] || [];
+
+  if (isCustomer) {
+    return (
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Become a Partner</h1>
+        </div>
+        <Card className="text-center">
+            <CardHeader>
+                <div className="mx-auto bg-primary/10 text-primary rounded-full h-16 w-16 flex items-center justify-center">
+                    <Handshake className="h-8 w-8"/>
+                </div>
+                <CardTitle className="pt-4">Join Our Partner Network</CardTitle>
+                <CardDescription className="max-w-md mx-auto">
+                    Unlock new opportunities by becoming a partner. Gain access to exclusive tools, resources, and earning potential to grow with us.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">You are currently on a customer account.</p>
+            </CardContent>
+            <CardFooter className="justify-center">
+                 <Button asChild size="lg">
+                    <Link href="/manage-partner/add">
+                        Start Your Partner Application
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                </Button>
+            </CardFooter>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
