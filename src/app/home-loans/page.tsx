@@ -45,7 +45,7 @@ export default function HomeLoansPage() {
         </div>
       </Card>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 gap-6">
           <Card>
               <CardHeader>
                   <CardTitle>Key Features</CardTitle>
@@ -73,23 +73,6 @@ export default function HomeLoansPage() {
                         <span className="text-sm">{item}</span>
                     </div>
                   ))}
-              </CardContent>
-          </Card>
-          
-          <Card className="flex flex-col justify-between">
-               <CardHeader>
-                  <CardTitle>Ready to Apply?</CardTitle>
-                  <CardDescription>Take the next step towards owning your dream home.</CardDescription>
-              </CardHeader>
-               <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                      Our expert advisors are here to guide you through every step of the process. Get in touch with us today for a personalized consultation.
-                  </p>
-              </CardContent>
-               <CardContent>
-                  <Button className="w-full">
-                      Contact a Loan Advisor <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
               </CardContent>
           </Card>
       </div>
