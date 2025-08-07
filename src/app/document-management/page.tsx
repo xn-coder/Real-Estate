@@ -152,6 +152,8 @@ export default function DocumentManagementPage() {
         setKycToView({ title, number, url });
         setIsViewKycOpen(true);
     }
+    
+    const isPartnerOrAdmin = user?.role && (user.role === 'admin' || ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role));
 
     if (isUserLoading) {
         return <div className="flex-1 p-4 md:p-8 pt-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -161,32 +163,34 @@ export default function DocumentManagementPage() {
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
             <h1 className="text-3xl font-bold tracking-tight font-headline">Document Management</h1>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>KYC Documents</CardTitle>
-                    <CardDescription>Your verified identification documents.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-4">
-                    <div className="border p-4 rounded-lg flex items-center justify-between">
-                        <div>
-                            <h4 className="font-semibold">Aadhar Card</h4>
-                            <p className="text-sm text-muted-foreground font-mono">{user?.aadharNumber || 'Not Provided'}</p>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => handleViewKyc("Aadhar Card", user?.aadharNumber, user?.aadharFile)}>
-                            <Eye className="mr-2 h-4 w-4" /> View
-                        </Button>
-                    </div>
-                     <div className="border p-4 rounded-lg flex items-center justify-between">
-                        <div>
-                            <h4 className="font-semibold">PAN Card</h4>
-                            <p className="text-sm text-muted-foreground font-mono">{user?.panNumber || 'Not Provided'}</p>
-                        </div>
-                         <Button variant="outline" size="sm" onClick={() => handleViewKyc("PAN Card", user?.panNumber, user?.panFile)}>
-                            <Eye className="mr-2 h-4 w-4" /> View
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            {isPartnerOrAdmin && (
+              <Card>
+                  <CardHeader>
+                      <CardTitle>KYC Documents</CardTitle>
+                      <CardDescription>Your verified identification documents.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid md:grid-cols-2 gap-4">
+                      <div className="border p-4 rounded-lg flex items-center justify-between">
+                          <div>
+                              <h4 className="font-semibold">Aadhar Card</h4>
+                              <p className="text-sm text-muted-foreground font-mono">{user?.aadharNumber || 'Not Provided'}</p>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => handleViewKyc("Aadhar Card", user?.aadharNumber, user?.aadharFile)}>
+                              <Eye className="mr-2 h-4 w-4" /> View
+                          </Button>
+                      </div>
+                       <div className="border p-4 rounded-lg flex items-center justify-between">
+                          <div>
+                              <h4 className="font-semibold">PAN Card</h4>
+                              <p className="text-sm text-muted-foreground font-mono">{user?.panNumber || 'Not Provided'}</p>
+                          </div>
+                           <Button variant="outline" size="sm" onClick={() => handleViewKyc("PAN Card", user?.panNumber, user?.panFile)}>
+                              <Eye className="mr-2 h-4 w-4" /> View
+                          </Button>
+                      </div>
+                  </CardContent>
+              </Card>
+            )}
             
             <Card>
                 <CardHeader>
