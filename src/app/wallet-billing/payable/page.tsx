@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, PlusCircle } from "lucide-react"
+import { Loader2, ArrowLeft, PlusCircle, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, orderBy, Timestamp, addDoc } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, Timestamp, addDoc, doc } from "firebase/firestore"
 import type { Payable } from "@/types/wallet"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -28,6 +28,8 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import type { User } from "@/types/user"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const statusColors: Record<Payable['status'], "default" | "secondary" | "destructive"> = {
   Paid: 'default',
@@ -49,6 +51,11 @@ export default function PayableListPage() {
     const [isLoading, setIsLoading] = React.useState(true)
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+    const [users, setUsers] = React.useState<User[]>([]);
+    const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
 
     const form = useForm<PayableFormValues>({
         resolver: zodResolver(payableSchema),
@@ -77,18 +84,50 @@ export default function PayableListPage() {
             setIsLoading(false);
         }
     }, [toast]);
+    
+    const fetchUsers = React.useCallback(async () => {
+        setIsLoadingUsers(true);
+        try {
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            const usersList = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+            setUsers(usersList);
+        } catch (error) {
+            console.error("Error fetching users:", error);
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    }, []);
 
     React.useEffect(() => {
         fetchPayables();
-    }, [fetchPayables]);
+        fetchUsers();
+    }, [fetchPayables, fetchUsers]);
+    
+    const filteredUsers = React.useMemo(() => {
+        if (!searchTerm) return [];
+        return users.filter(user => 
+            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [users, searchTerm]);
+
+    const handleSelectUser = (user: User) => {
+        setSelectedUser(user);
+        form.setValue("userId", user.id);
+        setSearchTerm("");
+    }
 
     const onSubmit = async (values: PayableFormValues) => {
+        if (!selectedUser) {
+            toast({ variant: "destructive", title: "Error", description: "Please select a user."});
+            return;
+        }
         setIsSubmitting(true);
         try {
             await addDoc(collection(db, "payables"), {
-                userId: values.userId,
-                // TODO: Fetch user name based on ID
-                userName: "User " + values.userId,
+                userId: selectedUser.id,
+                userName: selectedUser.name,
                 amount: values.amount,
                 notes: values.notes,
                 date: Timestamp.now(),
@@ -98,6 +137,7 @@ export default function PayableListPage() {
             toast({ title: "Success", description: "Payable entry added." });
             setIsDialogOpen(false);
             form.reset();
+            setSelectedUser(null);
             fetchPayables();
 
         } catch (error) {
@@ -131,19 +171,56 @@ export default function PayableListPage() {
                         </DialogHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <FormField
+                               <FormField
                                     control={form.control}
                                     name="userId"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>User / Partner ID</FormLabel>
+                                            <FormLabel>User / Partner</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Enter the user or partner ID" {...field} />
+                                               <div className="space-y-2">
+                                                    {selectedUser ? (
+                                                        <div className="flex items-center gap-4 p-2 border rounded-md">
+                                                            <Avatar>
+                                                                <AvatarImage src={selectedUser.profileImage} />
+                                                                <AvatarFallback>{selectedUser.name.charAt(0)}</AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex-1">
+                                                                <p className="font-medium">{selectedUser.name}</p>
+                                                                <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                                                            </div>
+                                                            <Button variant="ghost" onClick={() => setSelectedUser(null)}>Change</Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <div className="relative">
+                                                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                                <Input 
+                                                                    placeholder="Search for a user..."
+                                                                    className="pl-8"
+                                                                    value={searchTerm}
+                                                                    onChange={e => setSearchTerm(e.target.value)}
+                                                                />
+                                                            </div>
+                                                            {searchTerm && (
+                                                                <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
+                                                                    {isLoadingUsers ? (
+                                                                        <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                                                                    ) : filteredUsers.length > 0 ? filteredUsers.map(u => (
+                                                                        <div key={u.id} onClick={() => handleSelectUser(u)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                                                            {u.name} ({u.email})
+                                                                        </div>
+                                                                    )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                               </div>
                                             </FormControl>
-                                            <FormMessage />
+                                            <FormMessage/>
                                         </FormItem>
                                     )}
-                                />
+                               />
                                 <FormField
                                     control={form.control}
                                     name="amount"
@@ -171,7 +248,7 @@ export default function PayableListPage() {
                                     )}
                                 />
                                 <DialogFooter>
-                                    <Button type="submit" disabled={isSubmitting}>
+                                    <Button type="submit" disabled={isSubmitting || !selectedUser}>
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         Add Entry
                                     </Button>
