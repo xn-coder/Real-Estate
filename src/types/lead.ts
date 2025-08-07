@@ -12,7 +12,7 @@ export type Lead = {
     propertyId: string;
     partnerId: string;
     customerId: string;
-    status: 'New' | 'Contacted' | 'Qualified' | 'Lost' | 'Forwarded';
+    status: 'New' | 'Contacted' | 'Qualified' | 'Lost' | 'Forwarded' | 'Pending' | 'Processing' | 'Completed';
     createdAt: Date | Timestamp;
     forwardedTo?: {
         partnerId: string;

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw, Pencil } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +48,9 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Qualified': 'outline',
   'Lost': 'destructive',
   'Forwarded': 'outline',
+  'Pending': 'secondary',
+  'Processing': 'default',
+  'Completed': 'outline',
 }
 
 export default function LeadsPage() {
@@ -68,8 +71,15 @@ export default function LeadsPage() {
   const [selectedPartnerForLead, setSelectedPartnerForLead] = React.useState<string | null>(null);
   const [isSending, setIsSending] = React.useState(false);
 
+  // State for "Change Status" dialog
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = React.useState(false);
+  const [selectedLeadForStatus, setSelectedLeadForStatus] = React.useState<Lead | null>(null);
+  const [newStatus, setNewStatus] = React.useState<Lead['status'] | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
+
 
   const canSendToPartner = user?.role && ['associate', 'channel', 'franchisee'].includes(user.role);
+  const canChangeStatus = user?.role === 'admin' || user?.role === 'seller';
 
   const fetchLeads = React.useCallback(async () => {
     if (!user) return;
@@ -166,6 +176,29 @@ export default function LeadsPage() {
     setSelectedLeadForSending(lead);
     setIsSendToPartnerDialogOpen(true);
   };
+
+  const handleChangeStatusClick = (lead: Lead) => {
+    setSelectedLeadForStatus(lead);
+    setNewStatus(lead.status);
+    setIsStatusDialogOpen(true);
+  }
+
+  const handleUpdateStatus = async () => {
+    if (!selectedLeadForStatus || !newStatus) return;
+    setIsUpdatingStatus(true);
+    try {
+      const leadRef = doc(db, 'leads', selectedLeadForStatus.id);
+      await updateDoc(leadRef, { status: newStatus });
+      toast({ title: 'Status Updated', description: `Lead status updated to ${newStatus}.`});
+      fetchLeads();
+      setIsStatusDialogOpen(false);
+    } catch (error) {
+       console.error("Error updating status:", error);
+       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update lead status.' });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }
 
   const handleSendLeadToPartner = async () => {
     const partner = teamMembers.find(m => m.id === selectedPartnerForLead);
@@ -298,6 +331,12 @@ export default function LeadsPage() {
                             <UserIcon className="mr-2 h-4 w-4" />
                             View Customer
                         </DropdownMenuItem>
+                        {canChangeStatus && (
+                            <DropdownMenuItem onSelect={() => handleChangeStatusClick(lead)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Change Status
+                            </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handleScheduleClick(lead)} disabled={lead.status === 'Forwarded'}>
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             Schedule Visit
@@ -389,6 +428,52 @@ export default function LeadsPage() {
                     <Button onClick={handleSendLeadToPartner} disabled={isSending || teamMembers.length === 0}>
                         {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Assign Lead
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Change Status Dialog */}
+        <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Change Lead Status</DialogTitle>
+                    <DialogDescription>
+                        Update the status for lead: {selectedLeadForStatus?.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <RadioGroup onValueChange={(value) => setNewStatus(value as Lead['status'])} value={newStatus || undefined}>
+                         <div className="space-y-2">
+                            <Label htmlFor="pending" className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                                <RadioGroupItem value="Pending" id="pending" />
+                                <div>
+                                    <p className="font-medium">Pending</p>
+                                    <p className="text-sm text-muted-foreground">The lead is waiting for further action.</p>
+                                </div>
+                            </Label>
+                            <Label htmlFor="processing" className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                                <RadioGroupItem value="Processing" id="processing" />
+                                <div>
+                                    <p className="font-medium">Processing</p>
+                                    <p className="text-sm text-muted-foreground">The lead is actively being worked on.</p>
+                                </div>
+                            </Label>
+                            <Label htmlFor="completed" className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                                <RadioGroupItem value="Completed" id="completed" />
+                                <div>
+                                    <p className="font-medium">Completed</p>
+                                    <p className="text-sm text-muted-foreground">The lead process has been successfully completed.</p>
+                                </div>
+                            </Label>
+                        </div>
+                    </RadioGroup>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleUpdateStatus} disabled={isUpdatingStatus}>
+                        {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Update Status
                     </Button>
                 </DialogFooter>
             </DialogContent>
