@@ -16,6 +16,7 @@ import { collection, getDocs, query, where } from "firebase/firestore"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { useUser } from "@/hooks/use-user"
+import ManagePartnerListPage from "./list/page"
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
 
@@ -34,6 +35,10 @@ export default function ManagePartnerDashboardPage() {
   const isAdmin = user?.role === 'admin';
 
   const fetchCounts = React.useCallback(async () => {
+    if (!isAdmin) {
+        setIsLoading(false);
+        return;
+    }
     setIsLoading(true)
     try {
       const usersCollection = collection(db, "users")
@@ -67,11 +72,15 @@ export default function ManagePartnerDashboardPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [toast])
+  }, [toast, isAdmin])
 
   React.useEffect(() => {
     fetchCounts()
   }, [fetchCounts])
+
+  if (isSeller) {
+    return <ManagePartnerListPage />
+  }
 
   const dashboardItems = [
     { name: "Active Partners", href: "/manage-partner/list", count: counts.active },
@@ -135,5 +144,3 @@ export default function ManagePartnerDashboardPage() {
     </div>
   )
 }
-
-    
