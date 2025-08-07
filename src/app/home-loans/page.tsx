@@ -33,7 +33,7 @@ export default function HomeLoansPage() {
       <Card className="overflow-hidden">
         <div className="relative h-48 md:h-64 bg-muted">
             <Image 
-                src="/banner.png"
+                src="/loan.jpg"
                 alt="Home loans banner"
                 layout="fill"
                 objectFit="cover"

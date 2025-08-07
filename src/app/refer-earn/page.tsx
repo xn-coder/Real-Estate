@@ -36,7 +36,7 @@ export default function ReferAndEarnPage() {
       <Card className="overflow-hidden">
         <div className="relative h-48 md:h-64 bg-muted">
             <Image 
-                src="https://placehold.co/1200x400.png"
+                src="/refer.jpg"
                 alt="Refer a friend banner"
                 layout="fill"
                 objectFit="cover"
