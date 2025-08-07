@@ -1,4 +1,3 @@
-
 'use client'
 
 import * as React from "react"
@@ -11,7 +10,7 @@ import {
 import { ChevronRight, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, getDocs, query, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
 type WalletStats = {
@@ -40,15 +39,26 @@ export default function WalletBillingPage() {
           };
           setIsLoading(true);
           try {
-              const snapshot = await getDocs(collection(db, "wallets"));
-              let totalBalance = 0, totalRevenue = 0, totalReceivable = 0, totalPayable = 0;
-              snapshot.forEach(doc => {
+              const walletsSnapshot = await getDocs(collection(db, "wallets"));
+              let totalBalance = 0, totalRevenue = 0;
+              walletsSnapshot.forEach(doc => {
                   const data = doc.data();
                   totalBalance += data.balance || 0;
                   totalRevenue += data.revenue || 0;
-                  totalReceivable += data.receivable || 0;
-                  totalPayable += data.payable || 0;
               });
+
+              const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("status", "==", "Pending")));
+              let totalReceivable = 0;
+              receivablesSnapshot.forEach(doc => {
+                  totalReceivable += doc.data().amount || 0;
+              });
+              
+              const payablesSnapshot = await getDocs(query(collection(db, "payables"), where("status", "==", "Pending")));
+              let totalPayable = 0;
+              payablesSnapshot.forEach(doc => {
+                  totalPayable += doc.data().amount || 0;
+              });
+
               setStats({ totalBalance, totalRevenue, totalReceivable, totalPayable });
           } catch(e) {
               console.error("Error fetching wallet stats:", e);
@@ -62,8 +72,8 @@ export default function WalletBillingPage() {
   const walletStats = [
     { title: "Total Balance", amount: stats.totalBalance.toLocaleString(), description: "Across all wallets" },
     { title: "Total Revenue", amount: stats.totalRevenue.toLocaleString(), description: "Total income generated" },
-    { title: "Total Receivable", amount: stats.totalReceivable.toLocaleString(), description: "Total amount to be received" },
-    { title: "Total Payable", amount: stats.totalPayable.toLocaleString(), description: "Total amount to be paid" },
+    { title: "Total Receivable", amount: stats.totalReceivable.toLocaleString(), description: "Total pending receivables" },
+    { title: "Total Payable", amount: stats.totalPayable.toLocaleString(), description: "Total pending payables" },
   ]
 
   const walletOptions = [
