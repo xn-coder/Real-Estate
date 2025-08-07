@@ -75,8 +75,10 @@ export default function ReceivableCashPage() {
         try {
             const receivablesRef = collection(db, "receivables");
             let q;
-            if (user.role === 'admin' || user.role === 'seller') {
+            if (user.role === 'admin') {
                 q = query(receivablesRef, orderBy("date", "desc"));
+            } else if (user.role === 'seller') {
+                q = query(receivablesRef, where("sellerId", "==", user.id), orderBy("date", "desc"));
             } else {
                 q = query(receivablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
             }
@@ -131,7 +133,7 @@ export default function ReceivableCashPage() {
     }
 
     const onSubmit = async (values: ReceivableFormValues) => {
-        if (!selectedUser) {
+        if (!selectedUser || !user) {
             toast({ variant: "destructive", title: "Error", description: "Please select a user."});
             return;
         }
@@ -140,6 +142,7 @@ export default function ReceivableCashPage() {
             await addDoc(collection(db, "receivables"), {
                 userId: selectedUser.id,
                 userName: selectedUser.name,
+                sellerId: user.id, // The logged-in seller is creating this
                 amount: values.amount,
                 notes: values.notes,
                 date: Timestamp.now(),

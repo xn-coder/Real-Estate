@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from "react"
@@ -58,14 +59,18 @@ export default function WalletBillingPage() {
                       totalPayable += doc.data().amount || 0;
                   });
               } else if (isSeller) {
-                  const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("userId", "==", user.id)));
+                  const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("sellerId", "==", user.id)));
                   receivablesSnapshot.forEach(doc => {
-                      totalReceivable += doc.data().amount || 0;
+                      if (doc.data().status === 'Pending') {
+                        totalReceivable += doc.data().amount || 0;
+                      }
                   });
                   
-                  const payablesSnapshot = await getDocs(query(collection(db, "payables"), where("userId", "==", user.id)));
+                  const payablesSnapshot = await getDocs(query(collection(db, "payables"), where("sellerId", "==", user.id)));
                    payablesSnapshot.forEach(doc => {
-                      totalPayable += doc.data().amount || 0;
+                       if (doc.data().status === 'Pending') {
+                        totalPayable += doc.data().amount || 0;
+                       }
                   });
               }
               
@@ -94,7 +99,6 @@ export default function WalletBillingPage() {
     ...(isAdmin || isSeller ? [
       { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
       { name: "Payable List", href: "/wallet-billing/payable" },
-      { name: "Renew Billing & Invoice, Quotation", href: "/wallet-billing/billing" },
     ] : []),
     { name: "Payment History", href: "/wallet-billing/history" },
   ]

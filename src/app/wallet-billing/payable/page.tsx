@@ -74,8 +74,10 @@ export default function PayableListPage() {
         try {
             const payablesRef = collection(db, "payables");
             let q;
-             if (user.role === 'admin' || user.role === 'seller') {
+             if (user.role === 'admin') {
                 q = query(payablesRef, orderBy("date", "desc"));
+            } else if (user.role === 'seller') {
+                q = query(payablesRef, where("sellerId", "==", user.id), orderBy("date", "desc"));
             } else {
                 q = query(payablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
             }
@@ -129,7 +131,7 @@ export default function PayableListPage() {
     }
 
     const onSubmit = async (values: PayableFormValues) => {
-        if (!selectedUser) {
+        if (!selectedUser || !user) {
             toast({ variant: "destructive", title: "Error", description: "Please select a user."});
             return;
         }
@@ -138,6 +140,7 @@ export default function PayableListPage() {
             await addDoc(collection(db, "payables"), {
                 userId: selectedUser.id,
                 userName: selectedUser.name,
+                sellerId: user.id, // The logged-in seller is creating this
                 amount: values.amount,
                 notes: values.notes,
                 date: Timestamp.now(),
