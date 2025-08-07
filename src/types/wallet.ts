@@ -41,3 +41,13 @@ export type Receivable = {
     status: 'Pending' | 'Paid' | 'Overdue';
     notes?: string;
 };
+
+export type Payable = {
+    id: string;
+    userId: string;
+    userName: string;
+    amount: number;
+    date: Date | Timestamp;
+    status: 'Pending' | 'Paid';
+    notes?: string;
+};
