@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, Search } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
@@ -27,14 +27,15 @@ import type { WithdrawalRequest } from "@/types/wallet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
+import type { User } from "@/types/user"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const requestFormSchema = z.object({
   amount: z.coerce.number().min(100, "Withdrawal amount must be at least ₹100."),
   sellerId: z.string().optional(),
   notes: z.string().optional(),
 }).refine(data => {
-    // This refine is a placeholder as we will check the role in the component.
-    // A more complex schema could be used but this is simpler.
+    // This is handled in the component logic now
     return true;
 });
 
@@ -53,6 +54,11 @@ export default function WithdrawalRequestPage() {
   const [requests, setRequests] = React.useState<WithdrawalRequest[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
+
+  const [sellers, setSellers] = React.useState<User[]>([]);
+  const [isLoadingSellers, setIsLoadingSellers] = React.useState(true);
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [selectedSeller, setSelectedSeller] = React.useState<User | null>(null);
   
   const isAdmin = user?.role === 'admin';
   const isSeller = user?.role === 'seller';
@@ -94,16 +100,36 @@ export default function WithdrawalRequestPage() {
         setIsLoading(false);
     }
   }, [user, isAdmin, isSeller, toast]);
+  
+  const fetchSellers = React.useCallback(async () => {
+    setIsLoadingSellers(true);
+    try {
+        const sellersQuery = query(collection(db, "users"), where("role", "==", "seller"), where("status", "==", "active"));
+        const sellersSnapshot = await getDocs(sellersQuery);
+        const sellersList = sellersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        setSellers(sellersList);
+    } catch (error) {
+        console.error("Error fetching sellers:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch sellers list.' });
+    } finally {
+        setIsLoadingSellers(false);
+    }
+  }, [toast]);
 
   React.useEffect(() => {
-    if(user) fetchRequests();
-  }, [user, fetchRequests]);
+    if(user) {
+        fetchRequests();
+        if (isPartner) {
+            fetchSellers();
+        }
+    }
+  }, [user, fetchRequests, isPartner, fetchSellers]);
 
   async function onSubmit(values: RequestFormValues) {
     if (!user) return;
 
-    if (isPartner && !values.sellerId) {
-        form.setError("sellerId", { message: "Seller ID is required." });
+    if (isPartner && !selectedSeller) {
+        form.setError("sellerId", { message: "A seller must be selected." });
         return;
     }
 
@@ -113,7 +139,7 @@ export default function WithdrawalRequestPage() {
             userId: user.id,
             userName: user.name,
             amount: values.amount,
-            sellerId: values.sellerId || null,
+            sellerId: selectedSeller?.id || null,
             notes: values.notes,
             status: "Pending",
             requestedAt: Timestamp.now(),
@@ -124,6 +150,7 @@ export default function WithdrawalRequestPage() {
             description: "Your withdrawal request has been sent for approval.",
         });
         form.reset();
+        setSelectedSeller(null);
         fetchRequests();
     } catch (error) {
         console.error("Error submitting request:", error);
@@ -150,6 +177,23 @@ export default function WithdrawalRequestPage() {
     }
   }
 
+  const filteredSellers = React.useMemo(() => {
+    if (!searchTerm) return [];
+    return sellers.filter(seller => 
+        seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        seller.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        seller.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [sellers, searchTerm]);
+
+  const handleSelectSeller = (seller: User) => {
+    setSelectedSeller(seller);
+    form.setValue("sellerId", seller.id);
+    form.clearErrors("sellerId");
+    setSearchTerm("");
+  }
+
+
   if (isUserLoading) {
     return <div className="flex-1 p-4 md:p-8 pt-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -174,7 +218,60 @@ export default function WithdrawalRequestPage() {
             <CardContent>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
+                
+                 {isPartner && (
+                    <FormField
+                        control={form.control}
+                        name="sellerId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Request from Seller</FormLabel>
+                                <FormControl>
+                                   <div className="space-y-2">
+                                        {selectedSeller ? (
+                                            <div className="flex items-center gap-4 p-2 border rounded-md">
+                                                <Avatar>
+                                                    <AvatarImage src={selectedSeller.profileImage} />
+                                                    <AvatarFallback>{selectedSeller.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{selectedSeller.name}</p>
+                                                    <p className="text-sm text-muted-foreground">{selectedSeller.email}</p>
+                                                </div>
+                                                <Button variant="ghost" size="sm" onClick={() => { setSelectedSeller(null); form.setValue("sellerId", ""); }}>Change</Button>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div className="relative">
+                                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                    <Input 
+                                                        placeholder="Search for a seller by name or email..."
+                                                        className="pl-8"
+                                                        value={searchTerm}
+                                                        onChange={e => setSearchTerm(e.target.value)}
+                                                    />
+                                                </div>
+                                                {searchTerm && (
+                                                    <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
+                                                        {isLoadingSellers ? (
+                                                            <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                                                        ) : filteredSellers.length > 0 ? filteredSellers.map(s => (
+                                                            <div key={s.id} onClick={() => handleSelectSeller(s)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                                                {s.name} ({s.email})
+                                                            </div>
+                                                        )) : <p className="p-4 text-sm text-center text-muted-foreground">No sellers found.</p>}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                   </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
+                 <FormField
                     control={form.control}
                     name="amount"
                     render={({ field }) => (
@@ -187,21 +284,6 @@ export default function WithdrawalRequestPage() {
                     </FormItem>
                     )}
                 />
-                 {isPartner && (
-                    <FormField
-                        control={form.control}
-                        name="sellerId"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Seller ID</FormLabel>
-                            <FormControl>
-                            <Input placeholder="Enter the Seller ID to request funds from" {...field} disabled={isSubmitting} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                )}
                  <FormField
                     control={form.control}
                     name="notes"
