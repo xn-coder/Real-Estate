@@ -59,6 +59,7 @@ import {
   MapPin,
   Banknote,
   Gift,
+  FilePlus,
 } from 'lucide-react'
 import { useUser } from '@/hooks/use-user'
 
@@ -138,9 +139,10 @@ const customerNavItems: NavItem[] = [
     { href: '/my-properties', icon: Building, label: 'My Properties' },
     { href: '/schedule', icon: Calendar, label: 'Site Visit Schedules' },
     { href: '/home-loans', icon: Banknote, label: 'Home Loans' },
+    { href: '#', icon: FilePlus, label: 'Manage Requirements' },
+    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/document-management', icon: FileText, label: 'Manage Documents' },
     { href: '/refer-earn', icon: Gift, label: 'Refer & Earn' },
-    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/upgrade', icon: Award, label: 'Upgrade' },
 ];
 
