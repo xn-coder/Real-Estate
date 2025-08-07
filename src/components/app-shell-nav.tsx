@@ -125,6 +125,7 @@ const partnerNavItems: NavItem[] = [
 const sellerNavItems: NavItem[] = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/listings', icon: Building, label: 'Properties' },
+    { href: '/wallet-billing', icon: Wallet, label: 'Wallet & Billing' },
     { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
     { href: '/manage-partner', icon: Handshake, label: 'Manage Partner' },
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },

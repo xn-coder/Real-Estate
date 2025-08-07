@@ -186,12 +186,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     <span>Send Message</span>
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/wallet-billing">
-                                    <Wallet className="mr-2 h-4 w-4" />
-                                    <span>Manage Wallet</span>
-                                </Link>
-                            </DropdownMenuItem>
                              <DropdownMenuItem asChild>
                                 <Link href="/support">
                                     <Headset className="mr-2 h-4 w-4" />
