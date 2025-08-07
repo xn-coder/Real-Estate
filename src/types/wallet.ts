@@ -31,3 +31,13 @@ export type Wallet = {
     payable: number;
     rewardBalance?: number;
 };
+
+export type Receivable = {
+    id: string;
+    userId: string;
+    userName: string;
+    amount: number;
+    date: Date | Timestamp;
+    status: 'Pending' | 'Paid' | 'Overdue';
+    notes?: string;
+};
