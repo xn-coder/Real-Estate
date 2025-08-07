@@ -93,7 +93,7 @@ export default function LeadsPage() {
         }
         q = query(leadsCollection, where("propertyId", "in", sellerPropertyIds));
       } else { // Partner roles
-        q = query(leadsCollection, where("partnerId", "==", user.id), where("isCopy", "==", false));
+        q = query(leadsCollection, where("partnerId", "==", user.id), where("isCopy", "!=", true));
       }
       const snapshot = await getDocs(q);
       const leadsData = snapshot.docs.map(doc => {
@@ -396,3 +396,5 @@ export default function LeadsPage() {
     </div>
   )
 }
+
+    
