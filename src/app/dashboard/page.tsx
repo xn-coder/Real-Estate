@@ -26,7 +26,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Briefcase, Home, Users, Calendar, Loader2 } from "lucide-react"
-import { collection, query, where, getDocs, Timestamp, orderBy } from "firebase/firestore"
+import { collection, query, where, getDocs, Timestamp, orderBy, doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { format, subMonths, startOfMonth } from "date-fns"
 import type { Lead } from "@/types/lead"
