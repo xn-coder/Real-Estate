@@ -138,11 +138,9 @@ const customerNavItems: NavItem[] = [
     { href: '/my-properties', icon: Building, label: 'My Properties' },
     { href: '/schedule', icon: Calendar, label: 'Site Visit Schedules' },
     { href: '/home-loans', icon: Banknote, label: 'Home Loans' },
-    { href: '/post-requirements', icon: FileText, label: 'Post Your Requirements' },
-    { href: '/manage-requirements', icon: Settings, label: 'Manage Requirements' },
-    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/document-management', icon: FileText, label: 'Manage Documents' },
     { href: '/refer-earn', icon: Gift, label: 'Refer & Earn' },
+    { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/upgrade', icon: Award, label: 'Upgrade' },
 ];
 

@@ -4,13 +4,6 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, addDoc, getDocs, doc, setDoc, query, where, Timestamp, orderBy, onSnapshot, updateDoc } from "firebase/firestore"
@@ -21,7 +14,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useUser } from "@/hooks/use-user"
 import type { User as PartnerUser } from "@/types/user"
 import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
 import { getAvailablePartners } from "@/services/team-service"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 

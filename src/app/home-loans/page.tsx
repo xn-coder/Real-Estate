@@ -33,7 +33,7 @@ export default function HomeLoansPage() {
       <Card className="overflow-hidden">
         <div className="relative h-48 md:h-64 bg-muted">
             <Image 
-                src="https://placehold.co/1200x400/0E7490/FFFFFF.png"
+                src="/banner.png"
                 alt="Home loans banner"
                 layout="fill"
                 objectFit="cover"
