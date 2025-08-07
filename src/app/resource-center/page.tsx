@@ -283,51 +283,51 @@ export default function ResourceCenterPage() {
   const renderViewDialogContent = () => {
     if (!viewingResource) return null;
 
-    const renderContent = () => {
-        switch(viewingResource.contentType) {
-          case 'article':
-          case 'terms_condition':
-            return (
-              <>
-                <div
-                  className="prose prose-sm dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: viewingResource.articleContent || '' }}
-                />
-                {viewingResource.faqs && viewingResource.faqs.length > 0 && renderFAQs(viewingResource)}
-              </>
-            )
-          case 'video':
-            return (
-                <div className="aspect-video">
-                    <iframe
-                        className="w-full h-full rounded-lg"
-                        src={viewingResource.videoUrl?.replace("watch?v=", "embed/") || ''}
-                        title="YouTube video player"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                    ></iframe>
-                </div>
-            )
-          case 'faq':
-            return renderFAQs(viewingResource)
-          default:
-            return <p>Unsupported content type.</p>
-        }
-      }
-
     const renderFAQs = (resource: Resource) => (
-        <div className="mt-8">
-            <h3 className="font-semibold mb-2">Frequently Asked Questions</h3>
-            <Accordion type="single" collapsible className="w-full">
-                {(resource.faqs || []).map((faq, index) => (
-                    <AccordionItem value={`item-${index}`} key={index}>
-                        <AccordionTrigger>{faq.question}</AccordionTrigger>
-                        <AccordionContent>{faq.answer}</AccordionContent>
-                    </AccordionItem>
-                ))}
-            </Accordion>
-        </div>
-    )
+      <div className="mt-8">
+        <h3 className="font-semibold mb-2">Frequently Asked Questions</h3>
+        <Accordion type="single" collapsible className="w-full">
+          {(resource.faqs || []).map((faq, index) => (
+            <AccordionItem value={`item-${index}`} key={index}>
+              <AccordionTrigger>{faq.question}</AccordionTrigger>
+              <AccordionContent>{faq.answer}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+    );
+
+    const renderContent = () => {
+      switch (viewingResource.contentType) {
+        case 'article':
+        case 'terms_condition':
+          return (
+            <>
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: viewingResource.articleContent || '' }}
+              />
+              {viewingResource.faqs && viewingResource.faqs.length > 0 && renderFAQs(viewingResource)}
+            </>
+          );
+        case 'video':
+          return (
+            <div className="aspect-video">
+              <iframe
+                className="w-full h-full rounded-lg"
+                src={viewingResource.videoUrl?.replace("watch?v=", "embed/") || ''}
+                title="YouTube video player"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          );
+        case 'faq':
+          return renderFAQs(viewingResource);
+        default:
+          return <p>Unsupported content type.</p>;
+      }
+    };
 
     return (
         <>
