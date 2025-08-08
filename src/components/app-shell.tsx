@@ -51,17 +51,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         router.push('/');
     }
     
-    React.useEffect(() => {
-        const handler = setTimeout(() => {
-            if (searchTerm) {
-                router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
-            }
-        }, 300); // 300ms debounce delay
-
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [searchTerm, router]);
+    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && searchTerm) {
+        router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
+      }
+    };
 
 
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
@@ -105,7 +99,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="search"
                 placeholder="Search..."
                 className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={handleSearch}
               />
             </div>
           </div>

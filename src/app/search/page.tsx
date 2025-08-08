@@ -9,7 +9,6 @@ import { Loader2, Search, Building, User, Users, Handshake, ChevronRight } from 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
-import { Badge } from "@/components/ui/badge"
 
 type SearchResult = {
   id: string
