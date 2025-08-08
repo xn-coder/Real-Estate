@@ -12,13 +12,14 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle, XCircle, Eye, MessageSquare, Search } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Eye, MessageSquare, Search, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -153,7 +154,14 @@ export default function PartnerActivationPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Reactivated Partners</h1>
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" asChild>
+                <Link href="/manage-partner">
+                    <ArrowLeft className="h-4 w-4" />
+                </Link>
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Reactivated Partners</h1>
+        </div>
       </div>
        <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1">

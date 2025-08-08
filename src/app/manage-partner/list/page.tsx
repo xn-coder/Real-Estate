@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX, Search } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX, Search, ArrowLeft } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,7 +157,14 @@ export default function ManagePartnerListPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Partners</h1>
+        <div className="flex items-center gap-4">
+             <Button variant="outline" size="icon" asChild>
+                <Link href="/manage-partner">
+                    <ArrowLeft className="h-4 w-4" />
+                </Link>
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Partners</h1>
+        </div>
         {isAdmin && (
           <Button asChild>
               <Link href="/manage-partner/add">

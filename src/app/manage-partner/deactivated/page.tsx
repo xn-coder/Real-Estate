@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, RotateCw, Eye, Search } from "lucide-react"
+import { Loader2, RotateCw, Eye, Search, ArrowLeft } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -176,7 +176,14 @@ export default function DeactivatedPartnerPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Deactivated Partners</h1>
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" asChild>
+                <Link href="/manage-partner">
+                    <ArrowLeft className="h-4 w-4" />
+                </Link>
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Deactivated Partners</h1>
+        </div>
       </div>
        <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1">
