@@ -270,98 +270,100 @@ export default function LeadsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Leads</h1>
       </div>
-      <div className="border rounded-lg w-full overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Client Name</TableHead>
-              <TableHead>Property</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      <div className="overflow-x-auto">
+        <div className="border rounded-lg min-w-[800px]">
+            <Table>
+            <TableHeader>
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                    </TableCell>
+                <TableHead>Client Name</TableHead>
+                <TableHead>Property</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>
+                    <span className="sr-only">Actions</span>
+                </TableHead>
                 </TableRow>
-            ) : leads.length === 0 ? (
-                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        No leads found.
-                    </TableCell>
-                </TableRow>
-            ) : (
-                leads.map((lead) => (
-                <TableRow key={lead.id}>
-                    <TableCell className="font-medium whitespace-nowrap">{lead.name}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                        <Button variant="link" asChild className="p-0 h-auto">
-                           <Link href={`/listings/${lead.propertyId}`}>
-                                <Building className="mr-2 h-4 w-4" />
-                                {lead.propertyId}
-                            </Link>
-                        </Button>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{lead.email}</TableCell>
-                    <TableCell className="whitespace-nowrap">{lead.phone}</TableCell>
-                    <TableCell>
-                        <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
-                        {lead.status === 'Forwarded' && (
-                            <p className="text-xs text-muted-foreground">to {lead.forwardedTo?.partnerName}</p>
-                        )}
-                    </TableCell>
-                    <TableCell>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                        </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={() => router.push(`/manage-customer/${lead.customerId}`)}>
-                            <UserIcon className="mr-2 h-4 w-4" />
-                            View Customer
-                        </DropdownMenuItem>
-                        {canChangeStatus && (
-                            <DropdownMenuItem onSelect={() => handleChangeStatusClick(lead)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Change Status
+            </TableHeader>
+            <TableBody>
+                {isLoading ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                        </TableCell>
+                    </TableRow>
+                ) : leads.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                            No leads found.
+                        </TableCell>
+                    </TableRow>
+                ) : (
+                    leads.map((lead) => (
+                    <TableRow key={lead.id}>
+                        <TableCell className="font-medium whitespace-nowrap">{lead.name}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                            <Button variant="link" asChild className="p-0 h-auto">
+                            <Link href={`/listings/${lead.propertyId}`}>
+                                    <Building className="mr-2 h-4 w-4" />
+                                    {lead.propertyId}
+                                </Link>
+                            </Button>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{lead.email}</TableCell>
+                        <TableCell className="whitespace-nowrap">{lead.phone}</TableCell>
+                        <TableCell>
+                            <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
+                            {lead.status === 'Forwarded' && (
+                                <p className="text-xs text-muted-foreground">to {lead.forwardedTo?.partnerName}</p>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onSelect={() => router.push(`/manage-customer/${lead.customerId}`)}>
+                                <UserIcon className="mr-2 h-4 w-4" />
+                                View Customer
                             </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={() => handleScheduleClick(lead)} disabled={lead.status === 'Forwarded'}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            Schedule Visit
-                        </DropdownMenuItem>
-                        {canSendToPartner && (
-                            lead.status === 'Forwarded' ? (
-                                <DropdownMenuItem onSelect={() => handleRetakeLead(lead)}>
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Retake Lead
+                            {canChangeStatus && (
+                                <DropdownMenuItem onSelect={() => handleChangeStatusClick(lead)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Change Status
                                 </DropdownMenuItem>
-                            ) : (
-                                <DropdownMenuItem onSelect={() => handleSendToPartnerClick(lead)}>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    Send to Partner
-                                </DropdownMenuItem>
-                            )
-                        )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    </TableCell>
-                </TableRow>
-                ))
-            )}
-          </TableBody>
-        </Table>
+                            )}
+                            <DropdownMenuItem onClick={() => handleScheduleClick(lead)} disabled={lead.status === 'Forwarded'}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                Schedule Visit
+                            </DropdownMenuItem>
+                            {canSendToPartner && (
+                                lead.status === 'Forwarded' ? (
+                                    <DropdownMenuItem onSelect={() => handleRetakeLead(lead)}>
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Retake Lead
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem onSelect={() => handleSendToPartnerClick(lead)}>
+                                        <Send className="mr-2 h-4 w-4" />
+                                        Send to Partner
+                                    </DropdownMenuItem>
+                                )
+                            )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </div>
         <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
             <DialogContent>
