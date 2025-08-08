@@ -49,6 +49,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         setUser(null);
         router.push('/');
     }
+    
+    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const searchTerm = e.currentTarget.value;
+            if (searchTerm) {
+                router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
+            }
+        }
+    }
+
 
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
     const isSeller = user?.role === 'seller';
@@ -91,6 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="search"
                 placeholder="Search..."
                 className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
+                onKeyDown={handleSearch}
               />
             </div>
           </div>
