@@ -156,15 +156,15 @@ export default function ManagePartnerListPage() {
           </Button>
         )}
       </div>
-      <div className="border rounded-lg">
+      <div className="border rounded-lg w-full overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Partner Name</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Email</TableHead>
-              <TableHead className="hidden md:table-cell">Phone</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
               </TableHead>
@@ -185,7 +185,7 @@ export default function ManagePartnerListPage() {
                 </TableRow>
             ) : partners.map((partner) => (
               <TableRow key={partner.id}>
-                <TableCell className="font-medium">{partner.name}</TableCell>
+                <TableCell className="font-medium whitespace-nowrap">{partner.name}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{roleNameMapping[partner.role] || partner.role}</Badge>
                 </TableCell>
@@ -194,8 +194,8 @@ export default function ManagePartnerListPage() {
                         {partner.status || 'active'}
                     </Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{partner.email}</TableCell>
-                <TableCell className="hidden md:table-cell">{partner.phone}</TableCell>
+                <TableCell className="whitespace-nowrap">{partner.email}</TableCell>
+                <TableCell className="whitespace-nowrap">{partner.phone}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>

@@ -270,14 +270,14 @@ export default function LeadsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Leads</h1>
       </div>
-      <div className="border rounded-lg overflow-x-auto">
+      <div className="border rounded-lg w-full overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Client Name</TableHead>
-              <TableHead className="hidden sm:table-cell">Property</TableHead>
-              <TableHead className="hidden md:table-cell">Email</TableHead>
-              <TableHead className="hidden lg:table-cell">Phone</TableHead>
+              <TableHead>Property</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>
                 <span className="sr-only">Actions</span>
@@ -300,8 +300,8 @@ export default function LeadsPage() {
             ) : (
                 leads.map((lead) => (
                 <TableRow key={lead.id}>
-                    <TableCell className="font-medium">{lead.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell">
+                    <TableCell className="font-medium whitespace-nowrap">{lead.name}</TableCell>
+                    <TableCell className="whitespace-nowrap">
                         <Button variant="link" asChild className="p-0 h-auto">
                            <Link href={`/listings/${lead.propertyId}`}>
                                 <Building className="mr-2 h-4 w-4" />
@@ -309,8 +309,8 @@ export default function LeadsPage() {
                             </Link>
                         </Button>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{lead.email}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{lead.phone}</TableCell>
+                    <TableCell className="whitespace-nowrap">{lead.email}</TableCell>
+                    <TableCell className="whitespace-nowrap">{lead.phone}</TableCell>
                     <TableCell>
                         <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
                         {lead.status === 'Forwarded' && (
