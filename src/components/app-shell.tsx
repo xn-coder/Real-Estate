@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation"
 export function AppShell({ children }: { children: React.ReactNode }) {
     const { user, isLoading, setUser } = useUser();
     const router = useRouter();
+    const [searchTerm, setSearchTerm] = React.useState('');
 
     const getInitials = () => {
         if (user?.firstName && user?.lastName) {
@@ -50,14 +51,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         router.push('/');
     }
     
-    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            const searchTerm = e.currentTarget.value;
+    React.useEffect(() => {
+        const handler = setTimeout(() => {
             if (searchTerm) {
                 router.push(`/search?q=${encodeURIComponent(searchTerm)}`);
             }
-        }
-    }
+        }, 300); // 300ms debounce delay
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchTerm, router]);
 
 
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
@@ -101,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="search"
                 placeholder="Search..."
                 className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px]"
-                onKeyDown={handleSearch}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
