@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Pencil, Search, User, Users } from "lucide-react"
+import { Loader2, Pencil, Search, User, Users, Handshake } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, getDoc, writeBatch, Timestamp, orderBy, limit } from "firebase/firestore"
@@ -22,11 +22,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type CustomerWithConsultant = {
   customer: CustomerUser;
   consultant?: PartnerUser;
 };
+
+const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
+const sellerRoles = ['seller', 'admin'];
 
 export default function ManageConsultantPage() {
   const { toast } = useToast()
@@ -38,10 +42,12 @@ export default function ManageConsultantPage() {
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerUser | null>(null)
   const [selectedConsultant, setSelectedConsultant] = React.useState<PartnerUser | null>(null)
   
-  const [allConsultants, setAllConsultants] = React.useState<PartnerUser[]>([])
+  const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
+  const [allSellers, setAllSellers] = React.useState<PartnerUser[]>([])
   const [isLoadingConsultants, setIsLoadingConsultants] = React.useState(true)
   const [consultantSearchTerm, setConsultantSearchTerm] = React.useState("")
   const [customerSearchTerm, setCustomerSearchTerm] = React.useState("")
+  const [assignmentType, setAssignmentType] = React.useState<'partner' | 'seller'>('partner');
 
 
   const fetchConsultantData = React.useCallback(async () => {
@@ -81,10 +87,16 @@ export default function ManageConsultantPage() {
   const fetchAllConsultants = React.useCallback(async () => {
     setIsLoadingConsultants(true);
     try {
-        const consultantRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee', 'seller', 'admin'];
-        const consultantsQuery = query(collection(db, "users"), where("role", "in", consultantRoles));
-        const consultantsSnapshot = await getDocs(consultantsQuery);
-        setAllConsultants(consultantsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
+        const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
+        const sellersQuery = query(collection(db, "users"), where("role", "in", sellerRoles));
+
+        const [partnersSnapshot, sellersSnapshot] = await Promise.all([
+            getDocs(partnersQuery),
+            getDocs(sellersQuery),
+        ]);
+        
+        setAllPartners(partnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
+        setAllSellers(sellersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
     } catch (error) {
         console.error("Error fetching partners:", error);
     } finally {
@@ -99,8 +111,9 @@ export default function ManageConsultantPage() {
 
   const filteredConsultants = React.useMemo(() => {
       if (!consultantSearchTerm) return [];
-      return allConsultants.filter(p => p.name.toLowerCase().includes(consultantSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(consultantSearchTerm.toLowerCase()));
-  }, [allConsultants, consultantSearchTerm]);
+      const listToSearch = assignmentType === 'partner' ? allPartners : allSellers;
+      return listToSearch.filter(p => p.name.toLowerCase().includes(consultantSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(consultantSearchTerm.toLowerCase()));
+  }, [allPartners, allSellers, consultantSearchTerm, assignmentType]);
 
   const filteredCustomers = React.useMemo(() => {
     return customers.filter(c => 
@@ -202,7 +215,12 @@ export default function ManageConsultantPage() {
                       </TableCell>
                       <TableCell>
                         {consultant ? (
-                           <div className="font-medium">{consultant.name}</div>
+                           <>
+                            <div className="font-medium">{consultant.name}</div>
+                            <div className="text-sm text-muted-foreground capitalize">
+                                {sellerRoles.includes(consultant.role) ? "Seller" : consultant.role.replace('_', ' ')}
+                            </div>
+                           </>
                         ) : (
                           <span className="text-muted-foreground">Not Assigned</span>
                         )}
@@ -226,52 +244,57 @@ export default function ManageConsultantPage() {
         <DialogContent className="max-w-lg">
             <DialogHeader>
                 <DialogTitle>Modify Consultant for {selectedCustomer?.name}</DialogTitle>
-                <DialogDescription>Search for and select a new consultant (Partner/Seller/Admin) to assign to this customer. This will reassign all their leads.</DialogDescription>
+                <DialogDescription>Choose to assign a Partner or a Seller, then search and select the user.</DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-2">
-                 <label className="text-sm font-medium">New Consultant</label>
-                 {selectedConsultant ? (
-                    <div className="flex items-center gap-4 p-2 border rounded-md">
-                        <Avatar>
-                            <AvatarImage src={selectedConsultant.profileImage} />
-                            <AvatarFallback>{selectedConsultant.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                            <p className="font-medium">{selectedConsultant.name}</p>
-                            <p className="text-sm text-muted-foreground capitalize">
-                                {selectedConsultant.role === 'admin' ? 'Seller' : selectedConsultant.role.replace('_', ' ')}
-                            </p>
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedConsultant(null)}>Change</Button>
-                    </div>
-                ) : (
-                    <div>
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search for a consultant..."
-                                className="pl-8"
-                                value={consultantSearchTerm}
-                                onChange={e => setConsultantSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        {consultantSearchTerm && (
-                            <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
-                                {isLoadingConsultants ? (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                                ) : filteredConsultants.length > 0 ? filteredConsultants.map(p => (
-                                    <div key={p.id} onClick={() => handleSelectConsultant(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
-                                        <p>{p.name} ({p.email})</p>
-                                        <p className="text-xs text-muted-foreground capitalize">
-                                            {p.role === 'admin' ? 'Seller' : p.role.replace('_', ' ')}
-                                        </p>
-                                    </div>
-                                )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
+            <Tabs value={assignmentType} onValueChange={(value) => { setAssignmentType(value as any); setSelectedConsultant(null); }} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="partner"><Handshake className="mr-2 h-4 w-4"/> Assign Partner</TabsTrigger>
+                    <TabsTrigger value="seller"><User className="mr-2 h-4 w-4"/> Assign Seller</TabsTrigger>
+                </TabsList>
+                <div className="py-4 space-y-2 min-h-[16rem]">
+                     {selectedConsultant ? (
+                        <div className="flex items-center gap-4 p-2 border rounded-md">
+                            <Avatar>
+                                <AvatarImage src={selectedConsultant.profileImage} />
+                                <AvatarFallback>{selectedConsultant.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <p className="font-medium">{selectedConsultant.name}</p>
+                                <p className="text-sm text-muted-foreground capitalize">
+                                    {sellerRoles.includes(selectedConsultant.role) ? 'Seller' : selectedConsultant.role.replace('_', ' ')}
+                                </p>
                             </div>
-                        )}
-                    </div>
-                )}
-            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedConsultant(null)}>Change</Button>
+                        </div>
+                    ) : (
+                        <div>
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder={`Search for a ${assignmentType}...`}
+                                    className="pl-8"
+                                    value={consultantSearchTerm}
+                                    onChange={e => setConsultantSearchTerm(e.target.value)}
+                                />
+                            </div>
+                            {consultantSearchTerm && (
+                                <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
+                                    {isLoadingConsultants ? (
+                                        <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                                    ) : filteredConsultants.length > 0 ? filteredConsultants.map(p => (
+                                        <div key={p.id} onClick={() => handleSelectConsultant(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                            <p>{p.name} ({p.email})</p>
+                                            <p className="text-xs text-muted-foreground capitalize">
+                                                {sellerRoles.includes(p.role) ? 'Seller' : p.role.replace('_', ' ')}
+                                            </p>
+                                        </div>
+                                    )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </Tabs>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleReassign} disabled={isUpdating || !selectedConsultant}>
