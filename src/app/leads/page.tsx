@@ -55,7 +55,7 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Completed': 'outline',
 }
 
-const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'New', 'Contacted', 'Qualified', 'Lost'];
+const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'New', 'Pending', 'Processing', 'Completed'];
 
 export default function LeadsPage() {
   const { user } = useUser();
@@ -520,5 +520,3 @@ export default function LeadsPage() {
     </div>
   )
 }
-
-    

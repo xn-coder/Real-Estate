@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX, Search } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +38,7 @@ import { useRouter } from "next/navigation"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useUser } from "@/hooks/use-user"
+import { Input } from "@/components/ui/input"
 
 
 const partnerRoles = {
@@ -67,12 +68,13 @@ export default function ManagePartnerListPage() {
   const { toast } = useToast()
   const router = useRouter();
   const { user } = useUser();
-  const [partners, setPartners] = React.useState<PartnerUser[]>([])
+  const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
   const [isDeactivating, setIsDeactivating] = React.useState(false)
   const [deactivationReason, setDeactivationReason] = React.useState("")
   const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = React.useState(false)
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const isAdmin = user?.role === 'admin';
   const isSeller = user?.role === 'seller';
@@ -85,7 +87,7 @@ export default function ManagePartnerListPage() {
       const q = query(usersCollection, where("role", "in", partnerRolesKeys), where("status", "==", "active"))
       const partnerSnapshot = await getDocs(q)
       const partnerList = partnerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
-      setPartners(partnerList)
+      setAllPartners(partnerList)
     } catch (error) {
       console.error("Error fetching partners:", error)
       toast({
@@ -101,6 +103,14 @@ export default function ManagePartnerListPage() {
   React.useEffect(() => {
     fetchPartners()
   }, [fetchPartners])
+  
+  const filteredPartners = React.useMemo(() => {
+    return allPartners.filter(partner => 
+        partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        partner.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allPartners, searchTerm]);
+
 
   const handleDeactivateClick = (partner: PartnerUser) => {
     setSelectedPartner(partner);
@@ -156,6 +166,20 @@ export default function ManagePartnerListPage() {
           </Button>
         )}
       </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name or email..."
+            className="pl-8 sm:w-full md:w-1/3"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
       <div className="border rounded-lg w-full overflow-x-auto">
         <Table>
           <TableHeader>
@@ -177,13 +201,13 @@ export default function ManagePartnerListPage() {
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : partners.length === 0 ? (
+            ) : filteredPartners.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                     No active partners found.
                     </TableCell>
                 </TableRow>
-            ) : partners.map((partner) => (
+            ) : filteredPartners.map((partner) => (
               <TableRow key={partner.id}>
                 <TableCell className="font-medium whitespace-nowrap">{partner.name}</TableCell>
                 <TableCell>

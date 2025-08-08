@@ -12,12 +12,13 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle, XCircle, Eye, MessageSquare } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Eye, MessageSquare, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -30,9 +31,10 @@ const roleNameMapping: Record<string, string> = {
 export default function PartnerActivationPage() {
   const { toast } = useToast()
   const router = useRouter();
-  const [reactivatedPartners, setReactivatedPartners] = React.useState<PartnerUser[]>([])
+  const [allReactivatedPartners, setAllReactivatedPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdating, setIsUpdating] = React.useState(false)
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const fetchPartners = React.useCallback(async () => {
     setIsLoading(true)
@@ -42,7 +44,7 @@ export default function PartnerActivationPage() {
       const reactivatedQuery = query(usersCollection, where("status", "==", "active"), where("reactivationReason", "!=", null))
       const reactivatedSnapshot = await getDocs(reactivatedQuery)
       const reactivatedList = reactivatedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
-      setReactivatedPartners(reactivatedList)
+      setAllReactivatedPartners(reactivatedList)
 
     } catch (error) {
       console.error("Error fetching partners:", error)
@@ -59,6 +61,14 @@ export default function PartnerActivationPage() {
   React.useEffect(() => {
     fetchPartners()
   }, [fetchPartners])
+  
+  const filteredPartners = React.useMemo(() => {
+    return allReactivatedPartners.filter(partner => 
+        partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        partner.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allReactivatedPartners, searchTerm]);
+
 
   const handleDeactivate = async (partnerId: string) => {
     setIsUpdating(true);
@@ -145,7 +155,19 @@ export default function PartnerActivationPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Reactivated Partners</h1>
       </div>
-      {renderTable(reactivatedPartners)}
+       <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name or email..."
+            className="pl-8 sm:w-full md:w-1/3"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+      {renderTable(filteredPartners)}
     </div>
   )
 }

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, RotateCw, Eye } from "lucide-react"
+import { Loader2, RotateCw, Eye, Search } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import Link from "next/link"
+import { Input } from "@/components/ui/input"
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -39,12 +40,13 @@ const roleNameMapping: Record<string, string> = {
 
 export default function SuspendedPartnerPage() {
   const { toast } = useToast()
-  const [suspendedPartners, setSuspendedPartners] = React.useState<PartnerUser[]>([])
+  const [allSuspendedPartners, setAllSuspendedPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isReactivating, setIsReactivating] = React.useState(false)
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
   const [reactivationReason, setReactivationReason] = React.useState("")
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [searchTerm, setSearchTerm] = React.useState("");
 
   const fetchSuspendedPartners = React.useCallback(async () => {
     setIsLoading(true)
@@ -54,7 +56,7 @@ export default function SuspendedPartnerPage() {
       const suspendedQuery = query(usersCollection, where("status", "==", "suspended"))
       const suspendedSnapshot = await getDocs(suspendedQuery)
       const suspendedList = suspendedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
-      setSuspendedPartners(suspendedList)
+      setAllSuspendedPartners(suspendedList)
 
     } catch (error) {
       console.error("Error fetching suspended partners:", error)
@@ -71,6 +73,14 @@ export default function SuspendedPartnerPage() {
   React.useEffect(() => {
     fetchSuspendedPartners()
   }, [fetchSuspendedPartners])
+  
+  const filteredPartners = React.useMemo(() => {
+    return allSuspendedPartners.filter(partner => 
+        partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        partner.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allSuspendedPartners, searchTerm]);
+
 
   const handleReactivateClick = (partner: PartnerUser) => {
     setSelectedPartner(partner)
@@ -168,7 +178,19 @@ export default function SuspendedPartnerPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Suspended Partners</h1>
       </div>
-      {renderTable(suspendedPartners)}
+       <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name or email..."
+            className="pl-8 sm:w-full md:w-1/3"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+      {renderTable(filteredPartners)}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
           if (!open) {
             setIsDialogOpen(false);

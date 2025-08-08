@@ -7,11 +7,10 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, ArrowLeft, Loader2 } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Search } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +26,8 @@ import { useToast } from "@/hooks/use-toast"
 import type { Property } from "@/types/property"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'For Sale': 'default',
@@ -35,12 +36,17 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Pending Verification': 'destructive',
 }
 
+const filterableStatuses: (Property['status'] | 'All')[] = ['All', 'For Sale', 'Under Contract', 'Sold'];
+
 export default function ListingsPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { user } = useUser();
-    const [listings, setListings] = React.useState<Property[]>([]);
+    const [allListings, setAllListings] = React.useState<Property[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [activeFilter, setActiveFilter] = React.useState<Property['status'] | 'All'>("All");
+
     const canAddProperties = user?.role === 'seller' || user?.role === 'admin';
 
     React.useEffect(() => {
@@ -65,7 +71,7 @@ export default function ListingsPage() {
                         featureImage: featureImageUrl,
                     };
                 }));
-                setListings(listingsData);
+                setAllListings(listingsData);
             } catch (error) {
                 console.error("Error fetching listings:", error);
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch properties.' });
@@ -76,6 +82,19 @@ export default function ListingsPage() {
         fetchListings();
     }, [toast]);
     
+    const filteredListings = React.useMemo(() => {
+        return allListings.filter(listing => {
+            const statusMatch = activeFilter === 'All' || listing.status === activeFilter;
+            const searchMatch = searchTerm === "" ||
+                listing.catalogTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                listing.addressLine.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                listing.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                listing.id.toLowerCase().includes(searchTerm.toLowerCase());
+            return statusMatch && searchMatch;
+        });
+    }, [allListings, searchTerm, activeFilter]);
+
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -90,6 +109,26 @@ export default function ListingsPage() {
             </Button>
         )}
       </div>
+
+       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="relative w-full md:w-auto md:flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by title, address, or ID..."
+            className="pl-8 sm:w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Property['status'] | 'All')}>
+          <TabsList>
+            {filterableStatuses.map(status => (
+                 <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
       
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -97,13 +136,13 @@ export default function ListingsPage() {
                 <Card key={i}><div className="bg-muted rounded-lg h-80 animate-pulse"></div></Card>
             ))}
         </div>
-      ) : listings.length === 0 ? (
+      ) : filteredListings.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <p>No properties found.</p>
           </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {listings.map((listing) => (
+            {filteredListings.map((listing) => (
               <Link href={`/listings/${listing.id}`} key={listing.id} className="block hover:shadow-lg transition-shadow rounded-lg">
                 <Card className="flex flex-col overflow-hidden shadow-md h-full">
                     <CardHeader className="p-0 relative">
