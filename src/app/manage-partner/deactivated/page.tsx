@@ -38,6 +38,8 @@ const roleNameMapping: Record<string, string> = {
   franchisee: 'Franchisee',
 };
 
+const partnerRoles = Object.keys(roleNameMapping);
+
 export default function DeactivatedPartnerPage() {
   const { toast } = useToast()
   const [allInactivePartners, setAllInactivePartners] = React.useState<PartnerUser[]>([])
@@ -53,7 +55,7 @@ export default function DeactivatedPartnerPage() {
     try {
       const usersCollection = collection(db, "users")
       
-      const inactiveQuery = query(usersCollection, where("status", "==", "inactive"))
+      const inactiveQuery = query(usersCollection, where("role", "in", partnerRoles), where("status", "==", "inactive"))
       const inactiveSnapshot = await getDocs(inactiveQuery)
       const inactiveList = inactiveSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
       setAllInactivePartners(inactiveList)
