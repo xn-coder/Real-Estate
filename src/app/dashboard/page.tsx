@@ -138,7 +138,7 @@ export default function Dashboard() {
           <Loader2 className="h-6 w-6 animate-spin" />
         ) : (
           <>
-            <div className="text-2xl font-bold">{value}</div>
+            <div className="text-2xl lg:text-3xl font-bold">{value}</div>
             <p className="text-xs text-muted-foreground">{description}</p>
           </>
         )}
@@ -162,7 +162,7 @@ export default function Dashboard() {
       <div className="grid gap-4 lg:grid-cols-7">
         <Card className="lg:col-span-4">
           <CardHeader>
-            <CardTitle>Lead Generation Overview</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">Lead Generation Overview</CardTitle>
             <CardDescription>Last 6 months</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
@@ -183,7 +183,7 @@ export default function Dashboard() {
         </Card>
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Upcoming Appointments</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">Upcoming Appointments</CardTitle>
             <CardDescription>
               You have {stats.upcomingAppointments} upcoming appointments.
             </CardDescription>
@@ -192,12 +192,12 @@ export default function Dashboard() {
              {isLoading ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
                 <div className="space-y-4">
                   {appointments.slice(0, 5).map((appointment) => (
-                    <div key={appointment.id} className="flex items-center p-3 border rounded-md bg-muted/50">
-                        <div className="flex-1 space-y-1">
-                          <p className="font-medium">{appointment.lead?.name || 'N/A'}</p>
-                          <p className="text-sm text-muted-foreground">{appointment.property?.catalogTitle || 'N/A'}</p>
+                    <div key={appointment.id} className="flex items-center p-3 border rounded-md bg-muted/50 gap-4">
+                        <div className="flex-1 space-y-1 min-w-0">
+                          <p className="font-medium truncate">{appointment.lead?.name || 'N/A'}</p>
+                          <p className="text-sm text-muted-foreground truncate">{appointment.property?.catalogTitle || 'N/A'}</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex-shrink-0">
                            <p className="font-medium text-sm">{format(appointment.visitDate as Date, "PPP")}</p>
                         </div>
                     </div>
