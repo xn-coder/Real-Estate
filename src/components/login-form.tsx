@@ -132,9 +132,12 @@ export function LoginForm() {
 
         // Redirect logic from page.tsx
         let redirectPath = '/dashboard'; // Default
-        if (user.role === 'seller') redirectPath = '/listings';
+        if (user.role === 'seller') redirectPath = '/dashboard';
         if (user.role === 'customer') redirectPath = '/listings/list';
         if (user.role === 'user') redirectPath = '/listings'; // Assuming general user also goes to listings
+        else if (['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role)) {
+            redirectPath = '/dashboard';
+        }
 
         router.push(redirectPath)
 
