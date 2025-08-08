@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw, Pencil } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw, Pencil, Search } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,8 @@ import Link from "next/link"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New': 'default',
@@ -53,6 +55,8 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Completed': 'outline',
 }
 
+const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'New', 'Contacted', 'Qualified', 'Lost'];
+
 export default function LeadsPage() {
   const { user } = useUser();
   const { toast } = useToast();
@@ -64,19 +68,19 @@ export default function LeadsPage() {
   const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
   const [isScheduling, setIsScheduling] = React.useState(false);
 
-  // State for "Send to Partner" dialog
   const [isSendToPartnerDialogOpen, setIsSendToPartnerDialogOpen] = React.useState(false);
   const [selectedLeadForSending, setSelectedLeadForSending] = React.useState<Lead | null>(null);
   const [teamMembers, setTeamMembers] = React.useState<User[]>([]);
   const [selectedPartnerForLead, setSelectedPartnerForLead] = React.useState<string | null>(null);
   const [isSending, setIsSending] = React.useState(false);
 
-  // State for "Change Status" dialog
   const [isStatusDialogOpen, setIsStatusDialogOpen] = React.useState(false);
   const [selectedLeadForStatus, setSelectedLeadForStatus] = React.useState<Lead | null>(null);
   const [newStatus, setNewStatus] = React.useState<Lead['status'] | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
 
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [activeFilter, setActiveFilter] = React.useState<Lead['status'] | 'All'>("All");
 
   const canSendToPartner = user?.role && ['associate', 'channel', 'franchisee'].includes(user.role);
   const canChangeStatus = user?.role === 'admin' || user?.role === 'seller';
@@ -146,6 +150,18 @@ export default function LeadsPage() {
         }
     }
   }, [user, fetchLeads, canSendToPartner, fetchTeamMembers]);
+
+  const filteredLeads = React.useMemo(() => {
+    return leads.filter(lead => {
+        const statusMatch = activeFilter === 'All' || lead.status === activeFilter;
+        const searchMatch = searchTerm === "" ||
+            lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            lead.propertyId.toLowerCase().includes(searchTerm.toLowerCase());
+        return statusMatch && searchMatch;
+    });
+  }, [leads, searchTerm, activeFilter]);
+
 
   const handleScheduleClick = (lead: Lead) => {
     setSelectedLead(lead);
@@ -270,6 +286,27 @@ export default function LeadsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Leads</h1>
       </div>
+
+       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="relative w-full md:w-auto md:flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name, email, or property ID..."
+            className="pl-8 sm:w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Lead['status'] | 'All')}>
+          <TabsList>
+            {filterStatuses.map(status => (
+                 <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
       <div className="overflow-x-auto">
         <div className="border rounded-lg min-w-[800px]">
             <Table>
@@ -292,14 +329,14 @@ export default function LeadsPage() {
                             <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                         </TableCell>
                     </TableRow>
-                ) : leads.length === 0 ? (
+                ) : filteredLeads.length === 0 ? (
                     <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
                             No leads found.
                         </TableCell>
                     </TableRow>
                 ) : (
-                    leads.map((lead) => (
+                    filteredLeads.map((lead) => (
                     <TableRow key={lead.id}>
                         <TableCell className="font-medium whitespace-nowrap">{lead.name}</TableCell>
                         <TableCell className="whitespace-nowrap">
@@ -483,3 +520,5 @@ export default function LeadsPage() {
     </div>
   )
 }
+
+    
