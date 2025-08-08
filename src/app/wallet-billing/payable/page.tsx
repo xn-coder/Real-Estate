@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from "react"
@@ -11,10 +12,10 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, PlusCircle, Search } from "lucide-react"
+import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, orderBy, Timestamp, addDoc, where } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, Timestamp, addDoc, where, doc, updateDoc } from "firebase/firestore"
 import type { Payable } from "@/types/wallet"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -53,6 +54,8 @@ export default function PayableListPage() {
     const [isLoading, setIsLoading] = React.useState(true)
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
+    const [isUpdating, setIsUpdating] = React.useState(false)
+
 
     const [users, setUsers] = React.useState<User[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
@@ -174,6 +177,21 @@ export default function PayableListPage() {
             setIsSubmitting(false);
         }
     }
+    
+    const handleUpdateStatus = async (id: string, newStatus: Payable['status']) => {
+        setIsUpdating(true);
+        try {
+            await updateDoc(doc(db, "payables", id), { status: newStatus });
+            toast({ title: "Success", description: `Status updated to ${newStatus}.` });
+            fetchPayables();
+        } catch (error) {
+            console.error("Error updating status:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not update status.' });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -318,13 +336,14 @@ export default function PayableListPage() {
                                     <TableHead>Date</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Notes</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
-                                    <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                                 ) : filteredPayables.length === 0 ? (
-                                    <TableRow><TableCell colSpan={5} className="h-24 text-center">No payables found.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={6} className="h-24 text-center">No payables found.</TableCell></TableRow>
                                 ) : (
                                     filteredPayables.map(item => (
                                         <TableRow key={item.id}>
@@ -333,6 +352,13 @@ export default function PayableListPage() {
                                             <TableCell>{format(item.date, 'PPP')}</TableCell>
                                             <TableCell><Badge variant={statusColors[item.status]}>{item.status}</Badge></TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{item.notes}</TableCell>
+                                            <TableCell className="text-right">
+                                                {item.status === 'Pending' && (
+                                                    <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(item.id, 'Paid')} disabled={isUpdating}>
+                                                        <CheckCircle className="mr-2 h-4 w-4"/> Mark as Paid
+                                                    </Button>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 )}

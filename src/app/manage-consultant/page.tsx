@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from "react"
@@ -35,11 +36,11 @@ export default function ManageConsultantPage() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [isUpdating, setIsUpdating] = React.useState(false)
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerUser | null>(null)
-  const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null)
+  const [selectedConsultant, setSelectedConsultant] = React.useState<PartnerUser | null>(null)
   
-  const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
-  const [isLoadingPartners, setIsLoadingPartners] = React.useState(true)
-  const [partnerSearchTerm, setPartnerSearchTerm] = React.useState("")
+  const [allConsultants, setAllConsultants] = React.useState<PartnerUser[]>([])
+  const [isLoadingConsultants, setIsLoadingConsultants] = React.useState(true)
+  const [consultantSearchTerm, setConsultantSearchTerm] = React.useState("")
   const [customerSearchTerm, setCustomerSearchTerm] = React.useState("")
 
 
@@ -77,29 +78,29 @@ export default function ManageConsultantPage() {
     }
   }, [toast]);
   
-  const fetchPartners = React.useCallback(async () => {
-    setIsLoadingPartners(true);
+  const fetchAllConsultants = React.useCallback(async () => {
+    setIsLoadingConsultants(true);
     try {
-        const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
-        const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
-        const partnersSnapshot = await getDocs(partnersQuery);
-        setAllPartners(partnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
+        const consultantRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee', 'seller', 'admin'];
+        const consultantsQuery = query(collection(db, "users"), where("role", "in", consultantRoles));
+        const consultantsSnapshot = await getDocs(consultantsQuery);
+        setAllConsultants(consultantsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
     } catch (error) {
         console.error("Error fetching partners:", error);
     } finally {
-        setIsLoadingPartners(false);
+        setIsLoadingConsultants(false);
     }
   }, []);
 
   React.useEffect(() => {
     fetchConsultantData();
-    fetchPartners();
-  }, [fetchConsultantData, fetchPartners]);
+    fetchAllConsultants();
+  }, [fetchConsultantData, fetchAllConsultants]);
 
-  const filteredPartners = React.useMemo(() => {
-      if (!partnerSearchTerm) return [];
-      return allPartners.filter(p => p.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(partnerSearchTerm.toLowerCase()));
-  }, [allPartners, partnerSearchTerm]);
+  const filteredConsultants = React.useMemo(() => {
+      if (!consultantSearchTerm) return [];
+      return allConsultants.filter(p => p.name.toLowerCase().includes(consultantSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(consultantSearchTerm.toLowerCase()));
+  }, [allConsultants, consultantSearchTerm]);
 
   const filteredCustomers = React.useMemo(() => {
     return customers.filter(c => 
@@ -114,14 +115,14 @@ export default function ManageConsultantPage() {
     setIsDialogOpen(true);
   }
   
-  const handleSelectPartner = (partner: PartnerUser) => {
-    setSelectedPartner(partner);
-    setPartnerSearchTerm("");
+  const handleSelectConsultant = (consultant: PartnerUser) => {
+    setSelectedConsultant(consultant);
+    setConsultantSearchTerm("");
   }
   
   const handleReassign = async () => {
-      if (!selectedCustomer || !selectedPartner) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Customer or partner not selected.'});
+      if (!selectedCustomer || !selectedConsultant) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Customer or consultant not selected.'});
           return;
       }
       setIsUpdating(true);
@@ -137,16 +138,16 @@ export default function ManageConsultantPage() {
         
         const batch = writeBatch(db);
         leadsSnapshot.docs.forEach(leadDoc => {
-            batch.update(doc(db, "leads", leadDoc.id), { partnerId: selectedPartner.id });
+            batch.update(doc(db, "leads", leadDoc.id), { partnerId: selectedConsultant.id });
         });
         
         await batch.commit();
 
-        toast({ title: 'Success', description: `${selectedCustomer.name}'s consultant has been updated to ${selectedPartner.name}.` });
+        toast({ title: 'Success', description: `${selectedCustomer.name}'s consultant has been updated to ${selectedConsultant.name}.` });
         fetchConsultantData();
         setIsDialogOpen(false);
         setSelectedCustomer(null);
-        setSelectedPartner(null);
+        setSelectedConsultant(null);
 
       } catch (error) {
          console.error("Error reassigning consultant:", error);
@@ -172,7 +173,7 @@ export default function ManageConsultantPage() {
                 placeholder="Search by customer or consultant..."
                 className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
                 value={customerSearchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => setCustomerSearchTerm(e.target.value)}
               />
             </div>
           </div>
@@ -183,7 +184,7 @@ export default function ManageConsultantPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Assigned Consultant (Partner)</TableHead>
+                  <TableHead>Assigned Consultant</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -221,46 +222,47 @@ export default function ManageConsultantPage() {
         </CardContent>
       </Card>
       
-      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setSelectedCustomer(null); setSelectedPartner(null); setPartnerSearchTerm(""); } setIsDialogOpen(open); }}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setSelectedCustomer(null); setSelectedConsultant(null); setConsultantSearchTerm(""); } setIsDialogOpen(open); }}>
         <DialogContent className="max-w-lg">
             <DialogHeader>
                 <DialogTitle>Modify Consultant for {selectedCustomer?.name}</DialogTitle>
-                <DialogDescription>Search for and select a new partner to assign to this customer. This will reassign all their leads.</DialogDescription>
+                <DialogDescription>Search for and select a new consultant (Partner/Seller/Admin) to assign to this customer. This will reassign all their leads.</DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-2">
-                 <label className="text-sm font-medium">New Partner</label>
-                 {selectedPartner ? (
+                 <label className="text-sm font-medium">New Consultant</label>
+                 {selectedConsultant ? (
                     <div className="flex items-center gap-4 p-2 border rounded-md">
                         <Avatar>
-                            <AvatarImage src={selectedPartner.profileImage} />
-                            <AvatarFallback>{selectedPartner.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={selectedConsultant.profileImage} />
+                            <AvatarFallback>{selectedConsultant.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                            <p className="font-medium">{selectedPartner.name}</p>
-                            <p className="text-sm text-muted-foreground">{selectedPartner.email}</p>
+                            <p className="font-medium">{selectedConsultant.name}</p>
+                            <p className="text-sm text-muted-foreground capitalize">{selectedConsultant.role}</p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedPartner(null)}>Change</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedConsultant(null)}>Change</Button>
                     </div>
                 ) : (
                     <div>
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Search for a partner by name or email..."
+                                placeholder="Search for a consultant..."
                                 className="pl-8"
-                                value={partnerSearchTerm}
-                                onChange={e => setPartnerSearchTerm(e.target.value)}
+                                value={consultantSearchTerm}
+                                onChange={e => setConsultantSearchTerm(e.target.value)}
                             />
                         </div>
-                        {partnerSearchTerm && (
+                        {consultantSearchTerm && (
                             <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
-                                {isLoadingPartners ? (
+                                {isLoadingConsultants ? (
                                     <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                                ) : filteredPartners.length > 0 ? filteredPartners.map(p => (
-                                    <div key={p.id} onClick={() => handleSelectPartner(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
-                                        {p.name} ({p.email})
+                                ) : filteredConsultants.length > 0 ? filteredConsultants.map(p => (
+                                    <div key={p.id} onClick={() => handleSelectConsultant(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                        <p>{p.name} ({p.email})</p>
+                                        <p className="text-xs text-muted-foreground capitalize">{p.role}</p>
                                     </div>
-                                )) : <p className="p-4 text-sm text-center text-muted-foreground">No partners found.</p>}
+                                )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
                             </div>
                         )}
                     </div>
@@ -268,9 +270,9 @@ export default function ManageConsultantPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleReassign} disabled={isUpdating || !selectedPartner}>
+                <Button onClick={handleReassign} disabled={isUpdating || !selectedConsultant}>
                     {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                    Reassign Partner
+                    Reassign Consultant
                 </Button>
             </DialogFooter>
         </DialogContent>

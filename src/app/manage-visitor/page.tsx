@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Building, User, Users } from "lucide-react"
+import { Loader2, Eye, Building, User, Users, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, getDoc, Timestamp } from "firebase/firestore"
@@ -25,6 +25,9 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { format } from "date-fns"
 import Image from "next/image"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 type VisitWithProof = {
     date: Date;
@@ -36,6 +39,7 @@ type AggregatedVisit = {
   customer?: UserType;
   partner?: UserType;
   property?: Property;
+  status: Appointment['status'];
   visitCount: number;
   visits: VisitWithProof[];
 };
@@ -44,8 +48,11 @@ export default function ManageVisitorPage() {
   const { toast } = useToast()
   const router = useRouter();
   const { user } = useUser();
-  const [visits, setVisits] = React.useState<AggregatedVisit[]>([])
+  const [allVisits, setAllVisits] = React.useState<AggregatedVisit[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [searchTerm, setSearchTerm] = React.useState("")
+  const [activeFilter, setActiveFilter] = React.useState<Appointment['status'] | 'all'>('all');
+
 
   const fetchConfirmedVisits = React.useCallback(async () => {
     if (!user) return;
@@ -56,7 +63,7 @@ export default function ManageVisitorPage() {
       let appointmentsQuery;
       
       if (user.role === 'admin') {
-        appointmentsQuery = query(appointmentsCollection, where("status", "==", "Completed"));
+        appointmentsQuery = query(appointmentsCollection);
       } else if (user.role === 'seller') {
           const propertiesCollection = collection(db, "properties");
           const sellerPropertiesQuery = query(propertiesCollection, where("email", "==", user.email));
@@ -64,13 +71,13 @@ export default function ManageVisitorPage() {
           const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(d => d.id);
 
           if (sellerPropertyIds.length === 0) {
-              setVisits([]);
+              setAllVisits([]);
               setIsLoading(false);
               return;
           }
-          appointmentsQuery = query(appointmentsCollection, where("propertyId", "in", sellerPropertyIds), where("status", "==", "Completed"));
+          appointmentsQuery = query(appointmentsCollection, where("propertyId", "in", sellerPropertyIds));
       } else {
-        setVisits([]);
+        setAllVisits([]);
         setIsLoading(false);
         return;
       }
@@ -79,16 +86,16 @@ export default function ManageVisitorPage() {
       
       const detailedVisitsPromises = appointmentsSnapshot.docs.map(async (appointmentDoc) => {
         const appointmentData = appointmentDoc.data() as Appointment;
-        const customerId = (appointmentData as any).customerId;
         
         const [customerDoc, partnerDoc, propertyDoc] = await Promise.all([
-            customerId ? getDoc(doc(db, "users", customerId)) : null,
+            appointmentData.customerId ? getDoc(doc(db, "users", appointmentData.customerId)) : null,
             getDoc(doc(db, "users", appointmentData.partnerId)),
             getDoc(doc(db, "properties", appointmentData.propertyId))
         ]);
 
         return {
             id: appointmentDoc.id,
+            status: appointmentData.status,
             customer: customerDoc?.exists() ? { id: customerDoc.id, ...customerDoc.data() } as UserType : undefined,
             partner: partnerDoc.exists() ? { id: partnerDoc.id, ...partnerDoc.data() } as UserType : undefined,
             property: propertyDoc.exists() ? { id: propertyDoc.id, ...propertyDoc.data() } as Property : undefined,
@@ -115,13 +122,14 @@ export default function ManageVisitorPage() {
                   customer: visit.customer,
                   partner: visit.partner,
                   property: visit.property,
+                  status: visit.status,
                   visitCount: 1,
                   visits: [{ date: visit.visitDate, proofUrl: visit.visitProofUrl }],
               });
           }
       }
 
-      setVisits(Array.from(aggregatedVisitsMap.values()));
+      setAllVisits(Array.from(aggregatedVisitsMap.values()));
 
     } catch (error) {
       console.error("Error fetching visitors:", error)
@@ -133,18 +141,55 @@ export default function ManageVisitorPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [user, toast])
+  }, [user, toast]);
 
   React.useEffect(() => {
     if (user) {
         fetchConfirmedVisits()
     }
-  }, [user, fetchConfirmedVisits])
+  }, [user, fetchConfirmedVisits]);
+
+  const filteredVisits = React.useMemo(() => {
+    return allVisits
+      .filter(visit => {
+        if (activeFilter === 'all') return true;
+        return visit.status.toLowerCase() === activeFilter.toLowerCase();
+      })
+      .filter(visit => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        return (
+          visit.customer?.name.toLowerCase().includes(term) ||
+          visit.partner?.name.toLowerCase().includes(term) ||
+          visit.property?.catalogTitle.toLowerCase().includes(term)
+        );
+      });
+  }, [allVisits, searchTerm, activeFilter]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Visitors</h1>
+      </div>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="relative w-full md:w-auto md:flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by visitor, partner, or property..."
+            className="pl-8 sm:w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Appointment['status'] | 'all')}>
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="Scheduled">Scheduled</TabsTrigger>
+            <TabsTrigger value="Completed">Completed</TabsTrigger>
+            <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
       <div className="border rounded-lg">
         <Table>
@@ -164,13 +209,13 @@ export default function ManageVisitorPage() {
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : visits.length === 0 ? (
+            ) : filteredVisits.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
-                    No confirmed visits found.
+                    No visits found.
                     </TableCell>
                 </TableRow>
-            ) : visits.map((visit) => (
+            ) : filteredVisits.map((visit) => (
               <TableRow key={visit.id}>
                 <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
