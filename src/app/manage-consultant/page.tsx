@@ -238,7 +238,9 @@ export default function ManageConsultantPage() {
                         </Avatar>
                         <div className="flex-1">
                             <p className="font-medium">{selectedConsultant.name}</p>
-                            <p className="text-sm text-muted-foreground capitalize">{selectedConsultant.role}</p>
+                            <p className="text-sm text-muted-foreground capitalize">
+                                {selectedConsultant.role === 'admin' ? 'Seller' : selectedConsultant.role.replace('_', ' ')}
+                            </p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setSelectedConsultant(null)}>Change</Button>
                     </div>
@@ -260,7 +262,9 @@ export default function ManageConsultantPage() {
                                 ) : filteredConsultants.length > 0 ? filteredConsultants.map(p => (
                                     <div key={p.id} onClick={() => handleSelectConsultant(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
                                         <p>{p.name} ({p.email})</p>
-                                        <p className="text-xs text-muted-foreground capitalize">{p.role}</p>
+                                        <p className="text-xs text-muted-foreground capitalize">
+                                            {p.role === 'admin' ? 'Seller' : p.role.replace('_', ' ')}
+                                        </p>
                                     </div>
                                 )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
                             </div>
