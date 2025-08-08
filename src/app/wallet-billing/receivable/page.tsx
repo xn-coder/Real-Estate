@@ -1,4 +1,3 @@
-
 'use client'
 
 import * as React from "react"
@@ -31,6 +30,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { User } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useUser } from "@/hooks/use-user"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const statusColors: Record<Receivable['status'], "default" | "secondary" | "destructive"> = {
   Paid: 'default',
@@ -57,8 +58,12 @@ export default function ReceivableCashPage() {
     
     const [users, setUsers] = React.useState<User[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
-    const [searchTerm, setSearchTerm] = React.useState("");
+    const [userSearchTerm, setUserSearchTerm] = React.useState("");
     const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+
+    const [mainSearchTerm, setMainSearchTerm] = React.useState("");
+    const [activeFilter, setActiveFilter] = React.useState<Receivable['status'] | 'all'>('all');
+
 
     const form = useForm<ReceivableFormValues>({
         resolver: zodResolver(receivableSchema),
@@ -118,18 +123,29 @@ export default function ReceivableCashPage() {
     }, [fetchReceivables, fetchUsers]);
 
     const filteredUsers = React.useMemo(() => {
-        if (!searchTerm) return [];
+        if (!userSearchTerm) return [];
         return users.filter(user => 
-            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase())
+            user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+            user.id.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
         );
-    }, [users, searchTerm]);
+    }, [users, userSearchTerm]);
+
+    const filteredReceivables = React.useMemo(() => {
+        return receivables.filter(item => {
+            const statusMatch = activeFilter === 'all' || item.status === activeFilter;
+            const searchMatch = mainSearchTerm === "" ||
+                item.userName.toLowerCase().includes(mainSearchTerm.toLowerCase()) ||
+                (item.notes && item.notes.toLowerCase().includes(mainSearchTerm.toLowerCase()));
+            return statusMatch && searchMatch;
+        });
+    }, [receivables, mainSearchTerm, activeFilter]);
+
 
     const handleSelectUser = (user: User) => {
         setSelectedUser(user);
         form.setValue("userId", user.id);
-        setSearchTerm("");
+        setUserSearchTerm("");
     }
 
     const onSubmit = async (values: ReceivableFormValues) => {
@@ -213,11 +229,11 @@ export default function ReceivableCashPage() {
                                                                 <Input 
                                                                     placeholder="Search for a user..."
                                                                     className="pl-8"
-                                                                    value={searchTerm}
-                                                                    onChange={e => setSearchTerm(e.target.value)}
+                                                                    value={userSearchTerm}
+                                                                    onChange={e => setUserSearchTerm(e.target.value)}
                                                                 />
                                                             </div>
-                                                            {searchTerm && (
+                                                            {userSearchTerm && (
                                                                 <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
                                                                     {isLoadingUsers ? (
                                                                         <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
@@ -276,11 +292,29 @@ export default function ReceivableCashPage() {
             
              <Card>
                 <CardHeader>
-                    <CardTitle>Receivable List</CardTitle>
-                    <CardDescription>A list of all pending and paid receivables.</CardDescription>
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="relative w-full md:w-auto md:flex-1">
+                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="search"
+                            placeholder="Search by user or notes..."
+                            className="pl-8 sm:w-full"
+                            value={mainSearchTerm}
+                            onChange={(e) => setMainSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Receivable['status'] | 'all')}>
+                          <TabsList>
+                             <TabsTrigger value="all">All</TabsTrigger>
+                             <TabsTrigger value="Pending">Pending</TabsTrigger>
+                             <TabsTrigger value="Paid">Paid</TabsTrigger>
+                             <TabsTrigger value="Overdue">Overdue</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="border rounded-lg">
+                    <div className="border rounded-lg overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -294,10 +328,10 @@ export default function ReceivableCashPage() {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
-                                ) : receivables.length === 0 ? (
+                                ) : filteredReceivables.length === 0 ? (
                                     <TableRow><TableCell colSpan={5} className="h-24 text-center">No receivables found.</TableCell></TableRow>
                                 ) : (
-                                    receivables.map(item => (
+                                    filteredReceivables.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium">{item.userName}</TableCell>
                                             <TableCell>₹{item.amount.toLocaleString()}</TableCell>

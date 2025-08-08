@@ -1,4 +1,3 @@
-
 'use client'
 
 import * as React from "react"
@@ -40,7 +39,9 @@ export default function ManageConsultantPage() {
   
   const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
   const [isLoadingPartners, setIsLoadingPartners] = React.useState(true)
-  const [searchTerm, setSearchTerm] = React.useState("")
+  const [partnerSearchTerm, setPartnerSearchTerm] = React.useState("")
+  const [customerSearchTerm, setCustomerSearchTerm] = React.useState("")
+
 
   const fetchConsultantData = React.useCallback(async () => {
     setIsLoading(true);
@@ -96,9 +97,17 @@ export default function ManageConsultantPage() {
   }, [fetchConsultantData, fetchPartners]);
 
   const filteredPartners = React.useMemo(() => {
-      if (!searchTerm) return [];
-      return allPartners.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.email.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [allPartners, searchTerm]);
+      if (!partnerSearchTerm) return [];
+      return allPartners.filter(p => p.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(partnerSearchTerm.toLowerCase()));
+  }, [allPartners, partnerSearchTerm]);
+
+  const filteredCustomers = React.useMemo(() => {
+    return customers.filter(c => 
+        c.customer.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+        c.customer.email.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+        (c.consultant && c.consultant.name.toLowerCase().includes(customerSearchTerm.toLowerCase()))
+    );
+  }, [customers, customerSearchTerm]);
 
   const handleModifyClick = (customer: CustomerUser) => {
     setSelectedCustomer(customer);
@@ -107,7 +116,7 @@ export default function ManageConsultantPage() {
   
   const handleSelectPartner = (partner: PartnerUser) => {
     setSelectedPartner(partner);
-    setSearchTerm("");
+    setPartnerSearchTerm("");
   }
   
   const handleReassign = async () => {
@@ -155,10 +164,21 @@ export default function ManageConsultantPage() {
       <Card>
         <CardHeader>
           <CardTitle>Customer-Consultant Assignments</CardTitle>
-          <CardDescription>View and manage which partner is assigned to each customer.</CardDescription>
+           <div className="flex items-center justify-between gap-4 pt-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by customer or consultant..."
+                className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
+                value={customerSearchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-lg">
+          <div className="border rounded-lg overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -170,10 +190,10 @@ export default function ManageConsultantPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                ) : customers.length === 0 ? (
+                ) : filteredCustomers.length === 0 ? (
                   <TableRow><TableCell colSpan={3} className="h-24 text-center">No customers found.</TableCell></TableRow>
                 ) : (
-                  customers.map(({ customer, consultant }) => (
+                  filteredCustomers.map(({ customer, consultant }) => (
                     <TableRow key={customer.id}>
                       <TableCell>
                         <div className="font-medium">{customer.name}</div>
@@ -201,7 +221,7 @@ export default function ManageConsultantPage() {
         </CardContent>
       </Card>
       
-      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setSelectedCustomer(null); setSelectedPartner(null); setSearchTerm(""); } setIsDialogOpen(open); }}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setSelectedCustomer(null); setSelectedPartner(null); setPartnerSearchTerm(""); } setIsDialogOpen(open); }}>
         <DialogContent className="max-w-lg">
             <DialogHeader>
                 <DialogTitle>Modify Consultant for {selectedCustomer?.name}</DialogTitle>
@@ -228,11 +248,11 @@ export default function ManageConsultantPage() {
                             <Input 
                                 placeholder="Search for a partner by name or email..."
                                 className="pl-8"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
+                                value={partnerSearchTerm}
+                                onChange={e => setPartnerSearchTerm(e.target.value)}
                             />
                         </div>
-                        {searchTerm && (
+                        {partnerSearchTerm && (
                             <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
                                 {isLoadingPartners ? (
                                     <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>

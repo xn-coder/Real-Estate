@@ -1,10 +1,9 @@
-
 'use client'
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, Search } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -14,7 +13,7 @@ import { collection, query, where, getDocs, orderBy, Timestamp, doc, getDoc } fr
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import type { WithdrawalRequest } from "@/types/wallet"
-import type { User } from "@/types/user"
+import { Input } from "@/components/ui/input"
 
 const statusColors: Record<WithdrawalRequest['status'], "default" | "secondary" | "destructive"> = {
     Pending: 'secondary',
@@ -27,6 +26,7 @@ export default function PaymentHistoryPage() {
     const { toast } = useToast();
     const [history, setHistory] = React.useState<WithdrawalRequest[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [searchTerm, setSearchTerm] = React.useState("");
     
     const isAdmin = user?.role === 'admin';
     const isSeller = user?.role === 'seller';
@@ -83,6 +83,13 @@ export default function PaymentHistoryPage() {
         }
     }, [user, fetchHistory]);
 
+    const filteredHistory = React.useMemo(() => {
+        return history.filter(item => 
+            (isAdmin && item.userName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            ((isPartner || isSeller) && item.sellerName?.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    }, [history, searchTerm, isAdmin, isPartner, isSeller]);
+
     if (isUserLoading) {
         return <div className="flex-1 p-4 md:p-8 pt-6 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
@@ -101,10 +108,21 @@ export default function PaymentHistoryPage() {
       <Card>
           <CardHeader>
               <CardTitle>Transactions</CardTitle>
-              <CardDescription>A log of all your withdrawal requests.</CardDescription>
+              <div className="flex items-center justify-between gap-4 pt-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search by user name..."
+                    className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
           </CardHeader>
           <CardContent>
-              <div className="border rounded-lg">
+              <div className="border rounded-lg overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -119,10 +137,10 @@ export default function PaymentHistoryPage() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow><TableCell colSpan={isAdmin || isPartner || isSeller ? 5 : 4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
-                        ) : history.length === 0 ? (
+                        ) : filteredHistory.length === 0 ? (
                             <TableRow><TableCell colSpan={isAdmin || isPartner || isSeller ? 5 : 4} className="h-24 text-center">No payment history found.</TableCell></TableRow>
                         ) : (
-                            history.map(item => (
+                            filteredHistory.map(item => (
                                 <TableRow key={item.id}>
                                     {isAdmin && <TableCell>{item.userName}</TableCell>}
                                     {(isPartner || isSeller) && <TableCell>{item.sellerName || 'N/A'}</TableCell>}

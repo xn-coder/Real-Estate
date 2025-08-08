@@ -1,4 +1,3 @@
-
 'use client'
 
 import * as React from "react"
@@ -12,7 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, MessageSquare, PlusCircle } from "lucide-react"
+import { Loader2, Eye, MessageSquare, PlusCircle, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, documentId } from "firebase/firestore"
@@ -20,11 +19,16 @@ import type { User as CustomerUser } from "@/types/user"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import type { Lead } from "@/types/lead"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const statusColors: { [key: string]: "default" | "secondary" | "destructive" } = {
   active: 'default',
   inactive: 'secondary',
 };
+
+const filterStatuses: (CustomerUser['status'] | 'all')[] = ['all', 'active', 'inactive'];
 
 export default function ManageCustomerPage() {
   const { toast } = useToast()
@@ -33,6 +37,8 @@ export default function ManageCustomerPage() {
   const { user } = useUser();
   const [customers, setCustomers] = React.useState<CustomerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [activeFilter, setActiveFilter] = React.useState<CustomerUser['status'] | 'all'>("all");
 
   const partnerIdFilter = searchParams.get('partnerId');
 
@@ -115,13 +121,44 @@ export default function ManageCustomerPage() {
         fetchCustomers()
     }
   }, [user, fetchCustomers])
+  
+  const filteredCustomers = React.useMemo(() => {
+    return customers.filter(customer => {
+        const statusMatch = activeFilter === 'all' || (customer.status || 'active') === activeFilter;
+        const searchMatch = searchTerm === "" ||
+            customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            customer.id.toLowerCase().includes(searchTerm.toLowerCase());
+        return statusMatch && searchMatch;
+    });
+  }, [customers, searchTerm, activeFilter]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Customers</h1>
       </div>
-      <div className="border rounded-lg">
+       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="relative w-full md:w-auto md:flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name, email, or ID..."
+            className="pl-8 sm:w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as CustomerUser['status'] | 'all')}>
+          <TabsList>
+            {filterStatuses.map(status => (
+                 <TabsTrigger key={status} value={status} className="capitalize">{status}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -141,13 +178,13 @@ export default function ManageCustomerPage() {
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : customers.length === 0 ? (
+            ) : filteredCustomers.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                     No customers found.
                     </TableCell>
                 </TableRow>
-            ) : customers.map((customer) => (
+            ) : filteredCustomers.map((customer) => (
               <TableRow key={customer.id}>
                 <TableCell className="font-medium">{customer.name}</TableCell>
                  <TableCell>

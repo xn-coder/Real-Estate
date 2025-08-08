@@ -1,4 +1,3 @@
-
 'use client'
 
 import * as React from "react"
@@ -29,6 +28,8 @@ import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import type { User } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const requestFormSchema = z.object({
   amount: z.coerce.number().min(100, "Withdrawal amount must be at least ₹100."),
@@ -57,9 +58,12 @@ export default function WithdrawalRequestPage() {
 
   const [sellers, setSellers] = React.useState<User[]>([]);
   const [isLoadingSellers, setIsLoadingSellers] = React.useState(true);
-  const [searchTerm, setSearchTerm] = React.useState("");
+  const [sellerSearchTerm, setSellerSearchTerm] = React.useState("");
   const [selectedSeller, setSelectedSeller] = React.useState<User | null>(null);
   
+  const [mainSearchTerm, setMainSearchTerm] = React.useState("");
+  const [activeFilter, setActiveFilter] = React.useState<WithdrawalRequest['status'] | 'all'>('all');
+
   const isAdmin = user?.role === 'admin';
   const isSeller = user?.role === 'seller';
   const canManage = isAdmin || isSeller;
@@ -178,19 +182,29 @@ export default function WithdrawalRequestPage() {
   }
 
   const filteredSellers = React.useMemo(() => {
-    if (!searchTerm) return [];
+    if (!sellerSearchTerm) return [];
     return sellers.filter(seller => 
-        seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        seller.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        seller.email.toLowerCase().includes(searchTerm.toLowerCase())
+        seller.name.toLowerCase().includes(sellerSearchTerm.toLowerCase()) ||
+        seller.id.toLowerCase().includes(sellerSearchTerm.toLowerCase()) ||
+        seller.email.toLowerCase().includes(sellerSearchTerm.toLowerCase())
     );
-  }, [sellers, searchTerm]);
+  }, [sellers, sellerSearchTerm]);
+  
+  const filteredRequests = React.useMemo(() => {
+    return requests.filter(item => {
+        const statusMatch = activeFilter === 'all' || item.status === activeFilter;
+        const searchMatch = mainSearchTerm === "" ||
+            item.userName.toLowerCase().includes(mainSearchTerm.toLowerCase());
+        return statusMatch && searchMatch;
+    });
+  }, [requests, mainSearchTerm, activeFilter]);
+
 
   const handleSelectSeller = (seller: User) => {
     setSelectedSeller(seller);
     form.setValue("sellerId", seller.id);
     form.clearErrors("sellerId");
-    setSearchTerm("");
+    setSellerSearchTerm("");
   }
 
 
@@ -247,11 +261,11 @@ export default function WithdrawalRequestPage() {
                                                     <Input 
                                                         placeholder="Search for a seller by name or email..."
                                                         className="pl-8"
-                                                        value={searchTerm}
-                                                        onChange={e => setSearchTerm(e.target.value)}
+                                                        value={sellerSearchTerm}
+                                                        onChange={e => setSellerSearchTerm(e.target.value)}
                                                     />
                                                 </div>
-                                                {searchTerm && (
+                                                {sellerSearchTerm && (
                                                     <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
                                                         {isLoadingSellers ? (
                                                             <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
@@ -310,9 +324,29 @@ export default function WithdrawalRequestPage() {
       <Card>
         <CardHeader>
             <CardTitle>{canManage ? "Manage Requests" : "My Request History"}</CardTitle>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4">
+                <div className="relative w-full md:w-auto md:flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search by user name..."
+                    className="pl-8 sm:w-full"
+                    value={mainSearchTerm}
+                    onChange={(e) => setMainSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as WithdrawalRequest['status'] | 'all')}>
+                  <TabsList>
+                     <TabsTrigger value="all">All</TabsTrigger>
+                     <TabsTrigger value="Pending">Pending</TabsTrigger>
+                     <TabsTrigger value="Approved">Approved</TabsTrigger>
+                     <TabsTrigger value="Rejected">Rejected</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
         </CardHeader>
         <CardContent>
-             <div className="border rounded-lg">
+             <div className="border rounded-lg overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -330,14 +364,14 @@ export default function WithdrawalRequestPage() {
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                                 </TableCell>
                             </TableRow>
-                        ) : requests.length === 0 ? (
+                        ) : filteredRequests.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={canManage ? 5 : 4} className="h-24 text-center">
                                     No requests found.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            requests.map((request) => (
+                            filteredRequests.map((request) => (
                                 <TableRow key={request.id}>
                                     {canManage && <TableCell>{request.userName}</TableCell>}
                                     <TableCell className="font-medium">₹{request.amount.toLocaleString()}</TableCell>

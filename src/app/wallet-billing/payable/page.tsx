@@ -1,4 +1,3 @@
-
 'use client'
 
 import * as React from "react"
@@ -31,6 +30,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { User } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useUser } from "@/hooks/use-user"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusColors: Record<Payable['status'], "default" | "secondary" | "destructive"> = {
   Paid: 'default',
@@ -56,8 +56,12 @@ export default function PayableListPage() {
 
     const [users, setUsers] = React.useState<User[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = React.useState(true);
-    const [searchTerm, setSearchTerm] = React.useState("");
+    const [userSearchTerm, setUserSearchTerm] = React.useState("");
     const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+
+    const [mainSearchTerm, setMainSearchTerm] = React.useState("");
+    const [activeFilter, setActiveFilter] = React.useState<Payable['status'] | 'all'>('all');
+
 
     const form = useForm<PayableFormValues>({
         resolver: zodResolver(payableSchema),
@@ -116,18 +120,28 @@ export default function PayableListPage() {
     }, [fetchPayables, fetchUsers]);
     
     const filteredUsers = React.useMemo(() => {
-        if (!searchTerm) return [];
+        if (!userSearchTerm) return [];
         return users.filter(user => 
-            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchTerm.toLowerCase())
+            user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+            user.id.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
         );
-    }, [users, searchTerm]);
+    }, [users, userSearchTerm]);
+
+    const filteredPayables = React.useMemo(() => {
+        return payables.filter(item => {
+            const statusMatch = activeFilter === 'all' || item.status === activeFilter;
+            const searchMatch = mainSearchTerm === "" ||
+                item.userName.toLowerCase().includes(mainSearchTerm.toLowerCase()) ||
+                (item.notes && item.notes.toLowerCase().includes(mainSearchTerm.toLowerCase()));
+            return statusMatch && searchMatch;
+        });
+    }, [payables, mainSearchTerm, activeFilter]);
 
     const handleSelectUser = (user: User) => {
         setSelectedUser(user);
         form.setValue("userId", user.id);
-        setSearchTerm("");
+        setUserSearchTerm("");
     }
 
     const onSubmit = async (values: PayableFormValues) => {
@@ -211,11 +225,11 @@ export default function PayableListPage() {
                                                                 <Input 
                                                                     placeholder="Search for a user..."
                                                                     className="pl-8"
-                                                                    value={searchTerm}
-                                                                    onChange={e => setSearchTerm(e.target.value)}
+                                                                    value={userSearchTerm}
+                                                                    onChange={e => setUserSearchTerm(e.target.value)}
                                                                 />
                                                             </div>
-                                                            {searchTerm && (
+                                                            {userSearchTerm && (
                                                                 <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
                                                                     {isLoadingUsers ? (
                                                                         <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
@@ -274,11 +288,28 @@ export default function PayableListPage() {
             
              <Card>
                 <CardHeader>
-                    <CardTitle>Payable List</CardTitle>
-                    <CardDescription>A list of all pending and completed payments.</CardDescription>
+                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="relative w-full md:w-auto md:flex-1">
+                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="search"
+                            placeholder="Search by user or notes..."
+                            className="pl-8 sm:w-full"
+                            value={mainSearchTerm}
+                            onChange={(e) => setMainSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Payable['status'] | 'all')}>
+                          <TabsList>
+                             <TabsTrigger value="all">All</TabsTrigger>
+                             <TabsTrigger value="Pending">Pending</TabsTrigger>
+                             <TabsTrigger value="Paid">Paid</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="border rounded-lg">
+                    <div className="border rounded-lg overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -292,10 +323,10 @@ export default function PayableListPage() {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
-                                ) : payables.length === 0 ? (
+                                ) : filteredPayables.length === 0 ? (
                                     <TableRow><TableCell colSpan={5} className="h-24 text-center">No payables found.</TableCell></TableRow>
                                 ) : (
-                                    payables.map(item => (
+                                    filteredPayables.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium">{item.userName}</TableCell>
                                             <TableCell>₹{item.amount.toLocaleString()}</TableCell>

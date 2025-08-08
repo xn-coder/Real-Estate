@@ -1,14 +1,13 @@
-
 'use client'
 
 import * as React from "react"
 import { db } from "@/lib/firebase"
-import { collection, query, getDocs, Timestamp, updateDoc, doc } from "firebase/firestore"
+import { collection, query, getDocs, Timestamp, updateDoc, doc, where } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Mail, Pencil } from "lucide-react"
+import { Loader2, Eye, Mail, Pencil, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import type { SupportTicket } from "@/types/team"
@@ -17,6 +16,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const statusColors: Record<SupportTicket['status'], 'default' | 'secondary' | 'destructive'> = {
   'Open': 'default',
@@ -34,6 +36,8 @@ export default function ManageSupportTicketsPage() {
     const [currentStatus, setCurrentStatus] = React.useState<SupportTicket['status']>('Open');
     const [resolutionDetails, setResolutionDetails] = React.useState("");
     const [isUpdating, setIsUpdating] = React.useState(false);
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [activeFilter, setActiveFilter] = React.useState<SupportTicket['status'] | 'all'>('all');
 
     const fetchTickets = React.useCallback(async () => {
         setIsLoading(true);
@@ -57,6 +61,16 @@ export default function ManageSupportTicketsPage() {
     React.useEffect(() => {
         fetchTickets();
     }, [fetchTickets]);
+    
+    const filteredTickets = React.useMemo(() => {
+        return tickets.filter(ticket => {
+            const statusMatch = activeFilter === 'all' || ticket.status === activeFilter;
+            const searchMatch = searchTerm === "" ||
+                ticket.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                ticket.subject.toLowerCase().includes(searchTerm.toLowerCase());
+            return statusMatch && searchMatch;
+        });
+    }, [tickets, searchTerm, activeFilter]);
 
     const handleManageClick = (ticket: SupportTicket) => {
         setSelectedTicket(ticket);
@@ -91,11 +105,29 @@ export default function ManageSupportTicketsPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Support Tickets</h1>
             <Card>
                 <CardHeader>
-                    <CardTitle>All Tickets</CardTitle>
-                    <CardDescription>View and manage all submitted support tickets.</CardDescription>
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="relative w-full md:w-auto md:flex-1">
+                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="search"
+                            placeholder="Search by user or subject..."
+                            className="pl-8 sm:w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                          />
+                        </div>
+                        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as SupportTicket['status'] | 'all')}>
+                          <TabsList>
+                             <TabsTrigger value="all">All</TabsTrigger>
+                             <TabsTrigger value="Open">Open</TabsTrigger>
+                             <TabsTrigger value="In Progress">In Progress</TabsTrigger>
+                             <TabsTrigger value="Closed">Closed</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="border rounded-lg">
+                    <div className="border rounded-lg overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -109,10 +141,10 @@ export default function ManageSupportTicketsPage() {
                             <TableBody>
                                 {isLoading ? (
                                     <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                                ) : tickets.length === 0 ? (
+                                ) : filteredTickets.length === 0 ? (
                                     <TableRow><TableCell colSpan={5} className="h-24 text-center">No support tickets found.</TableCell></TableRow>
                                 ) : (
-                                    tickets.map((ticket) => (
+                                    filteredTickets.map((ticket) => (
                                         <TableRow key={ticket.id}>
                                             <TableCell className="font-medium">{ticket.userName}</TableCell>
                                             <TableCell>{ticket.subject}</TableCell>
@@ -143,7 +175,7 @@ export default function ManageSupportTicketsPage() {
                         <DialogTitle>Manage Ticket</DialogTitle>
                         <DialogDescription>{selectedTicket?.subject}</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                         <div className="p-4 border rounded-md bg-muted text-sm">
                             <p className="font-semibold mb-2">Original Request from {selectedTicket?.userName}:</p>
                             <p>{selectedTicket?.description}</p>

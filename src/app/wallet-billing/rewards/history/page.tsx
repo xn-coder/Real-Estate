@@ -1,19 +1,18 @@
-
 'use client'
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, ArrowLeft, ArrowUp, ArrowDown } from "lucide-react"
+import { Loader2, ArrowLeft, ArrowUp, ArrowDown, Search } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { collection, query, where, getDocs, orderBy, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import type { RewardTransaction } from "@/types/wallet"
+import { Input } from "@/components/ui/input"
 
 
 export default function RewardHistoryPage() {
@@ -21,6 +20,7 @@ export default function RewardHistoryPage() {
     const { toast } = useToast();
     const [history, setHistory] = React.useState<RewardTransaction[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [searchTerm, setSearchTerm] = React.useState("");
     
     const isAdmin = user?.role === 'admin';
     const isSeller = user?.role === 'seller';
@@ -84,6 +84,12 @@ export default function RewardHistoryPage() {
             fetchHistory();
         }
     }, [user, fetchHistory]);
+    
+    const filteredHistory = React.useMemo(() => {
+        return history.filter(item => 
+            item.toName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [history, searchTerm]);
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -99,10 +105,21 @@ export default function RewardHistoryPage() {
       <Card>
           <CardHeader>
               <CardTitle>Transaction History</CardTitle>
-              <CardDescription>A log of all reward point transactions.</CardDescription>
+              <div className="flex items-center justify-between gap-4 pt-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search by recipient name..."
+                    className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
           </CardHeader>
           <CardContent>
-              <div className="border rounded-lg">
+              <div className="border rounded-lg overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -115,9 +132,9 @@ export default function RewardHistoryPage() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow><TableCell colSpan={(isAdmin || isSeller) ? 4 : 3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
-                        ) : history.length === 0 ? (
+                        ) : filteredHistory.length === 0 ? (
                             <TableRow><TableCell colSpan={(isAdmin || isSeller) ? 4 : 3} className="h-24 text-center">No reward history found.</TableCell></TableRow>
-                        ) : history.map(item => {
+                        ) : filteredHistory.map(item => {
                             const isCredit = !isAdmin && !isSeller && item.toId === user?.id;
                             const isDebit = !isAdmin && !isSeller && item.fromId === user?.id;
                             
