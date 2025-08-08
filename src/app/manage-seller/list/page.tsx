@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Eye, MessageSquare, UserX, Search, ArrowLeft } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 
 const statusColors: { [key: string]: "default" | "secondary" | "destructive" } = {
   active: 'default',
@@ -46,6 +47,8 @@ export default function ManageSellerListPage() {
   const [isDeactivating, setIsDeactivating] = React.useState(false);
   const [deactivationReason, setDeactivationReason] = React.useState("");
   const [isDeactivationDialogOpen, setIsDeactivationDialogOpen] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState("");
+
 
   const fetchSellers = React.useCallback(async () => {
     setIsLoading(true)
@@ -70,6 +73,13 @@ export default function ManageSellerListPage() {
   React.useEffect(() => {
     fetchSellers()
   }, [fetchSellers])
+  
+  const filteredSellers = React.useMemo(() => {
+    return sellers.filter(seller => 
+        seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        seller.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [sellers, searchTerm]);
 
   const handleDeactivateClick = (seller: SellerUser) => {
     setSelectedSeller(seller);
@@ -117,13 +127,34 @@ export default function ManageSellerListPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Active Sellers</h1>
+         <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" asChild>
+                <Link href="/manage-seller">
+                    <ArrowLeft className="h-4 w-4" />
+                </Link>
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Active Sellers</h1>
+        </div>
          <Button asChild>
             <Link href="/manage-seller/add">
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Seller
             </Link>
         </Button>
       </div>
+
+       <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name or email..."
+            className="pl-8 sm:w-full md:w-1/3"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -144,13 +175,13 @@ export default function ManageSellerListPage() {
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
-            ) : sellers.length === 0 ? (
+            ) : filteredSellers.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                     No active sellers found.
                     </TableCell>
                 </TableRow>
-            ) : sellers.map((seller) => (
+            ) : filteredSellers.map((seller) => (
               <TableRow key={seller.id}>
                 <TableCell className="font-medium">{seller.name}</TableCell>
                 <TableCell>

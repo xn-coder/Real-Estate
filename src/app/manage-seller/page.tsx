@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserCheck, UserPlus, UserX, Loader2, ChevronRight } from "lucide-react"
+import { UserCheck, UserPlus, UserX, Loader2, ChevronRight, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where } from "firebase/firestore"
@@ -78,7 +78,14 @@ export default function ManageSellerDashboardPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Seller Management</h1>
+        <div className="flex items-center gap-4">
+             <Button variant="outline" size="icon" asChild>
+                <Link href="/dashboard">
+                    <ArrowLeft className="h-4 w-4" />
+                </Link>
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Seller Management</h1>
+        </div>
         <Button asChild>
             <Link href="/manage-seller/add">
               <UserPlus className="mr-2 h-4 w-4" /> Add Seller
