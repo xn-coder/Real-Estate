@@ -138,7 +138,7 @@ export default function Dashboard() {
           <Loader2 className="h-6 w-6 animate-spin" />
         ) : (
           <>
-            <div className="text-2xl lg:text-3xl font-bold">{value}</div>
+            <div className="text-2xl md:text-3xl font-bold">{value}</div>
             <p className="text-xs text-muted-foreground">{description}</p>
           </>
         )}
@@ -153,7 +153,7 @@ export default function Dashboard() {
           Dashboard
         </h1>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {renderStatCard("Active Leads", stats.activeLeads, Users, "+2 from last month")}
         {renderStatCard("Active Listings", stats.activeListings, Home, "+5 this month")}
         {renderStatCard("Deals in Progress", stats.dealsInProgress, Briefcase, "+1 closed this week")}
@@ -167,8 +167,8 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="pl-2">
              {isLoading ? <div className="h-[300px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-              <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height={300}>
+              <ChartContainer config={chartConfig} className="min-h-[250px] h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
@@ -192,12 +192,12 @@ export default function Dashboard() {
              {isLoading ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
                 <div className="space-y-4">
                   {appointments.slice(0, 5).map((appointment) => (
-                    <div key={appointment.id} className="flex items-center p-3 border rounded-md bg-muted/50 gap-4">
+                    <div key={appointment.id} className="flex flex-col sm:flex-row items-start sm:items-center p-3 border rounded-md bg-muted/50 gap-4">
                         <div className="flex-1 space-y-1 min-w-0">
                           <p className="font-medium truncate">{appointment.lead?.name || 'N/A'}</p>
                           <p className="text-sm text-muted-foreground truncate">{appointment.property?.catalogTitle || 'N/A'}</p>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-left sm:text-right flex-shrink-0">
                            <p className="font-medium text-sm">{format(appointment.visitDate as Date, "PPP")}</p>
                         </div>
                     </div>
