@@ -9,6 +9,7 @@ import { Loader2, Search, Building, User, Users, Handshake, ChevronRight } from 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useDebounce } from 'use-debounce';
 
 type SearchResult = {
   id: string
@@ -72,14 +73,14 @@ export default function SearchPage() {
         })
     ));
 
-    // Property Search
-    const propertyQuery = query(
+    // Property Search by Title
+    const propertyTitleQuery = query(
         collection(db, "properties"),
         where('catalogTitle', '>=', searchTerm),
         where('catalogTitle', '<=', searchTerm + '\uf8ff'),
-        limit(10)
+        limit(5)
     );
-     searchPromises.push(getDocs(propertyQuery).then(snapshot => 
+    searchPromises.push(getDocs(propertyTitleQuery).then(snapshot => 
         snapshot.docs.map(doc => {
             const data = doc.data()
             return {
@@ -88,7 +89,28 @@ export default function SearchPage() {
                 description: `${data.city}, ${data.state}`,
                 type: 'Property',
                 href: `/listings/${doc.id}`,
-                image: '', // No image for properties in this quick search
+                image: '',
+            } as SearchResult
+        })
+    ));
+
+     // Property Search by ID
+    const propertyIdQuery = query(
+        collection(db, "properties"),
+        where('id', '>=', searchTerm),
+        where('id', '<=', searchTerm + '\uf8ff'),
+        limit(5)
+    );
+     searchPromises.push(getDocs(propertyIdQuery).then(snapshot => 
+        snapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+                id: doc.id,
+                title: data.catalogTitle,
+                description: `ID: ${data.id}`,
+                type: 'Property',
+                href: `/listings/${doc.id}`,
+                image: '',
             } as SearchResult
         })
     ));
@@ -116,8 +138,13 @@ export default function SearchPage() {
 
 
     try {
-        const allResults = await Promise.all(searchPromises);
-        setResults(allResults.flat());
+        const allResultSets = await Promise.all(searchPromises);
+        const flattenedResults = allResultSets.flat();
+        
+        // Remove duplicates (e.g., if a property matches by both ID and title)
+        const uniqueResults = Array.from(new Map(flattenedResults.map(item => [item.id, item])).values());
+        
+        setResults(uniqueResults);
     } catch (error) {
         console.error("Search failed:", error);
     } finally {
