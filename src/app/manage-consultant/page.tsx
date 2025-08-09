@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Pencil, Search, User, Users, Handshake, Replace } from "lucide-react"
+import { Loader2, Pencil, Search, User as UserIcon, Users, Handshake, Replace } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, getDoc, writeBatch, Timestamp, orderBy, limit } from "firebase/firestore"
@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 type CustomerWithConsultants = {
   customer: CustomerUser;
@@ -247,7 +248,7 @@ export default function ManageConsultantPage() {
                   </Avatar>
                   <div className="flex-1">
                       <p className="font-medium">{currentConsultant.name}</p>
-                      <p className="text-sm text-muted-foreground capitalize">{type}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{type === 'seller' && currentConsultant.role === 'admin' ? 'Seller' : type}</p>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setIsChanging(true)}>Change</Button>
               </div>
@@ -337,7 +338,7 @@ export default function ManageConsultantPage() {
                            <>
                             <div className="font-medium">{c.seller.name}</div>
                             <div className="text-sm text-muted-foreground capitalize">
-                                {c.seller.role === 'admin' ? 'Seller' : 'Seller'}
+                                {c.seller.role === 'admin' ? 'Seller' : c.seller.role}
                             </div>
                            </>
                         ) : (
