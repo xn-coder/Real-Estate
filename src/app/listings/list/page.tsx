@@ -158,23 +158,6 @@ export default function ListingsPage() {
                              <h3 className="font-semibold text-lg text-white leading-tight truncate" title={listing.catalogTitle}>{listing.catalogTitle}</h3>
                              <p className="text-sm text-gray-200 truncate">{listing.addressLine}</p>
                         </div>
-                        {canAddProperties && (
-                            <div className="absolute top-2 right-2">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                    <Button aria-haspopup="true" size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
-                                        <MoreHorizontal className="h-4 w-4" />
-                                        <span className="sr-only">Toggle menu</span>
-                                    </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <DropdownMenuItem>Edit</DropdownMenuItem>
-                                    <DropdownMenuItem>Delete</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        )}
                     </CardHeader>
                     <CardContent className="p-4 flex-grow grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground"><Bed className="h-4 w-4"/><span>{listing.bedrooms} Beds</span></div>
