@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Pencil, Search, User, Users, Handshake } from "lucide-react"
+import { Loader2, Pencil, Search, User, Users, Handshake, Replace } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, getDoc, writeBatch, Timestamp, orderBy, limit } from "firebase/firestore"
@@ -24,7 +24,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type CustomerWithConsultants = {
   customer: CustomerUser;
@@ -42,15 +41,23 @@ export default function ManageConsultantPage() {
   
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [isUpdating, setIsUpdating] = React.useState(false)
-  const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerUser | null>(null)
-  const [selectedConsultant, setSelectedConsultant] = React.useState<PartnerUser | null>(null)
+
+  const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerWithConsultants | null>(null)
+  
+  const [newPartner, setNewPartner] = React.useState<PartnerUser | null>(null);
+  const [newSeller, setNewSeller] = React.useState<SellerUser | null>(null);
   
   const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
-  const [allSellers, setAllSellers] = React.useState<PartnerUser[]>([])
+  const [allSellers, setAllSellers] = React.useState<SellerUser[]>([])
   const [isLoadingConsultants, setIsLoadingConsultants] = React.useState(true)
-  const [consultantSearchTerm, setConsultantSearchTerm] = React.useState("")
+
+  const [partnerSearchTerm, setPartnerSearchTerm] = React.useState("");
+  const [sellerSearchTerm, setSellerSearchTerm] = React.useState("");
+  
   const [customerSearchTerm, setCustomerSearchTerm] = React.useState("")
-  const [assignmentType, setAssignmentType] = React.useState<'partner' | 'seller'>('partner');
+  
+  const [isChangingPartner, setIsChangingPartner] = React.useState(false);
+  const [isChangingSeller, setIsChangingSeller] = React.useState(false);
 
 
   const fetchConsultantData = React.useCallback(async () => {
@@ -71,7 +78,6 @@ export default function ManageConsultantPage() {
                 if (!leadsSnapshot.empty) {
                     const lead = leadsSnapshot.docs[0].data() as Lead;
                     
-                    // Fetch Partner
                     if (lead.partnerId) {
                         const partnerDoc = await getDoc(doc(db, "users", lead.partnerId));
                         if (partnerDoc.exists()) {
@@ -79,7 +85,6 @@ export default function ManageConsultantPage() {
                         }
                     }
                     
-                    // Fetch Seller from Property
                     if (lead.propertyId) {
                         const propertyDoc = await getDoc(doc(db, "properties", lead.propertyId));
                         if (propertyDoc.exists()) {
@@ -120,7 +125,7 @@ export default function ManageConsultantPage() {
         ]);
         
         setAllPartners(partnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
-        setAllSellers(sellersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
+        setAllSellers(sellersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SellerUser)));
     } catch (error) {
         console.error("Error fetching partners:", error);
     } finally {
@@ -133,11 +138,16 @@ export default function ManageConsultantPage() {
     fetchAllConsultants();
   }, [fetchConsultantData, fetchAllConsultants]);
 
-  const filteredConsultants = React.useMemo(() => {
-      if (!consultantSearchTerm) return [];
-      const listToSearch = assignmentType === 'partner' ? allPartners : allSellers;
-      return listToSearch.filter(p => p.name.toLowerCase().includes(consultantSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(consultantSearchTerm.toLowerCase()));
-  }, [allPartners, allSellers, consultantSearchTerm, assignmentType]);
+  const filteredPartners = React.useMemo(() => {
+      if (!partnerSearchTerm) return [];
+      return allPartners.filter(p => p.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(partnerSearchTerm.toLowerCase()));
+  }, [allPartners, partnerSearchTerm]);
+
+  const filteredSellers = React.useMemo(() => {
+      if (!sellerSearchTerm) return [];
+      return allSellers.filter(s => s.name.toLowerCase().includes(sellerSearchTerm.toLowerCase()) || s.email.toLowerCase().includes(sellerSearchTerm.toLowerCase()));
+  }, [allSellers, sellerSearchTerm]);
+
 
   const filteredCustomers = React.useMemo(() => {
     return customers.filter(c => 
@@ -148,24 +158,33 @@ export default function ManageConsultantPage() {
     );
   }, [customers, customerSearchTerm]);
 
-  const handleModifyClick = (customer: CustomerUser) => {
-    setSelectedCustomer(customer);
+  const handleModifyClick = (customerData: CustomerWithConsultants) => {
+    setSelectedCustomer(customerData);
+    setNewPartner(customerData.partner || null);
+    setNewSeller(customerData.seller || null);
     setIsDialogOpen(true);
   }
   
-  const handleSelectConsultant = (consultant: PartnerUser) => {
-    setSelectedConsultant(consultant);
-    setConsultantSearchTerm("");
+  const handleSelectPartner = (partner: PartnerUser) => {
+    setNewPartner(partner);
+    setPartnerSearchTerm("");
+    setIsChangingPartner(false);
+  }
+
+  const handleSelectSeller = (seller: SellerUser) => {
+    setNewSeller(seller);
+    setSellerSearchTerm("");
+    setIsChangingSeller(false);
   }
   
   const handleReassign = async () => {
-      if (!selectedCustomer || !selectedConsultant) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Customer or consultant not selected.'});
+      if (!selectedCustomer) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Customer not selected.'});
           return;
       }
       setIsUpdating(true);
       try {
-        const leadsQuery = query(collection(db, "leads"), where("customerId", "==", selectedCustomer.id));
+        const leadsQuery = query(collection(db, "leads"), where("customerId", "==", selectedCustomer.customer.id));
         const leadsSnapshot = await getDocs(leadsQuery);
         
         if (leadsSnapshot.empty) {
@@ -175,29 +194,89 @@ export default function ManageConsultantPage() {
         }
         
         const batch = writeBatch(db);
-        const fieldToUpdate = partnerRoles.includes(selectedConsultant.role) ? 'partnerId' : 'sellerId'; // This logic might need adjustment if sellers are not on leads. Let's assume partner assignment for now.
         
-        leadsSnapshot.docs.forEach(leadDoc => {
-            // This logic might need to be more complex. For now, we just re-assign the partner.
-            // Re-assigning a seller would mean changing the property which is more complex.
-            batch.update(doc(db, "leads", leadDoc.id), { partnerId: selectedConsultant.id });
-        });
+        if (newPartner && newPartner.id !== selectedCustomer.partner?.id) {
+             leadsSnapshot.docs.forEach(leadDoc => {
+                batch.update(doc(db, "leads", leadDoc.id), { partnerId: newPartner.id });
+            });
+             toast({ title: 'Success', description: `${selectedCustomer.customer.name}'s partner has been updated to ${newPartner.name}.` });
+        }
+        
+        // Note: Seller reassignment is complex as it's tied to the property.
+        // This functionality might need a more detailed implementation if properties need to change.
+        if (newSeller && newSeller.id !== selectedCustomer.seller?.id) {
+            console.log("Seller reassignment requested. This requires more complex logic not yet implemented.");
+            toast({ variant: "default", title: 'Info', description: `Seller reassignment logic is not fully implemented.` });
+        }
         
         await batch.commit();
 
-        toast({ title: 'Success', description: `${selectedCustomer.name}'s consultant has been updated to ${selectedConsultant.name}.` });
         fetchConsultantData();
         setIsDialogOpen(false);
-        setSelectedCustomer(null);
-        setSelectedConsultant(null);
 
       } catch (error) {
          console.error("Error reassigning consultant:", error);
          toast({ variant: "destructive", title: "Error", description: "Failed to reassign consultant." });
       } finally {
         setIsUpdating(false);
+        setNewPartner(null);
+        setNewSeller(null);
+        setIsChangingPartner(false);
+        setIsChangingSeller(false);
       }
   }
+
+  const renderConsultantSelector = (
+      type: 'partner' | 'seller',
+      currentConsultant: PartnerUser | SellerUser | null,
+      isChanging: boolean,
+      setIsChanging: (val: boolean) => void,
+      searchTerm: string,
+      setSearchTerm: (val: string) => void,
+      filteredList: (PartnerUser | SellerUser)[],
+      handleSelect: (consultant: any) => void,
+      isLoadingList: boolean
+  ) => (
+      <div>
+          <Label className="capitalize">{type}</Label>
+          {!isChanging && currentConsultant ? (
+               <div className="flex items-center gap-4 p-2 border rounded-md mt-1">
+                  <Avatar>
+                      <AvatarImage src={currentConsultant.profileImage} />
+                      <AvatarFallback>{currentConsultant.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                      <p className="font-medium">{currentConsultant.name}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{type}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setIsChanging(true)}>Change</Button>
+              </div>
+          ) : (
+              <div>
+                  <div className="relative mt-1">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                          placeholder={`Search for a ${type}...`}
+                          className="pl-8"
+                          value={searchTerm}
+                          onChange={e => setSearchTerm(e.target.value)}
+                      />
+                  </div>
+                  {searchTerm && (
+                      <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                          {isLoadingList ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                          ) : filteredList.length > 0 ? filteredList.map(c => (
+                              <div key={c.id} onClick={() => handleSelect(c)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                  <p>{c.name} ({c.email})</p>
+                              </div>
+                          )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
+                      </div>
+                  )}
+              </div>
+          )}
+      </div>
+  );
 
 
   return (
@@ -237,30 +316,28 @@ export default function ManageConsultantPage() {
                 ) : filteredCustomers.length === 0 ? (
                   <TableRow><TableCell colSpan={4} className="h-24 text-center">No customers found.</TableCell></TableRow>
                 ) : (
-                  filteredCustomers.map(({ customer, partner, seller }) => (
-                    <TableRow key={customer.id}>
+                  filteredCustomers.map((c) => (
+                    <TableRow key={c.customer.id}>
                       <TableCell>
-                        <div className="font-medium">{customer.name}</div>
-                        <div className="text-sm text-muted-foreground">{customer.email}</div>
+                        <div className="font-medium">{c.customer.name}</div>
+                        <div className="text-sm text-muted-foreground">{c.customer.email}</div>
                       </TableCell>
                       <TableCell>
-                        {partner ? (
+                        {c.partner ? (
                            <>
-                            <div className="font-medium">{partner.name}</div>
-                            <div className="text-sm text-muted-foreground capitalize">
-                                Partner
-                            </div>
+                            <div className="font-medium">{c.partner.name}</div>
+                            <div className="text-sm text-muted-foreground capitalize">Partner</div>
                            </>
                         ) : (
                           <span className="text-muted-foreground">Not Assigned</span>
                         )}
                       </TableCell>
                        <TableCell>
-                        {seller ? (
+                        {c.seller ? (
                            <>
-                            <div className="font-medium">{seller.name}</div>
+                            <div className="font-medium">{c.seller.name}</div>
                             <div className="text-sm text-muted-foreground capitalize">
-                                Seller
+                                {c.seller.role === 'admin' ? 'Seller' : 'Seller'}
                             </div>
                            </>
                         ) : (
@@ -268,7 +345,7 @@ export default function ManageConsultantPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => handleModifyClick(customer)}>
+                        <Button variant="outline" size="sm" onClick={() => handleModifyClick(c)}>
                           <Pencil className="mr-2 h-4 w-4" />
                           Modify
                         </Button>
@@ -282,66 +359,41 @@ export default function ManageConsultantPage() {
         </CardContent>
       </Card>
       
-      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setSelectedCustomer(null); setSelectedConsultant(null); setConsultantSearchTerm(""); } setIsDialogOpen(open); }}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsChangingPartner(false); setIsChangingSeller(false); } setIsDialogOpen(open); }}>
         <DialogContent className="max-w-lg">
             <DialogHeader>
-                <DialogTitle>Modify Consultant for {selectedCustomer?.name}</DialogTitle>
-                <DialogDescription>Choose to assign a Partner or a Seller, then search and select the user.</DialogDescription>
+                <DialogTitle>Modify Consultant for {selectedCustomer?.customer.name}</DialogTitle>
+                <DialogDescription>Change the assigned Partner or Seller.</DialogDescription>
             </DialogHeader>
-            <Tabs value={assignmentType} onValueChange={(value) => { setAssignmentType(value as any); setSelectedConsultant(null); }} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="partner"><Handshake className="mr-2 h-4 w-4"/> Assign Partner</TabsTrigger>
-                    <TabsTrigger value="seller"><User className="mr-2 h-4 w-4"/> Assign Seller</TabsTrigger>
-                </TabsList>
-                <div className="py-4 space-y-2 min-h-[16rem]">
-                     {selectedConsultant ? (
-                        <div className="flex items-center gap-4 p-2 border rounded-md">
-                            <Avatar>
-                                <AvatarImage src={selectedConsultant.profileImage} />
-                                <AvatarFallback>{selectedConsultant.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                                <p className="font-medium">{selectedConsultant.name}</p>
-                                <p className="text-sm text-muted-foreground capitalize">
-                                    {sellerRoles.includes(selectedConsultant.role) ? 'Seller' : 'Partner'}
-                                </p>
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedConsultant(null)}>Change</Button>
-                        </div>
-                    ) : (
-                        <div>
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder={`Search for a ${assignmentType}...`}
-                                    className="pl-8"
-                                    value={consultantSearchTerm}
-                                    onChange={e => setConsultantSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            {consultantSearchTerm && (
-                                <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
-                                    {isLoadingConsultants ? (
-                                        <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                                    ) : filteredConsultants.length > 0 ? filteredConsultants.map(p => (
-                                        <div key={p.id} onClick={() => handleSelectConsultant(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
-                                            <p>{p.name} ({p.email})</p>
-                                            <p className="text-xs text-muted-foreground capitalize">
-                                                {sellerRoles.includes(p.role) ? 'Seller' : 'Partner'}
-                                            </p>
-                                        </div>
-                                    )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </Tabs>
+            <div className="space-y-4 py-4">
+                {renderConsultantSelector(
+                    'partner',
+                    newPartner,
+                    isChangingPartner,
+                    setIsChangingPartner,
+                    partnerSearchTerm,
+                    setPartnerSearchTerm,
+                    filteredPartners,
+                    handleSelectPartner,
+                    isLoadingConsultants
+                )}
+                 {renderConsultantSelector(
+                    'seller',
+                    newSeller,
+                    isChangingSeller,
+                    setIsChangingSeller,
+                    sellerSearchTerm,
+                    setSellerSearchTerm,
+                    filteredSellers,
+                    handleSelectSeller,
+                    isLoadingConsultants
+                )}
+            </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleReassign} disabled={isUpdating || !selectedConsultant}>
+                <Button onClick={handleReassign} disabled={isUpdating || (!newPartner && !newSeller)}>
                     {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                    Reassign Consultant
+                    Reassign
                 </Button>
             </DialogFooter>
         </DialogContent>
