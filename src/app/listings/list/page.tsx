@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Search } from "lucide-react"
+import { MoreHorizontal, PlusCircle, Loader2, Search, Ruler, Bed, Bath } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,6 +154,10 @@ export default function ListingsPage() {
                             width="400"
                             data-ai-hint="house exterior"
                         />
+                         <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent">
+                             <h3 className="font-semibold text-lg text-white leading-tight truncate" title={listing.catalogTitle}>{listing.catalogTitle}</h3>
+                             <p className="text-sm text-gray-200 truncate">{listing.addressLine}</p>
+                        </div>
                         {canAddProperties && (
                             <div className="absolute top-2 right-2">
                                 <DropdownMenu>
@@ -172,15 +176,15 @@ export default function ListingsPage() {
                             </div>
                         )}
                     </CardHeader>
-                    <CardContent className="p-4 flex-grow">
-                        <Badge variant={statusColors[listing.status] || 'default'} className="mb-2">{listing.status}</Badge>
-                        <h3 className="font-semibold text-lg leading-tight truncate" title={listing.addressLine}>{listing.addressLine}</h3>
-                        <p className="text-muted-foreground text-sm">{listing.city}, {listing.state}</p>
+                    <CardContent className="p-4 flex-grow grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground"><Bed className="h-4 w-4"/><span>{listing.bedrooms} Beds</span></div>
+                        <div className="flex items-center gap-2 text-muted-foreground"><Bath className="h-4 w-4"/><span>{listing.bathrooms} Baths</span></div>
+                        <div className="col-span-2 flex items-center gap-2 text-muted-foreground"><Ruler className="h-4 w-4"/><span>{listing.builtUpArea?.toLocaleString() || 'N/A'} {listing.unitOfMeasurement}</span></div>
                     </CardContent>
                     <CardFooter className="p-4 pt-0 border-t mt-auto bg-muted/50">
-                        <div className="flex justify-between items-center w-full text-sm">
-                            <span className="font-bold text-lg text-primary">${listing.listingPrice.toLocaleString()}</span>
-                            <span className="text-muted-foreground">{listing.bedrooms}bd / {listing.bathrooms}ba</span>
+                        <div className="flex justify-between items-center w-full">
+                            <span className="font-bold text-lg text-primary">₹{listing.listingPrice.toLocaleString()}</span>
+                             <Badge variant={statusColors[listing.status] || 'default'}>{listing.status}</Badge>
                         </div>
                     </CardFooter>
                 </Card>
