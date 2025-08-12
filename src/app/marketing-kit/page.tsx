@@ -41,6 +41,7 @@ import { collection, addDoc, getDocs, doc, setDoc, query, where } from "firebase
 import { generateUserId } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { embedProfileOnImage } from "@/ai/flows/embed-profile-flow"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure", "video"], {
@@ -54,6 +55,7 @@ type MarketingKitForm = z.infer<typeof marketingKitSchema>
 type KitFile = {
     name: string;
     url: string;
+    type: 'image' | 'pdf' | 'video' | 'other';
 };
 
 type Kit = {
@@ -80,21 +82,21 @@ const initialKits: Kit[] = [
       title: 'Modern Villa Showcase',
       type: 'Brochure',
       featureImage: 'https://placehold.co/600x400.png',
-      files: [{ name: 'brochure.pdf', url: 'https://placehold.co/600x400.png' }],
+      files: [{ name: 'brochure.pdf', url: 'https://placehold.co/600x400.png', type: 'pdf' }],
     },
     {
       id: 'kit2',
       title: 'Downtown Apartment Posters',
       type: 'Poster',
       featureImage: 'https://placehold.co/600x400.png',
-      files: [{ name: 'poster.pdf', url: 'https://placehold.co/600x400.png' }],
+      files: [{ name: 'poster.jpg', url: 'https://placehold.co/600x400.png', type: 'image' }],
     },
     {
       id: 'kit3',
       title: 'Suburban Family Homes',
       type: 'Brochure',
       featureImage: 'https://placehold.co/600x400.png',
-      files: [{ name: 'family_homes.pdf', url: 'https://placehold.co/600x400.png' }],
+      files: [{ name: 'family_homes.pdf', url: 'https://placehold.co/600x400.png', type: 'pdf' }],
     },
   ];
 
@@ -104,6 +106,7 @@ export default function MarketingKitPage() {
   const [kits, setKits] = React.useState<Kit[]>(initialKits)
   const [isLoadingKits, setIsLoadingKits] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isDownloading, setIsDownloading] = React.useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [activeFilter, setActiveFilter] = React.useState("all")
@@ -171,6 +174,7 @@ export default function MarketingKitPage() {
             title: values.title,
             type: values.kitType.charAt(0).toUpperCase() + values.kitType.slice(1),
             ownerId: user.id, // Assign ownership
+            files: [],
         });
 
       setIsSubmitting(false)
@@ -192,7 +196,12 @@ export default function MarketingKitPage() {
     }
   }
 
-  const handleDownload = (kit: Kit) => {
+  const handleDownload = async (kit: Kit) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Login Required' });
+        return;
+    }
+    
     if (kit.files.length === 0) {
       toast({
         variant: 'destructive',
@@ -202,14 +211,38 @@ export default function MarketingKitPage() {
       return;
     }
 
-    kit.files.forEach(file => {
-      const link = document.createElement("a");
-      link.href = file.url;
-      link.download = file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
+    setIsDownloading(kit.id);
+
+    for (const file of kit.files) {
+        let fileUrl = file.url;
+        let fileName = file.name;
+
+        if (file.type === 'image' && user.businessLogo && user.businessName) {
+            try {
+                const result = await embedProfileOnImage({
+                    baseImageUri: file.url,
+                    logoImageUri: user.businessLogo,
+                    businessName: user.businessName,
+                });
+                if (result.editedImageUri) {
+                    fileUrl = result.editedImageUri;
+                    const extension = file.name.split('.').pop();
+                    fileName = `${file.name.replace(`.${extension}`, '')}_branded.${extension}`;
+                }
+            } catch (e) {
+                console.error("Failed to embed profile on image:", e);
+                toast({ variant: 'destructive', title: 'Image Branding Failed', description: 'Could not personalize image.' });
+            }
+        }
+
+        const link = document.createElement("a");
+        link.href = fileUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    setIsDownloading(null);
   };
 
   const filteredKits = React.useMemo(() => {
@@ -353,9 +386,9 @@ export default function MarketingKitPage() {
                 <CardTitle className="text-xl">{kit.title}</CardTitle>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                    <Button variant="outline" className="w-full" onClick={() => handleDownload(kit)}>
-                        <Download className="mr-2 h-4 w-4"/>
-                        Download Kit
+                    <Button variant="outline" className="w-full" onClick={() => handleDownload(kit)} disabled={isDownloading === kit.id}>
+                        {isDownloading === kit.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4"/>}
+                        {isDownloading === kit.id ? "Processing..." : "Download Kit"}
                     </Button>
                 </CardFooter>
             </Card>
