@@ -48,6 +48,8 @@ const marketingKitSchema = z.object({
     required_error: "Please select a kit type.",
   }),
   title: z.string().min(1, { message: "Title is required." }),
+  featureImage: z.any().refine(file => file, "Feature image is required."),
+  files: z.any().refine(files => files?.length > 0, "At least one file is required."),
 })
 
 type MarketingKitForm = z.infer<typeof marketingKitSchema>
@@ -66,6 +68,15 @@ type Kit = {
   files: KitFile[];
   ownerId?: string;
 };
+
+const getFileType = (fileName: string): KitFile['type'] => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) return 'image';
+    if (extension === 'pdf') return 'pdf';
+    if (['mp4', 'webm', 'mov'].includes(extension || '')) return 'video';
+    return 'other';
+};
+
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -166,35 +177,48 @@ export default function MarketingKitPage() {
 
   async function onSubmit(values: MarketingKitForm) {
     if (!user) return;
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
+        const featureImageUrl = await fileToDataUrl(values.featureImage);
+
+        const filesData: KitFile[] = [];
+        for (const file of Array.from(values.files as FileList)) {
+            const fileUrl = await fileToDataUrl(file);
+            filesData.push({
+                name: file.name,
+                url: fileUrl,
+                type: getFileType(file.name),
+            });
+        }
+
         const kitId = generateUserId("KIT");
         await setDoc(doc(db, "marketing_kits", kitId), {
             id: kitId,
             title: values.title,
             type: values.kitType.charAt(0).toUpperCase() + values.kitType.slice(1),
             ownerId: user.id, // Assign ownership
-            files: [],
+            featureImage: featureImageUrl,
+            files: filesData,
         });
 
-      setIsSubmitting(false)
-      setIsDialogOpen(false)
-      form.reset()
-      toast({
-        title: "Marketing Kit Created",
-        description: "Your new marketing kit has been added successfully.",
-      })
-      fetchKits();
-    } catch(error) {
-        console.error("Error creating kit:", error)
+        setIsSubmitting(false);
+        setIsDialogOpen(false);
+        form.reset();
+        toast({
+            title: "Marketing Kit Created",
+            description: "Your new marketing kit has been added successfully.",
+        });
+        fetchKits();
+    } catch (error) {
+        console.error("Error creating kit:", error);
         toast({
             variant: "destructive",
             title: "Creation Error",
             description: "An unexpected error occurred. Please try again.",
-        })
-        setIsSubmitting(false)
+        });
+        setIsSubmitting(false);
     }
-  }
+}
 
   const handleDownload = async (kit: Kit) => {
     if (!user) {
@@ -310,6 +334,32 @@ export default function MarketingKitPage() {
                         <FormMessage />
                         </FormItem>
                     )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="featureImage"
+                        render={({ field: { onChange, ...rest } }) => (
+                            <FormItem>
+                                <FormLabel>Feature Image</FormLabel>
+                                <FormControl>
+                                    <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} disabled={isSubmitting} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="files"
+                        render={({ field: { onChange, ...rest } }) => (
+                            <FormItem>
+                                <FormLabel>Kit Files (PDF, Image, Video)</FormLabel>
+                                <FormControl>
+                                    <Input type="file" multiple onChange={(e) => onChange(e.target.files)} {...rest} disabled={isSubmitting} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
                     />
                     
                     <DialogFooter>
