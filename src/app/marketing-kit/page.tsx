@@ -133,8 +133,8 @@ export default function MarketingKitPage() {
     defaultValues: {
       title: "",
       kitType: "poster",
-      featureImage: null,
-      files: null,
+      featureImage: undefined,
+      files: undefined,
     },
   })
   
@@ -341,11 +341,11 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="featureImage"
-                        render={({ field: { onChange, ...rest } }) => (
+                        render={({ field: { value, onChange, ...fieldProps } }) => (
                             <FormItem>
                                 <FormLabel>Feature Image</FormLabel>
                                 <FormControl>
-                                    <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} disabled={isSubmitting} />
+                                    <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} disabled={isSubmitting} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -354,11 +354,11 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="files"
-                        render={({ field: { onChange, ...rest } }) => (
+                        render={({ field: { value, onChange, ...fieldProps } }) => (
                             <FormItem>
                                 <FormLabel>Kit Files (PDF, Image, Video)</FormLabel>
                                 <FormControl>
-                                    <Input type="file" multiple onChange={(e) => onChange(e.target.files)} {...rest} disabled={isSubmitting} />
+                                    <Input type="file" multiple onChange={(e) => onChange(e.target.files)} {...fieldProps} disabled={isSubmitting} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
