@@ -41,7 +41,6 @@ import { collection, addDoc, getDocs, doc, setDoc, query, where } from "firebase
 import { generateUserId } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { embedProfileOnImage } from "@/ai/flows/embed-profile-flow"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure", "video"], {
@@ -223,6 +222,57 @@ export default function MarketingKitPage() {
     }
 }
 
+ const embedProfileWithCanvas = async (baseImageUri: string, logoImageUri: string, businessName: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas context not available'));
+
+        const baseImage = new window.Image();
+        baseImage.crossOrigin = "Anonymous";
+        baseImage.src = baseImageUri;
+
+        baseImage.onload = () => {
+            canvas.width = baseImage.width;
+            canvas.height = baseImage.height;
+            ctx.drawImage(baseImage, 0, 0);
+
+            const logoImage = new window.Image();
+            logoImage.crossOrigin = "Anonymous";
+            logoImage.src = logoImageUri;
+
+            logoImage.onload = () => {
+                const padding = canvas.width * 0.02; // 2% padding
+                const logoHeight = canvas.height * 0.1; // Logo height is 10% of canvas height
+                const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
+                const logoX = canvas.width - logoWidth - padding;
+                const logoY = canvas.height - logoHeight - padding;
+
+                ctx.font = `${canvas.height * 0.04}px Arial`;
+                const textMetrics = ctx.measureText(businessName);
+                const textWidth = textMetrics.width;
+                const textHeight = textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent;
+                
+                const textX = logoX - textWidth - (padding * 0.5);
+                const textY = logoY + logoHeight / 2 + textHeight / 2;
+
+                // Draw semi-transparent background for text
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(textX - padding * 0.5, logoY, textWidth + padding, logoHeight);
+
+                // Draw logo and text
+                ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+                ctx.fillStyle = 'white';
+                ctx.fillText(businessName, textX, textY);
+                
+                resolve(canvas.toDataURL('image/png'));
+            };
+            logoImage.onerror = () => reject(new Error('Failed to load logo image.'));
+        };
+        baseImage.onerror = () => reject(new Error('Failed to load base image.'));
+    });
+};
+
   const handleDownload = async (kit: Kit) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Login Required' });
@@ -246,16 +296,10 @@ export default function MarketingKitPage() {
 
         if (file.type === 'image' && user.businessLogo && user.businessName) {
             try {
-                const result = await embedProfileOnImage({
-                    baseImageUri: file.url,
-                    logoImageUri: user.businessLogo,
-                    businessName: user.businessName,
-                });
-                if (result.editedImageUri) {
-                    fileUrl = result.editedImageUri;
-                    const extension = file.name.split('.').pop();
-                    fileName = `${file.name.replace(`.${extension}`, '')}_branded.${extension}`;
-                }
+                const brandedImageUri = await embedProfileWithCanvas(file.url, user.businessLogo, user.businessName);
+                fileUrl = brandedImageUri;
+                const extension = file.name.split('.').pop();
+                fileName = `${file.name.replace(`.${extension}`, '')}_branded.${extension}`;
             } catch (e) {
                 console.error("Failed to embed profile on image:", e);
                 toast({ variant: 'destructive', title: 'Image Branding Failed', description: 'Could not personalize image.' });
