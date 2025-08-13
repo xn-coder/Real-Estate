@@ -352,88 +352,88 @@ export default function ProfilePage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {isBusinessUser && (
-             <Dialog open={isBusinessDialogOpen} onOpenChange={setIsBusinessDialogOpen}>
-                <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Business Profile</CardTitle>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4"/>Edit</Button>
-                    </DialogTrigger>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12 border">
-                            <AvatarImage src={user?.businessLogo} />
-                            <AvatarFallback>Logo</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-semibold">{user?.businessName || 'Not Set'}</p>
-                            <p className="text-sm text-muted-foreground">{user?.businessType || 'Type not set'}</p>
-                        </div>
+      {isBusinessUser && (
+        <Dialog open={isBusinessDialogOpen} onOpenChange={setIsBusinessDialogOpen}>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Business Profile</CardTitle>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4"/>Edit</Button>
+                </DialogTrigger>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12 border">
+                        <AvatarImage src={user?.businessLogo} />
+                        <AvatarFallback>Logo</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-semibold">{user?.businessName || 'Not Set'}</p>
+                        <p className="text-sm text-muted-foreground">{user?.businessType || 'Type not set'}</p>
                     </div>
-                </CardContent>
-                </Card>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Edit Business Profile</DialogTitle>
-                    </DialogHeader>
-                    <Form {...businessForm}>
-                        <form onSubmit={businessForm.handleSubmit(onBusinessSubmit)} className="space-y-4">
-                            <FormField
-                                control={businessForm.control}
-                                name="businessName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Business Name</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} disabled={isBusinessUpdating} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={businessForm.control}
-                                name="businessLogo"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Business Logo</FormLabel>
-                                         <div className="flex items-center gap-6">
-                                            <Avatar className="h-16 w-16">
-                                                <AvatarImage src={businessForm.watch("businessLogo")} />
-                                                <AvatarFallback>Logo</AvatarFallback>
-                                            </Avatar>
-                                            <div className="grid gap-2">
-                                                <Button type="button" variant="outline" onClick={() => businessLogoInputRef.current?.click()}>
-                                                    <Upload className="mr-2 h-4 w-4" /> Upload
-                                                </Button>
-                                                <Input
-                                                    type="file"
-                                                    className="hidden"
-                                                    ref={businessLogoInputRef}
-                                                    onChange={(e) => handleImageUpload(e, "businessLogo", businessForm)}
-                                                    accept="image/*"
-                                                />
-                                            </div>
+                </div>
+            </CardContent>
+            </Card>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Business Profile</DialogTitle>
+                </DialogHeader>
+                <Form {...businessForm}>
+                    <form onSubmit={businessForm.handleSubmit(onBusinessSubmit)} className="space-y-4">
+                        <FormField
+                            control={businessForm.control}
+                            name="businessName"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Business Name</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} disabled={isBusinessUpdating} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={businessForm.control}
+                            name="businessLogo"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Business Logo</FormLabel>
+                                     <div className="flex items-center gap-6">
+                                        <Avatar className="h-16 w-16">
+                                            <AvatarImage src={businessForm.watch("businessLogo")} />
+                                            <AvatarFallback>Logo</AvatarFallback>
+                                        </Avatar>
+                                        <div className="grid gap-2">
+                                            <Button type="button" variant="outline" onClick={() => businessLogoInputRef.current?.click()}>
+                                                <Upload className="mr-2 h-4 w-4" /> Upload
+                                            </Button>
+                                            <Input
+                                                type="file"
+                                                className="hidden"
+                                                ref={businessLogoInputRef}
+                                                onChange={(e) => handleImageUpload(e, "businessLogo", businessForm)}
+                                                accept="image/*"
+                                            />
                                         </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <DialogFooter>
-                                <Button type="submit" disabled={isBusinessUpdating}>
-                                {isBusinessUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Business Info
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
-        )}
-      
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="submit" disabled={isBusinessUpdating}>
+                            {isBusinessUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Business Info
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-6">
         {isPartner ? (
             <Card>
                 <CardHeader>
