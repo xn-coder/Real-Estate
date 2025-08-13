@@ -258,7 +258,12 @@ export default function MarketingKitPage() {
                 
                 resolve(canvas.toDataURL('image/png'));
             };
-            logoImage.onerror = () => reject(new Error('Failed to load logo image.'));
+            logoImage.onerror = () => {
+                console.error("Failed to load logo image.");
+                // If logo fails, draw without it
+                ctx.drawImage(baseImage, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            };
             logoImage.src = logoImageUri;
         };
         baseImage.onerror = () => reject(new Error('Failed to load base image.'));
@@ -378,11 +383,17 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="featureImage"
-                        render={({ field: { onChange, ...fieldProps } }) => (
+                        render={({ field: { onChange, value, ...fieldProps } }) => (
                             <FormItem>
                                 <FormLabel>Feature Image</FormLabel>
                                 <FormControl>
-                                    <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...fieldProps} disabled={isSubmitting} />
+                                    <Input 
+                                      {...fieldProps}
+                                      type="file" 
+                                      accept="image/*" 
+                                      onChange={(e) => onChange(e.target.files?.[0])} 
+                                      disabled={isSubmitting} 
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -391,11 +402,17 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="files"
-                        render={({ field: { onChange, ...fieldProps } }) => (
+                        render={({ field: { onChange, value, ...fieldProps } }) => (
                             <FormItem>
                                 <FormLabel>Kit Files (PDF, Image, Video)</FormLabel>
                                 <FormControl>
-                                    <Input type="file" multiple onChange={(e) => onChange(e.target.files)} {...fieldProps} disabled={isSubmitting} />
+                                    <Input 
+                                      {...fieldProps}
+                                      type="file" 
+                                      multiple 
+                                      onChange={(e) => onChange(e.target.files)} 
+                                      disabled={isSubmitting} 
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
