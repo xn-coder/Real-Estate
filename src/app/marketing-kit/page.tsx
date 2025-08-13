@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import {
@@ -47,8 +47,8 @@ const marketingKitSchema = z.object({
     required_error: "Please select a kit type.",
   }),
   title: z.string().min(1, { message: "Title is required." }),
-  featureImage: z.any().refine(file => file, "Feature image is required."),
-  files: z.any().refine(files => files?.length > 0, "At least one file is required."),
+  featureImage: z.any().optional(),
+  files: z.any().optional(),
 })
 
 type MarketingKitForm = z.infer<typeof marketingKitSchema>
@@ -181,14 +181,17 @@ export default function MarketingKitPage() {
         const featureImageUrl = await fileToDataUrl(values.featureImage as File);
 
         const filesData: KitFile[] = [];
-        for (const file of Array.from(values.files as FileList)) {
-            const fileUrl = await fileToDataUrl(file);
-            filesData.push({
-                name: file.name,
-                url: fileUrl,
-                type: getFileType(file.name),
-            });
+        if (values.files) {
+            for (const file of Array.from(values.files as FileList)) {
+                const fileUrl = await fileToDataUrl(file);
+                filesData.push({
+                    name: file.name,
+                    url: fileUrl,
+                    type: getFileType(file.name),
+                });
+            }
         }
+
 
         const kitId = generateUserId("KIT");
         await setDoc(doc(db, "marketing_kits", kitId), {
@@ -219,7 +222,7 @@ export default function MarketingKitPage() {
     }
 }
 
- const embedProfileWithCanvas = (baseImageUri: string, logoImageUri: string, businessName: string): Promise<string> => {
+ const embedProfileWithCanvas = (baseImageUri: string, businessName: string, phone: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -227,45 +230,38 @@ export default function MarketingKitPage() {
 
         const baseImage = new window.Image();
         baseImage.crossOrigin = "Anonymous";
+        
         baseImage.onload = () => {
             canvas.width = baseImage.width;
             canvas.height = baseImage.height;
             ctx.drawImage(baseImage, 0, 0);
 
-            const logoImage = new window.Image();
-            logoImage.crossOrigin = "Anonymous";
-            logoImage.onload = () => {
-                const padding = canvas.width * 0.02;
-                const logoHeight = canvas.height * 0.1;
-                const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
-                const logoX = canvas.width - logoWidth - padding;
-                const logoY = canvas.height - logoHeight - padding;
+            // Watermark styling
+            const padding = canvas.width * 0.02;
+            const barHeight = canvas.height * 0.08;
+            const barY = canvas.height - barHeight;
+            const fontSize = barHeight * 0.4;
+            
+            // Draw semi-transparent blueish background
+            ctx.fillStyle = 'rgba(22, 163, 175, 0.7)'; // Teal-ish blue, 70% opacity
+            ctx.fillRect(0, barY, canvas.width, barHeight);
 
-                ctx.font = `${canvas.height * 0.04}px Arial`;
-                const textMetrics = ctx.measureText(businessName);
-                const textWidth = textMetrics.width;
-                const textHeight = textMetrics.actualBoundingBoxAscent + textMetrics.actualBoundingBoxDescent;
-                
-                const textX = logoX - textWidth - (padding * 0.5);
-                const textY = logoY + logoHeight / 2 + textHeight / 2;
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                ctx.fillRect(textX - padding * 0.5, logoY, textWidth + padding, logoHeight);
-
-                ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
-                ctx.fillStyle = 'white';
-                ctx.fillText(businessName, textX, textY);
-                
-                resolve(canvas.toDataURL('image/png'));
-            };
-            logoImage.onerror = () => {
-                console.error("Failed to load logo image.");
-                // If logo fails, draw without it
-                ctx.drawImage(baseImage, 0, 0);
-                resolve(canvas.toDataURL('image/png'));
-            };
-            logoImage.src = logoImageUri;
+            // Set text style
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            
+            // Draw business name
+            ctx.fillText(businessName, padding, barY + barHeight / 2);
+            
+            // Draw phone number
+            ctx.textAlign = 'right';
+            ctx.fillText(phone, canvas.width - padding, barY + barHeight / 2);
+            
+            resolve(canvas.toDataURL('image/png'));
         };
+        
         baseImage.onerror = () => reject(new Error('Failed to load base image.'));
         baseImage.src = baseImageUri;
     });
@@ -292,9 +288,9 @@ export default function MarketingKitPage() {
         let fileUrl = file.url;
         let fileName = file.name;
 
-        if (file.type === 'image' && user.businessLogo && user.businessName) {
+        if (file.type === 'image' && user.businessName && user.phone) {
             try {
-                const brandedImageUri = await embedProfileWithCanvas(file.url, user.businessLogo, user.businessName);
+                const brandedImageUri = await embedProfileWithCanvas(file.url, user.businessName, user.phone);
                 fileUrl = brandedImageUri;
                 const extension = file.name.split('.').pop();
                 fileName = `${file.name.replace(`.${extension}`, '')}_branded.png`;
@@ -383,16 +379,15 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="featureImage"
-                        render={({ field: { onChange, value, ...fieldProps } }) => (
+                        render={({ field: { onChange, value, ...rest }}) => (
                             <FormItem>
                                 <FormLabel>Feature Image</FormLabel>
                                 <FormControl>
-                                    <Input 
-                                      {...fieldProps}
-                                      type="file" 
-                                      accept="image/*" 
-                                      onChange={(e) => onChange(e.target.files?.[0])} 
-                                      disabled={isSubmitting} 
+                                    <Input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => onChange(e.target.files?.[0])}
+                                      {...rest}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -402,16 +397,15 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="files"
-                        render={({ field: { onChange, value, ...fieldProps } }) => (
+                        render={({ field: { onChange, value, ...rest } }) => (
                             <FormItem>
                                 <FormLabel>Kit Files (PDF, Image, Video)</FormLabel>
                                 <FormControl>
-                                    <Input 
-                                      {...fieldProps}
-                                      type="file" 
-                                      multiple 
-                                      onChange={(e) => onChange(e.target.files)} 
-                                      disabled={isSubmitting} 
+                                    <Input
+                                      type="file"
+                                      multiple
+                                      onChange={(e) => onChange(e.target.files)}
+                                      {...rest}
                                     />
                                 </FormControl>
                                 <FormMessage />
