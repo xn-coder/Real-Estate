@@ -120,9 +120,6 @@ export default function MarketingKitPage() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [activeFilter, setActiveFilter] = React.useState("all")
-
-  const featureImageRef = React.useRef<HTMLInputElement>(null)
-  const filesRef = React.useRef<HTMLInputElement>(null)
   
   const isSeller = user?.role === 'seller';
   const canAddKits = user?.role === 'admin' || isSeller;
@@ -222,7 +219,7 @@ export default function MarketingKitPage() {
     }
 }
 
- const embedProfileWithCanvas = async (baseImageUri: string, logoImageUri: string, businessName: string): Promise<string> => {
+ const embedProfileWithCanvas = (baseImageUri: string, logoImageUri: string, businessName: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -230,8 +227,6 @@ export default function MarketingKitPage() {
 
         const baseImage = new window.Image();
         baseImage.crossOrigin = "Anonymous";
-        baseImage.src = baseImageUri;
-
         baseImage.onload = () => {
             canvas.width = baseImage.width;
             canvas.height = baseImage.height;
@@ -239,11 +234,9 @@ export default function MarketingKitPage() {
 
             const logoImage = new window.Image();
             logoImage.crossOrigin = "Anonymous";
-            logoImage.src = logoImageUri;
-
             logoImage.onload = () => {
-                const padding = canvas.width * 0.02; // 2% padding
-                const logoHeight = canvas.height * 0.1; // Logo height is 10% of canvas height
+                const padding = canvas.width * 0.02;
+                const logoHeight = canvas.height * 0.1;
                 const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
                 const logoX = canvas.width - logoWidth - padding;
                 const logoY = canvas.height - logoHeight - padding;
@@ -256,11 +249,9 @@ export default function MarketingKitPage() {
                 const textX = logoX - textWidth - (padding * 0.5);
                 const textY = logoY + logoHeight / 2 + textHeight / 2;
 
-                // Draw semi-transparent background for text
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
                 ctx.fillRect(textX - padding * 0.5, logoY, textWidth + padding, logoHeight);
 
-                // Draw logo and text
                 ctx.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
                 ctx.fillStyle = 'white';
                 ctx.fillText(businessName, textX, textY);
@@ -268,8 +259,10 @@ export default function MarketingKitPage() {
                 resolve(canvas.toDataURL('image/png'));
             };
             logoImage.onerror = () => reject(new Error('Failed to load logo image.'));
+            logoImage.src = logoImageUri;
         };
         baseImage.onerror = () => reject(new Error('Failed to load base image.'));
+        baseImage.src = baseImageUri;
     });
 };
 
@@ -299,7 +292,7 @@ export default function MarketingKitPage() {
                 const brandedImageUri = await embedProfileWithCanvas(file.url, user.businessLogo, user.businessName);
                 fileUrl = brandedImageUri;
                 const extension = file.name.split('.').pop();
-                fileName = `${file.name.replace(`.${extension}`, '')}_branded.${extension}`;
+                fileName = `${file.name.replace(`.${extension}`, '')}_branded.png`;
             } catch (e) {
                 console.error("Failed to embed profile on image:", e);
                 toast({ variant: 'destructive', title: 'Image Branding Failed', description: 'Could not personalize image.' });
@@ -385,7 +378,7 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="featureImage"
-                        render={({ field: { value, onChange, ...fieldProps } }) => (
+                        render={({ field: { onChange, ...fieldProps } }) => (
                             <FormItem>
                                 <FormLabel>Feature Image</FormLabel>
                                 <FormControl>
@@ -398,7 +391,7 @@ export default function MarketingKitPage() {
                     <FormField
                         control={form.control}
                         name="files"
-                        render={({ field: { value, onChange, ...fieldProps } }) => (
+                        render={({ field: { onChange, ...fieldProps } }) => (
                             <FormItem>
                                 <FormLabel>Kit Files (PDF, Image, Video)</FormLabel>
                                 <FormControl>
