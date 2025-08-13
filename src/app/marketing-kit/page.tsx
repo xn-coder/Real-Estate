@@ -132,6 +132,9 @@ export default function MarketingKitPage() {
     resolver: zodResolver(marketingKitSchema),
     defaultValues: {
       title: "",
+      kitType: undefined,
+      featureImage: undefined,
+      files: undefined,
     },
   })
   
@@ -179,7 +182,7 @@ export default function MarketingKitPage() {
     if (!user) return;
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await fileToDataUrl(values.featureImage);
+        const featureImageUrl = await fileToDataUrl(values.featureImage as File);
 
         const filesData: KitFile[] = [];
         for (const file of Array.from(values.files as FileList)) {
