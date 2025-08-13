@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, BadgeCheck, FileText } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, BadgeCheck, FileText, Briefcase } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -54,6 +54,14 @@ const passwordFormSchema = z.object({
 
 type PasswordForm = z.infer<typeof passwordFormSchema>;
 
+const businessFormSchema = z.object({
+  businessName: z.string().min(1, { message: "Business name is required." }),
+  businessLogo: z.string().url().optional().or(z.literal('')),
+});
+
+type BusinessForm = z.infer<typeof businessFormSchema>;
+
+
 type KycDocument = {
     type: 'Aadhar' | 'PAN';
     number: string;
@@ -65,9 +73,12 @@ export default function ProfilePage() {
   const { toast } = useToast()
   const { user, isLoading: isUserLoading, fetchUser } = useUser();
   const [isUpdating, setIsUpdating] = React.useState(false)
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [isBusinessUpdating, setIsBusinessUpdating] = React.useState(false)
+  const profileImageInputRef = React.useRef<HTMLInputElement>(null)
+  const businessLogoInputRef = React.useRef<HTMLInputElement>(null)
   const [isProfileDialogOpen, setIsProfileDialogOpen] = React.useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false);
+  const [isBusinessDialogOpen, setIsBusinessDialogOpen] = React.useState(false);
   const [isKycDialogOpen, setIsKycDialogOpen] = React.useState(false);
   const [selectedKycDoc, setSelectedKycDoc] = React.useState<KycDocument | null>(null);
   const [isPasswordUpdating, setIsPasswordUpdating] = React.useState(false)
@@ -91,6 +102,14 @@ export default function ProfilePage() {
         confirmPassword: "",
     }
   });
+
+  const businessForm = useForm<BusinessForm>({
+    resolver: zodResolver(businessFormSchema),
+    defaultValues: {
+        businessName: "",
+        businessLogo: "",
+    }
+  });
   
   React.useEffect(() => {
     if (user) {
@@ -105,16 +124,22 @@ export default function ProfilePage() {
         qualification: user.qualification
       };
       profileForm.reset(profileData);
+      
+      const businessData = {
+          businessName: user.businessName || '',
+          businessLogo: user.businessLogo || '',
+      };
+      businessForm.reset(businessData);
     }
-  }, [user, profileForm]);
+  }, [user, profileForm, businessForm]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, fieldName: "profileImage" | "businessLogo", formInstance: typeof profileForm | typeof businessForm) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        profileForm.setValue("profileImage", base64String);
+        formInstance.setValue(fieldName, base64String);
       };
       reader.readAsDataURL(file);
     }
@@ -151,6 +176,33 @@ export default function ProfilePage() {
       })
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  async function onBusinessSubmit(values: BusinessForm) {
+    if (!user?.id) return;
+    setIsBusinessUpdating(true);
+    try {
+        const userDocRef = doc(db, "users", user.id);
+        await updateDoc(userDocRef, {
+            businessName: values.businessName,
+            businessLogo: values.businessLogo,
+        });
+        toast({
+            title: "Business Profile Updated",
+            description: "Your business details have been updated.",
+        });
+        await fetchUser();
+        setIsBusinessDialogOpen(false);
+    } catch(error) {
+        console.error("Error updating business profile:", error);
+        toast({
+            variant: "destructive",
+            title: "Update Error",
+            description: "Failed to update business details.",
+        });
+    } finally {
+        setIsBusinessUpdating(false);
     }
   }
 
@@ -220,6 +272,7 @@ export default function ProfilePage() {
   }
 
   const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+  const isBusinessUser = user?.role === 'admin' || user?.role === 'seller';
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -259,15 +312,15 @@ export default function ProfilePage() {
                   <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-2">
-                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  <Button type="button" variant="outline" onClick={() => profileImageInputRef.current?.click()}>
                     <Upload className="mr-2 h-4 w-4" />
                     Upload Image
                   </Button>
                   <Input
                     type="file"
                     className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleImageUpload}
+                    ref={profileImageInputRef}
+                    onChange={(e) => handleImageUpload(e, "profileImage", profileForm)}
                     accept="image/*"
                   />
                   <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
@@ -298,9 +351,90 @@ export default function ProfilePage() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        {isBusinessUser && (
+             <Dialog open={isBusinessDialogOpen} onOpenChange={setIsBusinessDialogOpen}>
+                <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Business Profile</CardTitle>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" size="sm"><Pencil className="mr-2 h-4 w-4"/>Edit</Button>
+                    </DialogTrigger>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12 border">
+                            <AvatarImage src={user?.businessLogo} />
+                            <AvatarFallback>Logo</AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <p className="font-semibold">{user?.businessName || 'Not Set'}</p>
+                            <p className="text-sm text-muted-foreground">{user?.businessType || 'Type not set'}</p>
+                        </div>
+                    </div>
+                </CardContent>
+                </Card>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Business Profile</DialogTitle>
+                    </DialogHeader>
+                    <Form {...businessForm}>
+                        <form onSubmit={businessForm.handleSubmit(onBusinessSubmit)} className="space-y-4">
+                            <FormField
+                                control={businessForm.control}
+                                name="businessName"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Business Name</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} disabled={isBusinessUpdating} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={businessForm.control}
+                                name="businessLogo"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Business Logo</FormLabel>
+                                         <div className="flex items-center gap-6">
+                                            <Avatar className="h-16 w-16">
+                                                <AvatarImage src={businessForm.watch("businessLogo")} />
+                                                <AvatarFallback>Logo</AvatarFallback>
+                                            </Avatar>
+                                            <div className="grid gap-2">
+                                                <Button type="button" variant="outline" onClick={() => businessLogoInputRef.current?.click()}>
+                                                    <Upload className="mr-2 h-4 w-4" /> Upload
+                                                </Button>
+                                                <Input
+                                                    type="file"
+                                                    className="hidden"
+                                                    ref={businessLogoInputRef}
+                                                    onChange={(e) => handleImageUpload(e, "businessLogo", businessForm)}
+                                                    accept="image/*"
+                                                />
+                                            </div>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <DialogFooter>
+                                <Button type="submit" disabled={isBusinessUpdating}>
+                                {isBusinessUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Business Info
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+        )}
       
-      {isPartner ? (
-        <div className="grid md:grid-cols-2 gap-6">
+        {isPartner ? (
             <Card>
                 <CardHeader>
                     <CardTitle>Personal Details</CardTitle>
@@ -312,7 +446,9 @@ export default function ProfilePage() {
                     <div className="flex items-center"><GraduationCap className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.qualification || 'N/A'}</span></div>
                 </CardContent>
             </Card>
+        ) : !isBusinessUser ? <div /> : null }
 
+        {isPartner && (
             <Card>
                 <CardHeader>
                     <CardTitle>KYC Details</CardTitle>
@@ -325,9 +461,9 @@ export default function ProfilePage() {
                         </div>
                         <Button variant="outline" size="sm" onClick={() => handleViewKyc('Aadhar')}>View</Button>
                     </div>
-                     <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                           <FileText className="h-5 w-5 text-muted-foreground" />
+                            <FileText className="h-5 w-5 text-muted-foreground" />
                             <span>PAN Card</span>
                         </div>
                         <Button variant="outline" size="sm" onClick={() => handleViewKyc('PAN')}>View</Button>
@@ -341,9 +477,8 @@ export default function ProfilePage() {
                     </div>
                 </CardContent>
             </Card>
-        </div>
-      ) : null}
-
+        )}
+      </div>
 
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
         <Card>
