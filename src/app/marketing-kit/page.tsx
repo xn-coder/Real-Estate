@@ -132,9 +132,9 @@ export default function MarketingKitPage() {
     resolver: zodResolver(marketingKitSchema),
     defaultValues: {
       title: "",
-      kitType: undefined,
-      featureImage: undefined,
-      files: undefined,
+      kitType: "poster",
+      featureImage: null,
+      files: null,
     },
   })
   
