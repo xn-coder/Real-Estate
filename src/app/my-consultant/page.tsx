@@ -29,11 +29,6 @@ const ConsultantProfileCard = ({ title, user, type }: { title: string, user: Use
 
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
-  const handleMessage = () => {
-    const messageType = type === 'Seller' ? 'to_seller' : 'to_partner';
-    router.push(`/send-message?recipientId=${user.id}&type=${messageType}`);
-  }
-
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
@@ -61,10 +56,6 @@ const ConsultantProfileCard = ({ title, user, type }: { title: string, user: Use
           <Building className="h-4 w-4 text-muted-foreground" />
           <span>{user.businessName || 'N/A'}</span>
         </div>
-        <Button className="w-full" onClick={handleMessage}>
-            <MessageSquare className="mr-2 h-4 w-4"/>
-            Send Message
-        </Button>
       </CardContent>
     </Card>
   );
