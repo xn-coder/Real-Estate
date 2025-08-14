@@ -140,6 +140,7 @@ const sellerNavItems: NavItem[] = [
 const customerNavItems: NavItem[] = [
     { href: '/listings/list', icon: Home, label: 'Home' },
     { href: '/my-properties', icon: Building, label: 'My Properties' },
+    { href: '/my-consultant', icon: Users, label: 'My Consultant' },
     { href: '/schedule', icon: Calendar, label: 'Site Visit Schedules' },
     { href: '/home-loans', icon: Banknote, label: 'Home Loans' },
     { href: '#', icon: FilePlus, label: 'Manage Requirements' },
