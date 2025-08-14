@@ -62,6 +62,20 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
+// Helper to clean data for Firestore
+const cleanDataForFirebase = (data: Record<string, any>) => {
+    const cleanedData: Record<string, any> = {};
+    for (const key in data) {
+        if (data[key] !== undefined) {
+            cleanedData[key] = data[key];
+        } else {
+            cleanedData[key] = null; // Convert undefined to null
+        }
+    }
+    return cleanedData;
+};
+
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
@@ -259,7 +273,7 @@ export default function EditPropertyPage() {
                             slideImageUrl = slideImageDoc.exists() ? slideImageDoc.data()?.data : '';
                         }
                         return {
-                            id: slide.id,
+                            id: slide.image,
                             title: slide.title,
                             image: slideImageUrl,
                         };
@@ -340,7 +354,7 @@ export default function EditPropertyPage() {
             // @ts-ignore
             delete updatedData.featureImage;
 
-            await updateDoc(propertyRef, updatedData);
+            await updateDoc(propertyRef, cleanDataForFirebase(updatedData));
 
             toast({
                 title: "Property Updated",
@@ -495,36 +509,36 @@ export default function EditPropertyPage() {
                                     control={form.control}
                                     name="amenities"
                                     render={({ field }) => (
-                                    <FormItem>
-                                        <div className="mb-4">
-                                        <FormLabel className="text-base">Features & Amenities</FormLabel>
-                                        <FormDescription>Select all the amenities that apply.</FormDescription>
-                                        </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {amenitiesList.map((item) => (
-                                            <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                                                <FormControl>
-                                                    <Checkbox
-                                                        checked={field.value?.includes(item.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            return checked
-                                                            ? field.onChange([...(field.value || []), item.id])
-                                                            : field.onChange(
-                                                                field.value?.filter(
-                                                                    (value) => value !== item.id
-                                                                )
-                                                                )
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormLabel className="text-sm font-normal">
-                                                    {item.label}
-                                                </FormLabel>
-                                            </FormItem>
-                                        ))}
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
+                                        <FormItem>
+                                            <div className="mb-4">
+                                                <FormLabel className="text-base">Features & Amenities</FormLabel>
+                                                <FormDescription>Select all the amenities that apply.</FormDescription>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                {amenitiesList.map((item) => (
+                                                    <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                        <FormControl>
+                                                            <Checkbox
+                                                                checked={field.value?.includes(item.id)}
+                                                                onCheckedChange={(checked) => {
+                                                                    return checked
+                                                                    ? field.onChange([...(field.value || []), item.id])
+                                                                    : field.onChange(
+                                                                        field.value?.filter(
+                                                                            (value) => value !== item.id
+                                                                        )
+                                                                        )
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormLabel className="text-sm font-normal">
+                                                            {item.label}
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                ))}
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
                                     )}
                                 />
                             )}
