@@ -52,6 +52,7 @@ export type User = {
       bannerImage: string;
       linkUrl: string;
     }[];
+    featuredCatalog?: string[];
     contactDetails?: {
         name: string;
         phone: string;

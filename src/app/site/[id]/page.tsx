@@ -3,9 +3,10 @@
 
 import * as React from "react"
 import { useParams } from "next/navigation"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { User } from "@/types/user"
+import type { Property } from "@/types/property"
 import { Loader2, Phone, Mail, MapPin, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Home, Contact, Newspaper, ArrowRight, Menu, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -25,13 +26,14 @@ const PartnerWebsitePage = () => {
     const [partner, setPartner] = React.useState<User | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
     const [websiteData, setWebsiteData] = React.useState<User['website']>({});
+    const [featuredProperties, setFeaturedProperties] = React.useState<Property[]>([]);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     
     const plugin = React.useRef(
         Autoplay({ delay: 3000, stopOnInteraction: true })
     )
 
-    const fetchPartner = React.useCallback(async () => {
+    const fetchPartnerData = React.useCallback(async () => {
         if (!partnerId) return
         setIsLoading(true)
         try {
@@ -53,23 +55,42 @@ const PartnerWebsitePage = () => {
                     contactDetails: partnerWebsiteData.contactDetails || defaults.contactDetails,
                     aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal,
                     socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks,
+                    featuredCatalog: partnerWebsiteData.featuredCatalog || defaults.featuredCatalog || [],
                 };
                 setWebsiteData(finalWebsiteData);
+
+                // Fetch featured properties
+                if (finalWebsiteData.featuredCatalog && finalWebsiteData.featuredCatalog.length > 0) {
+                    const propertiesQuery = query(collection(db, "properties"), where("id", "in", finalWebsiteData.featuredCatalog));
+                    const propertiesSnapshot = await getDocs(propertiesQuery);
+                    const propsData = await Promise.all(propertiesSnapshot.docs.map(async (pDoc) => {
+                        const data = pDoc.data() as Property;
+                        let featureImageUrl = 'https://placehold.co/600x400.png';
+                        if (data.featureImageId) {
+                            const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
+                            if (fileDoc.exists()) {
+                                featureImageUrl = fileDoc.data()?.data;
+                            }
+                        }
+                        return { ...data, id: pDoc.id, featureImage: featureImageUrl };
+                    }));
+                    setFeaturedProperties(propsData);
+                }
 
             } else {
                 console.error("No such partner!")
                 setPartner(null)
             }
         } catch (error) {
-            console.error("Error fetching partner:", error)
+            console.error("Error fetching partner data:", error)
         } finally {
             setIsLoading(false)
         }
     }, [partnerId])
 
     React.useEffect(() => {
-        fetchPartner()
-    }, [fetchPartner])
+        fetchPartnerData()
+    }, [fetchPartnerData])
 
     const partnerName = websiteData?.businessProfile?.businessName || partner?.name || "Partner Name";
     const partnerLogo = websiteData?.businessProfile?.businessLogo || partner?.businessLogo || '';
@@ -235,18 +256,20 @@ const PartnerWebsitePage = () => {
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                          <h2 className="text-3xl font-bold font-headline text-center mb-12">Our Catalog</h2>
                          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {[1,2,3].map(i => (
-                                <div key={i} className="border rounded-lg overflow-hidden group">
+                            {featuredProperties.length > 0 ? featuredProperties.map(property => (
+                                <div key={property.id} className="border rounded-lg overflow-hidden group">
                                     <div className="relative h-64 bg-muted">
-                                        <Image src={`https://placehold.co/600x400.png`} layout="fill" objectFit="cover" alt={`Property ${i}`} data-ai-hint="modern apartment"/>
+                                        <Image src={property.featureImage || `https://placehold.co/600x400.png`} layout="fill" objectFit="cover" alt={property.catalogTitle} data-ai-hint="modern apartment"/>
                                     </div>
                                     <div className="p-6">
-                                        <h3 className="text-xl font-bold mb-2">Modern Apartment {i}</h3>
-                                        <p className="text-muted-foreground mb-4">3 beds, 2 baths, 1,200 sqft</p>
-                                        <Button variant="outline" className="w-full">View Details</Button>
+                                        <h3 className="text-xl font-bold mb-2">{property.catalogTitle}</h3>
+                                        <p className="text-muted-foreground mb-4">{property.bedrooms} beds, {property.bathrooms} baths, {property.builtUpArea} {property.unitOfMeasurement}</p>
+                                        <Button variant="outline" className="w-full" asChild><Link href={`/listings/${property.id}`}>View Details</Link></Button>
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <p className="col-span-full text-center text-muted-foreground">No featured properties available at the moment.</p>
+                            )}
                          </div>
                     </div>
                 </section>
