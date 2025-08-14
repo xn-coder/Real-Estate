@@ -176,6 +176,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     <span>Digital Card</span>
                                 </Link>
                             </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href="/my-consultant">
+                                    <Users className="mr-2 h-4 w-4" />
+                                    <span>My Consultant</span>
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                                 <Link href="/wallet">
                                     <Wallet className="mr-2 h-4 w-4" />

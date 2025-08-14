@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type CustomerWithConsultants = {
   customer: CustomerUser;
@@ -284,81 +285,102 @@ export default function ManageConsultantPage() {
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Consultants</h1>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer-Consultant Assignments</CardTitle>
-           <div className="flex items-center justify-between gap-4 pt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by customer or consultant..."
-                className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
-                value={customerSearchTerm}
-                onChange={(e) => setCustomerSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-lg overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Assigned Partner</TableHead>
-                  <TableHead>Assigned Seller</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                ) : filteredCustomers.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="h-24 text-center">No customers found.</TableCell></TableRow>
-                ) : (
-                  filteredCustomers.map((c) => (
-                    <TableRow key={c.customer.id}>
-                      <TableCell>
-                        <div className="font-medium">{c.customer.name}</div>
-                        <div className="text-sm text-muted-foreground">{c.customer.email}</div>
-                      </TableCell>
-                      <TableCell>
-                        {c.partner ? (
-                           <>
-                            <div className="font-medium">{c.partner.name}</div>
-                            <div className="text-sm text-muted-foreground capitalize">Partner</div>
-                           </>
+       <Tabs defaultValue="customers" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="partners">Partners</TabsTrigger>
+        </TabsList>
+        <TabsContent value="customers">
+            <Card>
+                <CardHeader>
+                <CardTitle>Customer-Consultant Assignments</CardTitle>
+                <div className="flex items-center justify-between gap-4 pt-4">
+                    <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search by customer or consultant..."
+                        className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
+                        value={customerSearchTerm}
+                        onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                    />
+                    </div>
+                </div>
+                </CardHeader>
+                <CardContent>
+                <div className="border rounded-lg overflow-x-auto">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Assigned Partner</TableHead>
+                        <TableHead>Assigned Seller</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? (
+                        <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                        ) : filteredCustomers.length === 0 ? (
+                        <TableRow><TableCell colSpan={4} className="h-24 text-center">No customers found.</TableCell></TableRow>
                         ) : (
-                          <span className="text-muted-foreground">Not Assigned</span>
+                        filteredCustomers.map((c) => (
+                            <TableRow key={c.customer.id}>
+                            <TableCell>
+                                <div className="font-medium">{c.customer.name}</div>
+                                <div className="text-sm text-muted-foreground">{c.customer.email}</div>
+                            </TableCell>
+                            <TableCell>
+                                {c.partner ? (
+                                <>
+                                    <div className="font-medium">{c.partner.name}</div>
+                                    <div className="text-sm text-muted-foreground capitalize">Partner</div>
+                                </>
+                                ) : (
+                                <span className="text-muted-foreground">Not Assigned</span>
+                                )}
+                            </TableCell>
+                            <TableCell>
+                                {c.seller ? (
+                                <>
+                                    <div className="font-medium">{c.seller.name}</div>
+                                    <div className="text-sm text-muted-foreground capitalize">
+                                        {c.seller.role === 'admin' ? 'Seller' : c.seller.role}
+                                    </div>
+                                </>
+                                ) : (
+                                <span className="text-muted-foreground">Not Assigned</span>
+                                )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="outline" size="sm" onClick={() => handleModifyClick(c)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Modify
+                                </Button>
+                            </TableCell>
+                            </TableRow>
+                        ))
                         )}
-                      </TableCell>
-                       <TableCell>
-                        {c.seller ? (
-                           <>
-                            <div className="font-medium">{c.seller.name}</div>
-                            <div className="text-sm text-muted-foreground capitalize">
-                                {c.seller.role === 'admin' ? 'Seller' : c.seller.role}
-                            </div>
-                           </>
-                        ) : (
-                          <span className="text-muted-foreground">Not Assigned</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => handleModifyClick(c)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Modify
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                    </TableBody>
+                    </Table>
+                </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="partners">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Partner-Consultant Assignments</CardTitle>
+                    <CardDescription>
+                        This feature is coming soon.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="h-48 flex items-center justify-center text-muted-foreground">
+                    <p>Partner to consultant management will be available here.</p>
+                </CardContent>
+            </Card>
+        </TabsContent>
+       </Tabs>
       
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsChangingPartner(false); setIsChangingSeller(false); } setIsDialogOpen(open); }}>
         <DialogContent className="max-w-lg">
