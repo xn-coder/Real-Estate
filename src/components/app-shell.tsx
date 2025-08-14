@@ -107,9 +107,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
             <div className="flex items-center gap-2 md:gap-4">
                 {isCustomer && (
-                     <Button size="sm">
-                        <FilePlus className="mr-0 md:mr-2 h-4 w-4" />
-                        <span className="hidden md:inline">Post Requirements</span>
+                     <Button size="sm" asChild>
+                        <Link href="/post-requirements">
+                            <FilePlus className="mr-0 md:mr-2 h-4 w-4" />
+                            <span className="hidden md:inline">Post Requirements</span>
+                        </Link>
                     </Button>
                 )}
                <Button variant="ghost" size="icon" asChild>

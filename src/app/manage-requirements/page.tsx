@@ -15,16 +15,18 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Eye, Search, Building, User as UserIcon, DollarSign, Ruler } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, Timestamp, where } from "firebase/firestore"
 import type { Requirement } from "@/types/requirement"
 import { format } from "date-fns"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { useUser } from "@/hooks/use-user"
 
 export default function ManageRequirementsPage() {
   const { toast } = useToast()
+  const { user } = useUser();
   const [requirements, setRequirements] = React.useState<Requirement[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
@@ -32,10 +34,17 @@ export default function ManageRequirementsPage() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
 
   const fetchRequirements = React.useCallback(async () => {
+    if (!user) return;
     setIsLoading(true)
     try {
       const requirementsRef = collection(db, "requirements")
-      const q = query(requirementsRef, orderBy("createdAt", "desc"))
+      let q;
+      if (user.role === 'admin') {
+        q = query(requirementsRef, orderBy("createdAt", "desc"))
+      } else {
+        q = query(requirementsRef, where("userId", "==", user.id), orderBy("createdAt", "desc"));
+      }
+
       const snapshot = await getDocs(q)
       const reqList = snapshot.docs.map(doc => {
         const data = doc.data()
@@ -56,11 +65,13 @@ export default function ManageRequirementsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [toast])
+  }, [toast, user])
 
   React.useEffect(() => {
-    fetchRequirements()
-  }, [fetchRequirements])
+    if(user) {
+        fetchRequirements()
+    }
+  }, [user, fetchRequirements])
 
   const filteredRequirements = React.useMemo(() => {
     return requirements.filter(req =>
@@ -75,16 +86,20 @@ export default function ManageRequirementsPage() {
     setIsDialogOpen(true)
   }
 
+  const pageTitle = user?.role === 'admin' ? "Manage Customer Requirements" : "My Submitted Requirements";
+  const searchPlaceholder = user?.role === 'admin' ? "Search by name, property type, or location..." : "Search your requirements...";
+
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Customer Requirements</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">{pageTitle}</h1>
       </div>
        <div className="relative w-full md:w-auto md:flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search by name, property type, or location..."
+            placeholder={searchPlaceholder}
             className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -95,7 +110,7 @@ export default function ManageRequirementsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Customer Name</TableHead>
+              {user?.role === 'admin' && <TableHead>Customer Name</TableHead>}
               <TableHead>Property Type</TableHead>
               <TableHead>Budget</TableHead>
               <TableHead>Location</TableHead>
@@ -118,7 +133,7 @@ export default function ManageRequirementsPage() {
                 </TableRow>
             ) : filteredRequirements.map((req) => (
               <TableRow key={req.id}>
-                <TableCell className="font-medium">{req.userName}</TableCell>
+                {user?.role === 'admin' && <TableCell className="font-medium">{req.userName}</TableCell>}
                 <TableCell>{req.propertyType}</TableCell>
                 <TableCell>₹{req.minBudget.toLocaleString()} - ₹{req.maxBudget.toLocaleString()}</TableCell>
                 <TableCell>{req.preferredLocation}</TableCell>
