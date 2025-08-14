@@ -327,7 +327,7 @@ export default function PropertyDetailsPage() {
                 </Button>
                 {isOwner && (
                     <div className="flex gap-2">
-                        <Button variant="outline">
+                         <Button variant="outline" onClick={() => router.push(`/listings/edit/${property.id}`)}>
                             <Pencil className="mr-2 h-4 w-4" /> Edit
                         </Button>
                         <AlertDialog>
@@ -440,7 +440,7 @@ export default function PropertyDetailsPage() {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <Badge variant={property.status === 'For Sale' ? 'default' : 'secondary'} className="mb-2">{property.status}</Badge>
-                                    <CardTitle className="text-3xl">${property.listingPrice.toLocaleString()}</CardTitle>
+                                    <CardTitle className="text-3xl">₹{property.listingPrice.toLocaleString()}</CardTitle>
                                     <p className="text-muted-foreground">{property.catalogTitle}</p>
                                 </div>
                                 <div className="flex gap-2">
