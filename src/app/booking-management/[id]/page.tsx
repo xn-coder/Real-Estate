@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc, updateDoc, writeBatch } from "firebase/firestore"
+import { doc, getDoc, updateDoc, writeBatch, setDoc, collection } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Lead } from "@/types/lead"
 import type { Property } from "@/types/property"
@@ -15,6 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
+import { Input } from "@/components/ui/input"
+import { generateUserId } from "@/lib/utils"
 
 // Data types
 type BookingDetails = {
@@ -23,6 +25,20 @@ type BookingDetails = {
     customer?: User;
     partner?: User;
 }
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 
 export default function BookingDetailsPage() {
     const params = useParams()
@@ -33,6 +49,9 @@ export default function BookingDetailsPage() {
     const [details, setDetails] = React.useState<BookingDetails | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
     const [isCompleting, setIsCompleting] = React.useState(false)
+    const [filesToUpload, setFilesToUpload] = React.useState<File[]>([]);
+    const [isUploading, setIsUploading] = React.useState(false);
+
 
     React.useEffect(() => {
         if (!leadId) return;
@@ -70,37 +89,68 @@ export default function BookingDetailsPage() {
 
         fetchDetails();
     }, [leadId]);
-
-    const handleCompleteDeal = async () => {
+    
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setFilesToUpload(Array.from(e.target.files));
+        }
+    }
+    
+    const handleUploadAndComplete = async () => {
         if (!details || !details.lead || !details.customer) {
             toast({ variant: "destructive", title: "Error", description: "Missing booking details to complete the deal." });
             return;
         }
+        
+        if (filesToUpload.length === 0) {
+            toast({ variant: "destructive", title: "Error", description: "Please upload at least one document to close the deal." });
+            return;
+        }
 
         setIsCompleting(true);
+        setIsUploading(true);
+
         try {
             const batch = writeBatch(db);
+            const customerId = details.customer.id;
+            const customerDocsRef = collection(db, `users/${customerId}/documents`);
+
+            for (const file of filesToUpload) {
+                const fileUrl = await fileToDataUrl(file);
+                const docId = generateUserId("DOC");
+                const newDocRef = doc(customerDocsRef, docId);
+                batch.set(newDocRef, {
+                    id: docId,
+                    title: file.name,
+                    fileUrl: fileUrl,
+                    fileName: file.name,
+                    fileType: file.type,
+                });
+            }
+            
+            setIsUploading(false);
 
             // Update lead status to 'Completed'
             const leadRef = doc(db, "leads", details.lead.id);
             batch.update(leadRef, { status: 'Completed' });
 
             // Update customer status for verification
-            const customerRef = doc(db, "users", details.customer.id);
+            const customerRef = doc(db, "users", customerId);
             batch.update(customerRef, { status: 'pending_verification' });
 
             await batch.commit();
-
-            toast({ title: "Deal Completed", description: "The booking has been marked as completed." });
+            
+            toast({ title: "Deal Completed", description: "Documents uploaded and booking marked as completed." });
             router.push('/booking-management');
 
         } catch (error) {
-            console.error("Error completing deal:", error);
+             console.error("Error completing deal:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to complete the deal. Please try again." });
         } finally {
             setIsCompleting(false);
         }
     }
+
 
     if (isLoading) {
         return <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -168,17 +218,6 @@ export default function BookingDetailsPage() {
                            ) : <p>Pricing details not available.</p>}
                         </CardContent>
                     </Card>
-                    
-                    {/* Document Uploads */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-muted-foreground"/> Document Uploads</CardTitle>
-                             <CardDescription>Upload and manage client and property documents.</CardDescription>
-                        </CardHeader>
-                         <CardContent className="text-center py-10">
-                            <Button><Upload className="mr-2 h-4 w-4"/> Upload Documents</Button>
-                        </CardContent>
-                    </Card>
                 </div>
                 <div className="lg:col-span-1 space-y-6">
                     {/* Client Details */}
@@ -225,12 +264,24 @@ export default function BookingDetailsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Close Deal</CardTitle>
-                            <CardDescription>Finalize the booking and mark the deal as completed.</CardDescription>
+                            <CardDescription>Upload client documents and finalize the booking.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                           <Button className="w-full" onClick={handleCompleteDeal} disabled={isCompleting}>
+                        <CardContent className="space-y-4">
+                            <Input
+                                id="documents"
+                                type="file"
+                                multiple
+                                onChange={handleFileSelect}
+                                disabled={isCompleting}
+                            />
+                             {filesToUpload.length > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                    {filesToUpload.length} file(s) selected.
+                                </div>
+                            )}
+                           <Button className="w-full" onClick={handleUploadAndComplete} disabled={isCompleting}>
                                 {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                Mark as Completed
+                                {isUploading ? "Uploading..." : "Complete & Verify"}
                             </Button>
                         </CardContent>
                     </Card>

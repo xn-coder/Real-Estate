@@ -10,15 +10,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, User, Eye, Search, CheckCircle, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import type { User as CustomerUser } from "@/types/user"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
+import type { UserDocument } from "@/types/document"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import Image from "next/image"
 
 export default function CustomerVerifyPage() {
   const { toast } = useToast()
@@ -27,6 +29,8 @@ export default function CustomerVerifyPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdating, setIsUpdating] = React.useState<string | null>(null)
   const [searchTerm, setSearchTerm] = React.useState("")
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false)
+  const [selectedCustomerDocs, setSelectedCustomerDocs] = React.useState<UserDocument[]>([])
 
   const fetchCustomers = React.useCallback(async () => {
     setIsLoading(true)
@@ -52,12 +56,17 @@ export default function CustomerVerifyPage() {
     fetchCustomers()
   }, [fetchCustomers])
 
-  const handleUpdateStatus = async (customerId: string, status: 'active' | 'rejected') => {
+  const handleUpdateStatus = async (customerId: string, newStatus: 'active' | 'rejected') => {
     setIsUpdating(customerId)
     try {
         const userRef = doc(db, "users", customerId);
-        await updateDoc(userRef, { status: status });
-        toast({ title: "Success", description: `Customer status updated to ${status}.`});
+        if (newStatus === 'rejected') {
+            await deleteDoc(userRef);
+            toast({ title: "Success", description: `Customer application has been rejected and removed.`});
+        } else {
+            await updateDoc(userRef, { status: newStatus });
+            toast({ title: "Success", description: `Customer status updated to ${newStatus}.`});
+        }
         fetchCustomers();
     } catch (error) {
         console.error("Error updating customer status:", error);
@@ -66,6 +75,20 @@ export default function CustomerVerifyPage() {
         setIsUpdating(null);
     }
   }
+
+  const handleViewDocuments = async (customerId: string) => {
+    try {
+      const docsRef = collection(db, `users/${customerId}/documents`);
+      const snapshot = await getDocs(docsRef);
+      const docsList = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserDocument));
+      setSelectedCustomerDocs(docsList);
+      setIsViewDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      toast({ variant: "destructive", title: "Error", description: "Could not load documents." });
+    }
+  }
+
 
   const filteredCustomers = React.useMemo(() => {
     return customers.filter(customer =>
@@ -119,8 +142,8 @@ export default function CustomerVerifyPage() {
                 <TableCell>{customer.email}</TableCell>
                 <TableCell>{customer.phone}</TableCell>
                 <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => router.push(`/manage-customer/${customer.id}`)} disabled={!!isUpdating}>
-                        <Eye className="mr-2 h-4 w-4" /> View
+                    <Button variant="outline" size="sm" onClick={() => handleViewDocuments(customer.id)} disabled={!!isUpdating}>
+                        <Eye className="mr-2 h-4 w-4" /> View Documents
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(customer.id, 'active')} disabled={!!isUpdating}>
                         {isUpdating === customer.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />} Verify
@@ -134,6 +157,36 @@ export default function CustomerVerifyPage() {
           </TableBody>
         </Table>
       </div>
+
+       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Verify Customer Documents</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-4 p-1">
+             {selectedCustomerDocs.length > 0 ? (
+                selectedCustomerDocs.map(doc => (
+                    <Card key={doc.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">{doc.title}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
+                              <Image src={doc.fileUrl} alt={doc.title} width={500} height={300} className="rounded-md object-contain w-full h-auto" />
+                          </a>
+                      </CardContent>
+                    </Card>
+                ))
+            ) : (
+                <p className="text-sm text-center text-muted-foreground py-8">No documents were uploaded for this customer.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

@@ -5,5 +5,5 @@ export type UserDocument = {
     fileUrl: string;
     fileName: string;
     fileType: string;
-    ownerId?: string; // Add this line
+    ownerId?: string; 
 };
