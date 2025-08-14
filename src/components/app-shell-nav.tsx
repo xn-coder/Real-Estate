@@ -107,8 +107,6 @@ const partnerNavItems: NavItem[] = [
   { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
   { href: '/schedule', icon: Calendar, label: 'Location Visit Schedule' },
   { href: '/booking-management', icon: CheckSquare, label: 'Booking Management' },
-  { href: '/manage-quotation', icon: FileText, label: 'Manage Quotation' },
-  { href: '/send-quotation', icon: FileText, label: 'Send Quotation' },
   { href: '/document-management', icon: FileText, label: 'Document Management' },
   { href: '/reports-analytics', icon: BarChart2, label: 'Reports & Analytics' },
   { 
