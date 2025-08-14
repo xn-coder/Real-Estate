@@ -176,7 +176,7 @@ export default function BookingManagementPage() {
                             <Badge variant={statusColors[booking.lead.status] || 'default'}>{booking.lead.status}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => router.push(`/booking-management/${booking.lead.id}`)}>
                                 <Eye className="mr-2 h-4 w-4"/>
                                 View Details
                             </Button>
