@@ -29,12 +29,13 @@ type Booking = {
 }
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
-  'Qualified': 'default',
-  'Processing': 'secondary',
-  'Under Contract': 'outline',
+  'New': 'default',
+  'Qualified': 'secondary',
+  'Processing': 'outline',
+  'Under Contract': 'default',
 }
 
-const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'Qualified', 'Processing', 'Under Contract'];
+const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'New', 'Qualified', 'Processing', 'Under Contract'];
 
 export default function BookingManagementPage() {
   const { user } = useUser();
@@ -50,7 +51,7 @@ export default function BookingManagementPage() {
     setIsLoading(true);
     try {
       const leadsCollection = collection(db, "leads");
-      const activeLeadStatuses: Lead['status'][] = ['Qualified', 'Processing', 'Under Contract'];
+      const activeLeadStatuses: Lead['status'][] = ['New', 'Qualified', 'Processing', 'Under Contract'];
 
       let q;
       if (user.role === 'admin' || user.role === 'seller') {
