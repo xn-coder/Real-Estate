@@ -2,7 +2,7 @@
 'use client'
 
 import * as React from "react"
-import { collection, query, getDocs, doc, getDoc } from "firebase/firestore"
+import { collection, query, getDocs, doc, getDoc, where } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Lead } from "@/types/lead"
 import type { User } from "@/types/user"
@@ -13,7 +13,7 @@ import { Loader2, Trophy, Medal, Award } from "lucide-react"
 
 type PartnerLeaderboard = {
   partnerId: string;
-  leadCount: number;
+  dealCount: number;
   partnerDetails?: User;
 }
 
@@ -31,21 +31,22 @@ export default function LeaderboardPage() {
     const fetchLeaderboard = async () => {
       setIsLoading(true);
       try {
-        const leadsSnapshot = await getDocs(collection(db, "leads"));
+        const leadsQuery = query(collection(db, "leads"), where("status", "==", "Completed"));
+        const leadsSnapshot = await getDocs(leadsQuery);
         const leads = leadsSnapshot.docs.map(doc => doc.data() as Lead);
 
-        const leadCounts: { [key: string]: number } = {};
+        const dealCounts: { [key: string]: number } = {};
         for (const lead of leads) {
           if (lead.partnerId) {
-            leadCounts[lead.partnerId] = (leadCounts[lead.partnerId] || 0) + 1;
+            dealCounts[lead.partnerId] = (dealCounts[lead.partnerId] || 0) + 1;
           }
         }
 
-        const leaderboardDataPromises = Object.entries(leadCounts).map(async ([partnerId, leadCount]) => {
+        const leaderboardDataPromises = Object.entries(dealCounts).map(async ([partnerId, dealCount]) => {
           const partnerDoc = await getDoc(doc(db, "users", partnerId));
           return {
             partnerId,
-            leadCount,
+            dealCount,
             partnerDetails: partnerDoc.exists() ? partnerDoc.data() as User : undefined,
           };
         });
@@ -54,7 +55,7 @@ export default function LeaderboardPage() {
         
         const sortedLeaderboard = leaderboardData
           .filter(item => item.partnerDetails) // Ensure partner details were fetched
-          .sort((a, b) => b.leadCount - a.leadCount);
+          .sort((a, b) => b.dealCount - a.dealCount);
         
         setLeaderboard(sortedLeaderboard);
 
@@ -98,7 +99,7 @@ export default function LeaderboardPage() {
                     <AvatarFallback>{getInitials(topThree[1].partnerDetails?.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-xl font-bold">{topThree[1].partnerDetails?.name}</h3>
-                <p className="text-2xl font-black text-gray-500">{topThree[1].leadCount} Leads</p>
+                <p className="text-2xl font-black text-gray-500">{topThree[1].dealCount} Deals</p>
                 <div className="absolute top-2 right-2 text-3xl font-extrabold text-gray-400">#2</div>
             </Card>
           )}
@@ -113,7 +114,7 @@ export default function LeaderboardPage() {
                     <AvatarFallback className="text-4xl">{getInitials(topThree[0].partnerDetails?.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-2xl font-bold">{topThree[0].partnerDetails?.name}</h3>
-                <p className="text-3xl font-black text-yellow-600">{topThree[0].leadCount} Leads</p>
+                <p className="text-3xl font-black text-yellow-600">{topThree[0].dealCount} Deals</p>
                 <div className="absolute top-2 right-2 text-4xl font-extrabold text-yellow-500">#1</div>
             </Card>
            )}
@@ -128,7 +129,7 @@ export default function LeaderboardPage() {
                     <AvatarFallback>{getInitials(topThree[2].partnerDetails?.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-xl font-bold">{topThree[2].partnerDetails?.name}</h3>
-                <p className="text-2xl font-black text-orange-700">{topThree[2].leadCount} Leads</p>
+                <p className="text-2xl font-black text-orange-700">{topThree[2].dealCount} Deals</p>
                 <div className="absolute top-2 right-2 text-3xl font-extrabold text-orange-600">#3</div>
             </Card>
           )}
@@ -147,7 +148,7 @@ export default function LeaderboardPage() {
                 <TableRow>
                   <TableHead className="w-[80px]">Rank</TableHead>
                   <TableHead>Partner</TableHead>
-                  <TableHead className="text-right">Leads</TableHead>
+                  <TableHead className="text-right">Deals Closed</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -163,7 +164,7 @@ export default function LeaderboardPage() {
                         <span className="font-medium">{item.partnerDetails?.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-semibold">{item.leadCount}</TableCell>
+                    <TableCell className="text-right font-semibold">{item.dealCount}</TableCell>
                   </TableRow>
                 )) : (
                     <TableRow>
@@ -180,4 +181,3 @@ export default function LeaderboardPage() {
     </div>
   )
 }
-
