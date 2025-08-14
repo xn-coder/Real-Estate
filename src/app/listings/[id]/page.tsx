@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc, setDoc, deleteDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Property } from "@/types/property"
 import { Loader2, ArrowLeft, BedDouble, Bath, Car, Ruler, Heart, Share2, Pencil, Trash2, CheckCircle, Calendar as CalendarIcon } from "lucide-react"
@@ -24,6 +24,17 @@ import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { sendOtp, verifyOtp } from "@/services/otp-service"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
@@ -86,9 +97,10 @@ export default function PropertyDetailsPage() {
     const [lastLeadId, setLastLeadId] = React.useState<string | null>(null);
     const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
     const [isScheduling, setIsScheduling] = React.useState(false);
+    const [isDeleting, setIsDeleting] = React.useState(false);
 
 
-    const isOwner = user?.role === 'admin' || user?.role === 'seller';
+    const isOwner = user?.role === 'admin' || (user?.email && user.email === property?.email);
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
 
 
@@ -234,6 +246,21 @@ export default function PropertyDetailsPage() {
         }
     };
 
+    const handleDeleteProperty = async () => {
+        if (!propertyId) return;
+        setIsDeleting(true);
+        try {
+            await deleteDoc(doc(db, "properties", propertyId));
+            toast({ title: "Property Deleted", description: "The property has been removed successfully." });
+            router.push('/listings/list');
+        } catch (error) {
+            console.error("Error deleting property:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to delete property." });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
 
     React.useEffect(() => {
         if (!propertyId) return;
@@ -303,9 +330,27 @@ export default function PropertyDetailsPage() {
                         <Button variant="outline">
                             <Pencil className="mr-2 h-4 w-4" /> Edit
                         </Button>
-                        <Button variant="destructive">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" disabled={isDeleting}>
+                                    {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4" />}
+                                    Delete
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete this
+                                        property listing.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteProperty}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 )}
             </div>
@@ -530,5 +575,3 @@ export default function PropertyDetailsPage() {
         </div>
     )
 }
-
-    
