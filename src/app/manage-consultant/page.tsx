@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Pencil, Search, User as UserIcon, Users, Handshake, Replace } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, getDoc, writeBatch, Timestamp, orderBy, limit } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, getDoc, writeBatch, Timestamp, orderBy, limit, updateDoc } from "firebase/firestore"
 import type { User as CustomerUser } from "@/types/user"
 import type { User as PartnerUser } from "@/types/user"
 import type { User as SellerUser } from "@/types/user"
@@ -35,8 +35,13 @@ type CustomerWithConsultants = {
   seller?: SellerUser;
 };
 
+type PartnerWithSeller = {
+    partner: PartnerUser;
+    seller?: SellerUser;
+}
+
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
-const sellerRoles = ['seller', 'admin'];
+const sellerRoles = ['seller']; // Only allow reassigning to actual sellers, not other admins
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
   super_affiliate: 'Super Affiliate Partner',
@@ -49,29 +54,26 @@ const roleNameMapping: Record<string, string> = {
 export default function ManageConsultantPage() {
   const { toast } = useToast()
   const [customers, setCustomers] = React.useState<CustomerWithConsultants[]>([])
-  const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
-  const [adminProfile, setAdminProfile] = React.useState<SellerUser | null>(null);
+  const [partners, setPartners] = React.useState<PartnerWithSeller[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [isUpdating, setIsUpdating] = React.useState(false)
 
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerWithConsultants | null>(null)
+  const [selectedPartner, setSelectedPartner] = React.useState<PartnerWithSeller | null>(null)
   
-  const [newPartner, setNewPartner] = React.useState<PartnerUser | null>(null);
-  const [newSeller, setNewSeller] = React.useState<SellerUser | null>(null);
-  
+  const [newConsultant, setNewConsultant] = React.useState<PartnerUser | SellerUser | null>(null);
+  const [activeDialogTab, setActiveDialogTab] = React.useState<'partner' | 'seller'>('partner');
+
   const [allSellers, setAllSellers] = React.useState<SellerUser[]>([])
+  const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
   const [isLoadingConsultants, setIsLoadingConsultants] = React.useState(true)
 
-  const [partnerSearchTerm, setPartnerSearchTerm] = React.useState("");
-  const [sellerSearchTerm, setSellerSearchTerm] = React.useState("");
+  const [consultantSearchTerm, setConsultantSearchTerm] = React.useState("");
   
   const [customerSearchTerm, setCustomerSearchTerm] = React.useState("")
   
-  const [isChangingPartner, setIsChangingPartner] = React.useState(false);
-  const [isChangingSeller, setIsChangingSeller] = React.useState(false);
-
 
   const fetchConsultantData = React.useCallback(async () => {
     setIsLoading(true);
@@ -81,14 +83,24 @@ export default function ManageConsultantPage() {
         // Fetch Admin profile to show as default seller
         const adminQuery = query(usersCollection, where("role", "==", "admin"), limit(1));
         const adminSnapshot = await getDocs(adminQuery);
-        if (!adminSnapshot.empty) {
-            setAdminProfile(adminSnapshot.docs[0].data() as SellerUser);
-        }
+        const adminProfile = adminSnapshot.empty ? null : {id: adminSnapshot.docs[0].id, ...adminSnapshot.docs[0].data()} as SellerUser;
 
-        // Fetch All Partners
+        // Fetch All Partners and their assigned sellers
         const allPartnersQuery = query(usersCollection, where("role", "in", partnerRoles));
         const allPartnersSnapshot = await getDocs(allPartnersQuery);
-        setAllPartners(allPartnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)))
+        const partnersList = await Promise.all(
+            allPartnersSnapshot.docs.map(async pDoc => {
+                const partnerData = {id: pDoc.id, ...pDoc.data()} as PartnerUser;
+                let seller: SellerUser | undefined;
+                if(partnerData.teamLeadId) { // teamLeadId is used to store assigned seller for partners
+                    const sellerDoc = await getDoc(doc(db, "users", partnerData.teamLeadId));
+                    if(sellerDoc.exists()) seller = {id: sellerDoc.id, ...sellerDoc.data()} as SellerUser;
+                }
+                return { partner: partnerData, seller: seller || adminProfile || undefined };
+            })
+        )
+        setPartners(partnersList);
+        setAllPartners(partnersList.map(p => p.partner));
 
 
         // Fetch Customers and their assigned consultants
@@ -129,7 +141,7 @@ export default function ManageConsultantPage() {
                         }
                     }
                 }
-                return { customer, partner, seller };
+                return { customer, partner, seller: seller || adminProfile || undefined };
             })
         );
         setCustomers(enrichedCustomers);
@@ -145,15 +157,10 @@ export default function ManageConsultantPage() {
   const fetchAllConsultantsForDialog = React.useCallback(async () => {
     setIsLoadingConsultants(true);
     try {
-        const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
+        // Partners already fetched in main data load
         const sellersQuery = query(collection(db, "users"), where("role", "in", sellerRoles));
-
-        const [partnersSnapshot, sellersSnapshot] = await Promise.all([
-            getDocs(partnersQuery),
-            getDocs(sellersQuery),
-        ]);
+        const sellersSnapshot = await getDocs(sellersQuery);
         
-        // No need to set allPartners again as it's fetched in main data fetch
         setAllSellers(sellersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SellerUser)));
     } catch (error) {
         console.error("Error fetching partners:", error);
@@ -166,15 +173,11 @@ export default function ManageConsultantPage() {
     fetchConsultantData();
   }, [fetchConsultantData]);
 
-  const filteredPartnersForDialog = React.useMemo(() => {
-      if (!partnerSearchTerm) return [];
-      return allPartners.filter(p => p.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(partnerSearchTerm.toLowerCase()));
-  }, [allPartners, partnerSearchTerm]);
-
-  const filteredSellers = React.useMemo(() => {
-      if (!sellerSearchTerm) return [];
-      return allSellers.filter(s => s.name.toLowerCase().includes(sellerSearchTerm.toLowerCase()) || s.email.toLowerCase().includes(sellerSearchTerm.toLowerCase()));
-  }, [allSellers, sellerSearchTerm]);
+  const filteredConsultantsForDialog = React.useMemo(() => {
+      if (!consultantSearchTerm) return [];
+      const listToSearch = activeDialogTab === 'partner' ? allPartners : allSellers;
+      return listToSearch.filter(p => p.name.toLowerCase().includes(consultantSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(consultantSearchTerm.toLowerCase()));
+  }, [allPartners, allSellers, consultantSearchTerm, activeDialogTab]);
 
 
   const filteredCustomers = React.useMemo(() => {
@@ -185,59 +188,59 @@ export default function ManageConsultantPage() {
         (c.seller && c.seller.name.toLowerCase().includes(customerSearchTerm.toLowerCase()))
     );
   }, [customers, customerSearchTerm]);
+  
 
-  const handleModifyClick = (customerData: CustomerWithConsultants) => {
+  const handleModifyCustomerClick = (customerData: CustomerWithConsultants) => {
     setSelectedCustomer(customerData);
-    setNewPartner(customerData.partner || null);
-    setNewSeller(customerData.seller || null);
+    setSelectedPartner(null);
+    setActiveDialogTab('partner');
+    setNewConsultant(customerData.partner || null);
     fetchAllConsultantsForDialog();
     setIsDialogOpen(true);
   }
   
-  const handleSelectPartner = (partner: PartnerUser) => {
-    setNewPartner(partner);
-    setPartnerSearchTerm("");
-    setIsChangingPartner(false);
+  const handleModifyPartnerClick = (partnerData: PartnerWithSeller) => {
+    setSelectedCustomer(null);
+    setSelectedPartner(partnerData);
+    setActiveDialogTab('seller');
+    setNewConsultant(partnerData.seller || null);
+    fetchAllConsultantsForDialog();
+    setIsDialogOpen(true);
   }
 
-  const handleSelectSeller = (seller: SellerUser) => {
-    setNewSeller(seller);
-    setSellerSearchTerm("");
-    setIsChangingSeller(false);
+  const handleSelectConsultant = (consultant: PartnerUser | SellerUser) => {
+    setNewConsultant(consultant);
+    setConsultantSearchTerm("");
   }
   
   const handleReassign = async () => {
-      if (!selectedCustomer) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Customer not selected.'});
+      if (!selectedCustomer && !selectedPartner) return;
+      if (!newConsultant) {
+          toast({ variant: 'destructive', title: 'Error', description: 'No consultant selected.'});
           return;
       }
+      
       setIsUpdating(true);
       try {
-        const leadsQuery = query(collection(db, "leads"), where("customerId", "==", selectedCustomer.customer.id));
-        const leadsSnapshot = await getDocs(leadsQuery);
-        
-        if (leadsSnapshot.empty) {
-            toast({ variant: 'destructive', title: 'No Leads', description: 'This customer has no leads to reassign.' });
-            setIsUpdating(false);
-            return;
+        if(selectedCustomer) { // Reassigning for a customer
+            const leadsQuery = query(collection(db, "leads"), where("customerId", "==", selectedCustomer.customer.id));
+            const leadsSnapshot = await getDocs(leadsQuery);
+            if (leadsSnapshot.empty) {
+                toast({ variant: 'destructive', title: 'No Leads', description: 'This customer has no leads to reassign.' });
+            } else {
+                const batch = writeBatch(db);
+                leadsSnapshot.docs.forEach(leadDoc => {
+                    batch.update(doc(db, "leads", leadDoc.id), { partnerId: newConsultant.id });
+                });
+                await batch.commit();
+                toast({ title: 'Success', description: `Partner for ${selectedCustomer.customer.name} has been updated.` });
+            }
+        } else if (selectedPartner) { // Reassigning for a partner
+            const partnerRef = doc(db, "users", selectedPartner.partner.id);
+            await updateDoc(partnerRef, { teamLeadId: newConsultant.id }); // teamLeadId holds assigned seller
+            toast({ title: 'Success', description: `Seller for ${selectedPartner.partner.name} has been updated.` });
         }
         
-        const batch = writeBatch(db);
-        
-        if (newPartner && newPartner.id !== selectedCustomer.partner?.id) {
-             leadsSnapshot.docs.forEach(leadDoc => {
-                batch.update(doc(db, "leads", leadDoc.id), { partnerId: newPartner.id });
-            });
-             toast({ title: 'Success', description: `${selectedCustomer.customer.name}'s partner has been updated to ${newPartner.name}.` });
-        }
-        
-        if (newSeller && newSeller.id !== selectedCustomer.seller?.id) {
-            console.log("Seller reassignment requested. This requires more complex logic not yet implemented.");
-            toast({ variant: "default", title: 'Info', description: `Seller reassignment logic is not fully implemented.` });
-        }
-        
-        await batch.commit();
-
         fetchConsultantData();
         setIsDialogOpen(false);
 
@@ -246,62 +249,48 @@ export default function ManageConsultantPage() {
          toast({ variant: "destructive", title: "Error", description: "Failed to reassign consultant." });
       } finally {
         setIsUpdating(false);
-        setNewPartner(null);
-        setNewSeller(null);
-        setIsChangingPartner(false);
-        setIsChangingSeller(false);
+        setNewConsultant(null);
       }
   }
 
   const renderConsultantSelector = (
       type: 'partner' | 'seller',
-      currentConsultant: PartnerUser | SellerUser | null,
-      isChanging: boolean,
-      setIsChanging: (val: boolean) => void,
-      searchTerm: string,
-      setSearchTerm: (val: string) => void,
-      filteredList: (PartnerUser | SellerUser)[],
-      handleSelect: (consultant: any) => void,
-      isLoadingList: boolean
+      currentConsultant: PartnerUser | SellerUser | null
   ) => (
       <div>
           <Label className="capitalize">{type}</Label>
-          {!isChanging && currentConsultant ? (
-               <div className="flex items-center gap-4 p-2 border rounded-md mt-1">
-                  <Avatar>
-                      <AvatarImage src={currentConsultant.profileImage} />
-                      <AvatarFallback>{currentConsultant.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                      <p className="font-medium">{currentConsultant.name}</p>
-                      <p className="text-sm text-muted-foreground capitalize">{type === 'seller' && currentConsultant.role === 'admin' ? 'Seller' : type}</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setIsChanging(true)}>Change</Button>
+           <div className="flex items-center gap-4 p-2 border rounded-md mt-1 bg-muted/50">
+              <Avatar>
+                  <AvatarImage src={currentConsultant?.profileImage} />
+                  <AvatarFallback>{currentConsultant?.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                  <p className="font-medium">{currentConsultant?.name || 'Not selected'}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{type}</p>
               </div>
-          ) : (
-              <div>
-                  <div className="relative mt-1">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                          placeholder={`Search for a ${type}...`}
-                          className="pl-8"
-                          value={searchTerm}
-                          onChange={e => setSearchTerm(e.target.value)}
-                      />
-                  </div>
-                  {searchTerm && (
-                      <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
-                          {isLoadingList ? (
-                              <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                          ) : filteredList.length > 0 ? filteredList.map(c => (
-                              <div key={c.id} onClick={() => handleSelect(c)} className="p-2 hover:bg-muted cursor-pointer text-sm">
-                                  <p>{c.name} ({c.email})</p>
-                              </div>
-                          )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
-                      </div>
-                  )}
+          </div>
+          <div className="mt-2">
+              <div className="relative mt-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                      placeholder={`Search for a new ${type}...`}
+                      className="pl-8"
+                      value={consultantSearchTerm}
+                      onChange={e => setConsultantSearchTerm(e.target.value)}
+                  />
               </div>
-          )}
+              {consultantSearchTerm && (
+                  <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                      {isLoadingConsultants ? (
+                          <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                      ) : filteredConsultantsForDialog.length > 0 ? filteredConsultantsForDialog.map(c => (
+                          <div key={c.id} onClick={() => handleSelectConsultant(c)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                              <p>{c.name} ({c.email})</p>
+                          </div>
+                      )) : <p className="p-4 text-sm text-center text-muted-foreground">No users found.</p>}
+                  </div>
+              )}
+          </div>
       </div>
   );
 
@@ -378,7 +367,7 @@ export default function ManageConsultantPage() {
                                 )}
                             </TableCell>
                             <TableCell className="text-right">
-                                <Button variant="outline" size="sm" onClick={() => handleModifyClick(c)}>
+                                <Button variant="outline" size="sm" onClick={() => handleModifyCustomerClick(c)}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Modify
                                 </Button>
@@ -414,28 +403,32 @@ export default function ManageConsultantPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                            ) : allPartners.length === 0 ? (
+                            ) : partners.length === 0 ? (
                                 <TableRow><TableCell colSpan={4} className="h-24 text-center">No partners found.</TableCell></TableRow>
                             ) : (
-                                allPartners.map(partner => (
-                                    <TableRow key={partner.id}>
+                                partners.map(p => (
+                                    <TableRow key={p.partner.id}>
                                         <TableCell>
-                                            <div className="font-medium">{partner.name}</div>
-                                            <div className="text-sm text-muted-foreground">{partner.email}</div>
+                                            <div className="font-medium">{p.partner.name}</div>
+                                            <div className="text-sm text-muted-foreground">{p.partner.email}</div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="outline">{roleNameMapping[partner.role] || partner.role}</Badge>
+                                            <Badge variant="outline">{roleNameMapping[p.partner.role] || p.partner.role}</Badge>
                                         </TableCell>
                                         <TableCell>
-                                            {adminProfile ? (
-                                                <div className="font-medium">{adminProfile.name}</div>
+                                            {p.seller ? (
+                                                <>
+                                                    <div className="font-medium">{p.seller.name}</div>
+                                                    <div className="text-sm text-muted-foreground">
+                                                        {p.seller.role === 'admin' ? 'Default Seller' : 'Seller'}
+                                                    </div>
+                                                </>
                                             ) : (
-                                                <span className="text-muted-foreground">Admin</span>
+                                                <span className="text-muted-foreground">Default (Admin)</span>
                                             )}
-                                            <div className="text-sm text-muted-foreground">Default Seller</div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="outline" size="sm" disabled>
+                                            <Button variant="outline" size="sm" onClick={() => handleModifyPartnerClick(p)}>
                                                 <Pencil className="mr-2 h-4 w-4" /> Modify
                                             </Button>
                                         </TableCell>
@@ -450,39 +443,21 @@ export default function ManageConsultantPage() {
         </TabsContent>
        </Tabs>
       
-      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsChangingPartner(false); setIsChangingSeller(false); } setIsDialogOpen(open); }}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setConsultantSearchTerm(""); } setIsDialogOpen(open); }}>
         <DialogContent className="max-w-lg">
             <DialogHeader>
-                <DialogTitle>Modify Consultant for {selectedCustomer?.customer.name}</DialogTitle>
-                <DialogDescription>Change the assigned Partner or Seller.</DialogDescription>
+                 <DialogTitle>Modify Consultant for {selectedCustomer?.customer.name || selectedPartner?.partner.name}</DialogTitle>
+                <DialogDescription>Change the assigned {selectedCustomer ? 'Partner' : 'Seller'}.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 {renderConsultantSelector(
-                    'partner',
-                    newPartner,
-                    isChangingPartner,
-                    setIsChangingPartner,
-                    partnerSearchTerm,
-                    setPartnerSearchTerm,
-                    filteredPartnersForDialog,
-                    handleSelectPartner,
-                    isLoadingConsultants
-                )}
-                 {renderConsultantSelector(
-                    'seller',
-                    newSeller,
-                    isChangingSeller,
-                    setIsChangingSeller,
-                    sellerSearchTerm,
-                    setSellerSearchTerm,
-                    filteredSellers,
-                    handleSelectSeller,
-                    isLoadingConsultants
+                    activeDialogTab,
+                    newConsultant
                 )}
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleReassign} disabled={isUpdating || (!newPartner && !newSeller)}>
+                <Button onClick={handleReassign} disabled={isUpdating || !newConsultant}>
                     {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                     Reassign
                 </Button>
