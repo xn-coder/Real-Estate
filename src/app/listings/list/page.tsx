@@ -24,10 +24,12 @@ import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "fireb
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import type { Property } from "@/types/property"
+import type { PropertyType } from "@/types/resource"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'For Sale': 'default',
@@ -43,16 +45,21 @@ export default function ListingsPage() {
     const { toast } = useToast();
     const { user } = useUser();
     const [allListings, setAllListings] = React.useState<Property[]>([]);
+    const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState("");
     const [activeFilter, setActiveFilter] = React.useState<Property['status'] | 'All'>("All");
+    const [propertyTypeFilter, setPropertyTypeFilter] = React.useState<string>("all");
 
     const canAddProperties = user?.role === 'seller' || user?.role === 'admin';
 
     React.useEffect(() => {
-        const fetchListings = async () => {
+        const fetchListingsAndTypes = async () => {
             setIsLoading(true);
             try {
+                const typesSnapshot = await getDocs(collection(db, "property_types"));
+                setPropertyTypes(typesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PropertyType)));
+
                 const q = query(collection(db, "properties"), where("status", "!=", "Pending Verification"));
                 const snapshot = await getDocs(q);
                 const listingsData = await Promise.all(snapshot.docs.map(async (docData) => {
@@ -64,7 +71,7 @@ export default function ListingsPage() {
                             featureImageUrl = fileDoc.data()?.data;
                         }
                     }
-                    return { 
+                    return {
                         ...data,
                         id: docData.id,
                         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
@@ -79,20 +86,21 @@ export default function ListingsPage() {
                 setIsLoading(false);
             }
         };
-        fetchListings();
+        fetchListingsAndTypes();
     }, [toast]);
     
     const filteredListings = React.useMemo(() => {
         return allListings.filter(listing => {
             const statusMatch = activeFilter === 'All' || listing.status === activeFilter;
+            const typeMatch = propertyTypeFilter === 'all' || listing.propertyTypeId === propertyTypeFilter;
             const searchMatch = searchTerm === "" ||
                 listing.catalogTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.addressLine.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.id.toLowerCase().includes(searchTerm.toLowerCase());
-            return statusMatch && searchMatch;
+            return statusMatch && typeMatch && searchMatch;
         });
-    }, [allListings, searchTerm, activeFilter]);
+    }, [allListings, searchTerm, activeFilter, propertyTypeFilter]);
 
 
   return (
@@ -121,13 +129,26 @@ export default function ListingsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Property['status'] | 'All')}>
-          <TabsList>
-            {filterableStatuses.map(status => (
-                 <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Filter by type..." />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {propertyTypes.map(type => (
+                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Property['status'] | 'All')}>
+              <TabsList>
+                {filterableStatuses.map(status => (
+                     <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+        </div>
       </div>
       
       {isLoading ? (

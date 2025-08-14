@@ -18,7 +18,7 @@ const ConsultantProfileCard = ({ title, user, type }: { title: string, user: Use
 
   if (!user) {
     return (
-      <Card>
+      <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
           <CardDescription>No {type.toLowerCase()} found.</CardDescription>
@@ -30,7 +30,8 @@ const ConsultantProfileCard = ({ title, user, type }: { title: string, user: Use
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
   const handleMessage = () => {
-    router.push(`/send-message?recipientId=${user.id}&type=to_seller`);
+    const messageType = type === 'Seller' ? 'to_seller' : 'to_partner';
+    router.push(`/send-message?recipientId=${user.id}&type=${messageType}`);
   }
 
   return (
@@ -71,6 +72,7 @@ const ConsultantProfileCard = ({ title, user, type }: { title: string, user: Use
 
 export default function MyConsultantPage() {
   const { user, isLoading: isUserLoading } = useUser();
+  const [partner, setPartner] = React.useState<User | null>(null);
   const [seller, setSeller] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -81,11 +83,23 @@ export default function MyConsultantPage() {
       setIsLoading(true);
       try {
         const leadsRef = collection(db, "leads");
-        const q = query(leadsRef, where("partnerId", "==", user.id), orderBy("createdAt", "desc"), limit(1));
+        let q;
+        if(user.role === 'customer') {
+            q = query(leadsRef, where("customerId", "==", user.id), orderBy("createdAt", "desc"), limit(1));
+        } else { // partner
+            q = query(leadsRef, where("partnerId", "==", user.id), orderBy("createdAt", "desc"), limit(1));
+        }
+        
         const leadSnapshot = await getDocs(q);
 
         if (!leadSnapshot.empty) {
           const lead = leadSnapshot.docs[0].data() as Lead;
+          
+          // Fetch Partner
+          if(lead.partnerId) {
+            const partnerDoc = await getDoc(doc(db, "users", lead.partnerId));
+            if (partnerDoc.exists()) setPartner({ id: partnerDoc.id, ...partnerDoc.data() } as User);
+          }
 
           // Fetch Seller (owner of the property)
           if (lead.propertyId) {
@@ -102,8 +116,10 @@ export default function MyConsultantPage() {
               }
             }
           }
-        } else {
-            // If no leads, the default consultant is an admin.
+        } 
+        
+        // If no seller is found via leads (e.g., for new partners/customers), assign the admin as a default seller.
+        if (!seller) {
             const adminQuery = query(collection(db, "users"), where("role", "==", "admin"), limit(1));
             const adminSnapshot = await getDocs(adminQuery);
              if (!adminSnapshot.empty) {
@@ -132,13 +148,18 @@ export default function MyConsultantPage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 flex flex-col items-center">
       <div className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">My Consultant</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">My Consultants</h1>
         <p className="text-muted-foreground mt-2">
-            Here are the contact details for your assigned seller.
+            Your points of contact for properties and partnerships.
         </p>
       </div>
-
-      <ConsultantProfileCard title="Property Seller" user={seller} type="Seller" />
+      
+      <div className="w-full flex flex-col md:flex-row justify-center items-start gap-8">
+        {user?.role === 'customer' && partner && (
+             <ConsultantProfileCard title="Assigned Partner" user={partner} type="Partner" />
+        )}
+        <ConsultantProfileCard title="Assigned Seller" user={seller} type="Seller" />
+      </div>
     </div>
   );
 }
