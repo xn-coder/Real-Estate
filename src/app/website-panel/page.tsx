@@ -464,41 +464,32 @@ export default function WebsitePanelPage() {
                     <FormField
                         control={featuredCatalogForm.control}
                         name="featuredCatalog"
-                        render={() => (
+                        render={({ field }) => (
                             <FormItem>
                                 <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
                                 {allProperties.map((item) => (
-                                    <FormField
-                                    key={item.id}
-                                    control={featuredCatalogForm.control}
-                                    name="featuredCatalog"
-                                    render={({ field }) => {
-                                        return (
-                                        <FormItem
-                                            key={item.id}
-                                            className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
-                                        >
-                                            <FormControl>
-                                            <Checkbox
-                                                checked={field.value?.includes(item.id)}
-                                                onCheckedChange={(checked) => {
-                                                return checked
-                                                    ? field.onChange([...(field.value ?? []), item.id])
-                                                    : field.onChange(
-                                                        field.value?.filter(
-                                                        (value) => value !== item.id
-                                                        )
+                                    <FormItem
+                                        key={item.id}
+                                        className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
+                                    >
+                                        <FormControl>
+                                        <Checkbox
+                                            checked={field.value?.includes(item.id)}
+                                            onCheckedChange={(checked) => {
+                                            return checked
+                                                ? field.onChange([...(field.value ?? []), item.id])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                    (value) => value !== item.id
                                                     )
-                                                }}
-                                            />
-                                            </FormControl>
-                                            <FormLabel className="font-normal w-full cursor-pointer">
-                                            {item.catalogTitle}
-                                            </FormLabel>
-                                        </FormItem>
-                                        )
-                                    }}
-                                    />
+                                                )
+                                            }}
+                                        />
+                                        </FormControl>
+                                        <FormLabel className="font-normal w-full cursor-pointer">
+                                        {item.catalogTitle}
+                                        </FormLabel>
+                                    </FormItem>
                                 ))}
                                 </div>
                                 <FormMessage />
