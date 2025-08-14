@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import React from 'react'
@@ -91,6 +90,7 @@ const adminNavItems: NavItem[] = [
     { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
     { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
     { href: '/manage-consultant', icon: Users, label: 'Manage Consultant' },
+    { href: '/manage-requirements', icon: FilePlus, label: 'Manage Requirements' },
     { href: '/support-ticket/list', icon: Headset, label: 'Support Tickets' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/website-panel', icon: PanelTop, label: 'Website Panel' },
@@ -143,7 +143,7 @@ const customerNavItems: NavItem[] = [
     { href: '/my-consultant', icon: Users, label: 'My Consultant' },
     { href: '/schedule', icon: Calendar, label: 'Site Visit Schedules' },
     { href: '/home-loans', icon: Banknote, label: 'Home Loans' },
-    { href: '#', icon: FilePlus, label: 'Manage Requirements' },
+    { href: '/post-requirements', icon: FilePlus, label: 'Post Requirements' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/document-management', icon: FileText, label: 'Manage Documents' },
     { href: '/refer-earn', icon: Gift, label: 'Refer & Earn' },
