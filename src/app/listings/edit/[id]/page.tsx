@@ -490,7 +490,44 @@ export default function EditPropertyPage() {
                                 </div>
                             )}
 
-                             {currentStep === 4 && ( <FormField control={form.control} name="amenities" render={({ field }) => ( <FormItem> <div className="mb-4"> <FormLabel className="text-base">Features & Amenities</FormLabel> <FormDescription>Select all the amenities that apply.</FormDescription> </div> <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"> {amenitiesList.map((item) => ( <FormField key={item.id} control={form.control} name="amenities" render={({ field }) => ( <FormItem className="flex flex-row items-start space-x-3 space-y-0"> <FormControl> <Checkbox checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange( field.value?.filter( (value) => value !== item.id ) ) }} /> </FormControl> <FormLabel className="text-sm font-normal">{item.label}</FormLabel> </FormItem> )} /> ))} </div> <FormMessage /> </FormItem> )} /> )}
+                             {currentStep === 4 && (
+                                <FormField
+                                    control={form.control}
+                                    name="amenities"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <div className="mb-4">
+                                        <FormLabel className="text-base">Features & Amenities</FormLabel>
+                                        <FormDescription>Select all the amenities that apply.</FormDescription>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {amenitiesList.map((item) => (
+                                            <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            return checked
+                                                            ? field.onChange([...(field.value || []), item.id])
+                                                            : field.onChange(
+                                                                field.value?.filter(
+                                                                    (value) => value !== item.id
+                                                                )
+                                                                )
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="text-sm font-normal">
+                                                    {item.label}
+                                                </FormLabel>
+                                            </FormItem>
+                                        ))}
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            )}
                             
                             {currentStep === 5 && ( <div className="grid md:grid-cols-2 gap-4"> <FormField control={form.control} name="furnishingStatus" render={({ field }) => ( <FormItem><FormLabel>Furnishing Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="fully">Fully Furnished</SelectItem><SelectItem value="semi">Semi-Furnished</SelectItem><SelectItem value="unfurnished">Unfurnished</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} /> <FormField control={form.control} name="flooringType" render={({ field }) => ( <FormItem><FormLabel>Flooring Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="vitrified">Vitrified</SelectItem><SelectItem value="marble">Marble</SelectItem><SelectItem value="wood">Wood</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} /> <FormField control={form.control} name="kitchenType" render={({ field }) => ( <FormItem><FormLabel>Kitchen Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="modular">Modular</SelectItem><SelectItem value="normal">Normal</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} /> <FormField control={form.control} name="furnitureIncluded" render={({ field }) => ( <FormItem><FormLabel>Wardrobes/Furniture Included</FormLabel><FormControl><Textarea placeholder="e.g. 2 Wardrobes, 1 Sofa Set" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} /> </div> )}
 
