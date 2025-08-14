@@ -28,7 +28,6 @@ import type { PropertyType } from "@/types/resource"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
@@ -38,8 +37,6 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Pending Verification': 'destructive',
 }
 
-const filterableStatuses: (Property['status'] | 'All')[] = ['All', 'For Sale', 'Under Contract', 'Sold'];
-
 export default function ListingsPage() {
     const router = useRouter();
     const { toast } = useToast();
@@ -48,7 +45,6 @@ export default function ListingsPage() {
     const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState("");
-    const [activeFilter, setActiveFilter] = React.useState<Property['status'] | 'All'>("All");
     const [propertyTypeFilter, setPropertyTypeFilter] = React.useState<string>("all");
 
     const canAddProperties = user?.role === 'seller' || user?.role === 'admin';
@@ -91,16 +87,15 @@ export default function ListingsPage() {
     
     const filteredListings = React.useMemo(() => {
         return allListings.filter(listing => {
-            const statusMatch = activeFilter === 'All' || listing.status === activeFilter;
             const typeMatch = propertyTypeFilter === 'all' || listing.propertyTypeId === propertyTypeFilter;
             const searchMatch = searchTerm === "" ||
                 listing.catalogTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.addressLine.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.id.toLowerCase().includes(searchTerm.toLowerCase());
-            return statusMatch && typeMatch && searchMatch;
+            return typeMatch && searchMatch;
         });
-    }, [allListings, searchTerm, activeFilter, propertyTypeFilter]);
+    }, [allListings, searchTerm, propertyTypeFilter]);
 
 
   return (
@@ -141,13 +136,6 @@ export default function ListingsPage() {
                     ))}
                 </SelectContent>
             </Select>
-            <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Property['status'] | 'All')}>
-              <TabsList>
-                {filterableStatuses.map(status => (
-                     <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
         </div>
       </div>
       
