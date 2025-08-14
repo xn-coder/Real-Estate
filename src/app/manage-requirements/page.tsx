@@ -183,7 +183,9 @@ export default function ManageRequirementsPage() {
                 <Card>
                     <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Ruler className="h-5 w-5"/> Additional Preferences</CardTitle></CardHeader>
                     <CardContent className="text-sm space-y-3">
-                        <p><strong>Furnishing:</strong> <Badge variant="outline" className="capitalize">{selectedRequirement.furnishing}</Badge></p>
+                        <div>
+                            <strong>Furnishing:</strong> <Badge variant="outline" className="capitalize">{selectedRequirement.furnishing}</Badge>
+                        </div>
                         <div>
                             <strong>Amenities:</strong>
                             {selectedRequirement.amenities && selectedRequirement.amenities.length > 0 ? (
