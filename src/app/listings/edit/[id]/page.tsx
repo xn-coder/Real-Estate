@@ -427,7 +427,7 @@ export default function EditPropertyPage() {
                                             </Button>
                                         </div>
                                     )})}
-                                    <Button type="button" variant="outline" onClick={() => append({ title: '', image: null })}>
+                                    <Button type="button" variant="outline" onClick={() => appendSlide({ title: '', image: null })}>
                                         <PlusCircle className="mr-2 h-4 w-4"/>Add Slide
                                     </Button>
                                 </div>
