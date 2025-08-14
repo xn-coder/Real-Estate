@@ -46,8 +46,8 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "",
-      password: "password",
+      email: "",
+      password: "",
     },
   })
 
@@ -178,7 +178,7 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input placeholder="admin@estateflow.com" {...field} disabled={isLoading} />
+                  <Input placeholder="you@example.com" {...field} disabled={isLoading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
