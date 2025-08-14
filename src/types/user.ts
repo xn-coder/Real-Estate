@@ -11,7 +11,7 @@ export type User = {
   password?: string
   whatsappNumber?: string;
   role: string
-  status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended';
+  status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended' | 'pending_verification';
   profileImage?: string;
   dob?: Date;
   gender?: "male" | "female" | "other";

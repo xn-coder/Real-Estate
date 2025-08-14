@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, writeBatch } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Lead } from "@/types/lead"
 import type { Property } from "@/types/property"
@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table"
+import { useToast } from "@/hooks/use-toast"
 
 // Data types
 type BookingDetails = {
@@ -26,10 +27,12 @@ type BookingDetails = {
 export default function BookingDetailsPage() {
     const params = useParams()
     const router = useRouter()
+    const { toast } = useToast()
     const leadId = params.id as string
 
     const [details, setDetails] = React.useState<BookingDetails | null>(null)
     const [isLoading, setIsLoading] = React.useState(true)
+    const [isCompleting, setIsCompleting] = React.useState(false)
 
     React.useEffect(() => {
         if (!leadId) return;
@@ -67,6 +70,37 @@ export default function BookingDetailsPage() {
 
         fetchDetails();
     }, [leadId]);
+
+    const handleCompleteDeal = async () => {
+        if (!details || !details.lead || !details.customer) {
+            toast({ variant: "destructive", title: "Error", description: "Missing booking details to complete the deal." });
+            return;
+        }
+
+        setIsCompleting(true);
+        try {
+            const batch = writeBatch(db);
+
+            // Update lead status to 'Completed'
+            const leadRef = doc(db, "leads", details.lead.id);
+            batch.update(leadRef, { status: 'Completed' });
+
+            // Update customer status for verification
+            const customerRef = doc(db, "users", details.customer.id);
+            batch.update(customerRef, { status: 'pending_verification' });
+
+            await batch.commit();
+
+            toast({ title: "Deal Completed", description: "The booking has been marked as completed." });
+            router.push('/booking-management');
+
+        } catch (error) {
+            console.error("Error completing deal:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to complete the deal. Please try again." });
+        } finally {
+            setIsCompleting(false);
+        }
+    }
 
     if (isLoading) {
         return <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -194,7 +228,10 @@ export default function BookingDetailsPage() {
                             <CardDescription>Finalize the booking and mark the deal as completed.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           <Button className="w-full"><CheckCircle className="mr-2 h-4 w-4"/> Mark as Completed</Button>
+                           <Button className="w-full" onClick={handleCompleteDeal} disabled={isCompleting}>
+                                {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                                Mark as Completed
+                            </Button>
                         </CardContent>
                     </Card>
                 </div>

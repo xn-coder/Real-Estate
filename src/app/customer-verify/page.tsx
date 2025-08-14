@@ -1,0 +1,139 @@
+
+'use client'
+
+import * as React from "react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Loader2, User, Eye, Search, CheckCircle, XCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { db } from "@/lib/firebase"
+import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
+import type { User as CustomerUser } from "@/types/user"
+import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+
+export default function CustomerVerifyPage() {
+  const { toast } = useToast()
+  const router = useRouter()
+  const [customers, setCustomers] = React.useState<CustomerUser[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [isUpdating, setIsUpdating] = React.useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = React.useState("")
+
+  const fetchCustomers = React.useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const usersCollection = collection(db, "users")
+      const q = query(usersCollection, where("status", "==", "pending_verification"))
+      const snapshot = await getDocs(q)
+      const customerList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CustomerUser))
+      setCustomers(customerList)
+    } catch (error) {
+      console.error("Error fetching customers for verification:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch customers for verification.",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [toast])
+
+  React.useEffect(() => {
+    fetchCustomers()
+  }, [fetchCustomers])
+
+  const handleUpdateStatus = async (customerId: string, status: 'active' | 'rejected') => {
+    setIsUpdating(customerId)
+    try {
+        const userRef = doc(db, "users", customerId);
+        await updateDoc(userRef, { status: status });
+        toast({ title: "Success", description: `Customer status updated to ${status}.`});
+        fetchCustomers();
+    } catch (error) {
+        console.error("Error updating customer status:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update customer status.'});
+    } finally {
+        setIsUpdating(null);
+    }
+  }
+
+  const filteredCustomers = React.useMemo(() => {
+    return customers.filter(customer =>
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [customers, searchTerm]);
+
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Customer Verification</h1>
+      </div>
+       <div className="relative w-full md:w-auto md:flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by name or email..."
+            className="pl-8 sm:w-full md:w-1/3"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Customer Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center">
+                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                </TableCell>
+              </TableRow>
+            ) : filteredCustomers.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                    No customers awaiting verification.
+                    </TableCell>
+                </TableRow>
+            ) : filteredCustomers.map((customer) => (
+              <TableRow key={customer.id}>
+                <TableCell className="font-medium">{customer.name}</TableCell>
+                <TableCell>{customer.email}</TableCell>
+                <TableCell>{customer.phone}</TableCell>
+                <TableCell className="text-right space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/manage-customer/${customer.id}`)} disabled={!!isUpdating}>
+                        <Eye className="mr-2 h-4 w-4" /> View
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleUpdateStatus(customer.id, 'active')} disabled={!!isUpdating}>
+                        {isUpdating === customer.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />} Verify
+                    </Button>
+                     <Button variant="destructive" size="sm" onClick={() => handleUpdateStatus(customer.id, 'rejected')} disabled={!!isUpdating}>
+                         {isUpdating === customer.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4" />} Reject
+                    </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}
