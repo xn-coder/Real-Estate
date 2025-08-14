@@ -26,6 +26,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+
 
 type CustomerWithConsultants = {
   customer: CustomerUser;
@@ -35,10 +37,20 @@ type CustomerWithConsultants = {
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
 const sellerRoles = ['seller', 'admin'];
+const roleNameMapping: Record<string, string> = {
+  affiliate: 'Affiliate Partner',
+  super_affiliate: 'Super Affiliate Partner',
+  associate: 'Associate Partner',
+  channel: 'Channel Partner',
+  franchisee: 'Franchisee',
+};
+
 
 export default function ManageConsultantPage() {
   const { toast } = useToast()
   const [customers, setCustomers] = React.useState<CustomerWithConsultants[]>([])
+  const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
+  const [adminProfile, setAdminProfile] = React.useState<SellerUser | null>(null);
   const [isLoading, setIsLoading] = React.useState(true)
   
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
@@ -49,7 +61,6 @@ export default function ManageConsultantPage() {
   const [newPartner, setNewPartner] = React.useState<PartnerUser | null>(null);
   const [newSeller, setNewSeller] = React.useState<SellerUser | null>(null);
   
-  const [allPartners, setAllPartners] = React.useState<PartnerUser[]>([])
   const [allSellers, setAllSellers] = React.useState<SellerUser[]>([])
   const [isLoadingConsultants, setIsLoadingConsultants] = React.useState(true)
 
@@ -65,7 +76,23 @@ export default function ManageConsultantPage() {
   const fetchConsultantData = React.useCallback(async () => {
     setIsLoading(true);
     try {
-        const customersQuery = query(collection(db, "users"), where("role", "==", "customer"));
+        const usersCollection = collection(db, "users");
+        
+        // Fetch Admin profile to show as default seller
+        const adminQuery = query(usersCollection, where("role", "==", "admin"), limit(1));
+        const adminSnapshot = await getDocs(adminQuery);
+        if (!adminSnapshot.empty) {
+            setAdminProfile(adminSnapshot.docs[0].data() as SellerUser);
+        }
+
+        // Fetch All Partners
+        const allPartnersQuery = query(usersCollection, where("role", "in", partnerRoles));
+        const allPartnersSnapshot = await getDocs(allPartnersQuery);
+        setAllPartners(allPartnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)))
+
+
+        // Fetch Customers and their assigned consultants
+        const customersQuery = query(usersCollection, where("role", "==", "customer"));
         const customersSnapshot = await getDocs(customersQuery);
         const customerList = customersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as CustomerUser));
 
@@ -92,7 +119,7 @@ export default function ManageConsultantPage() {
                         if (propertyDoc.exists()) {
                             const propertyData = propertyDoc.data() as Property;
                             if (propertyData.email) {
-                                const sellerQuery = query(collection(db, "users"), where("email", "==", propertyData.email), limit(1));
+                                const sellerQuery = query(usersCollection, where("email", "==", propertyData.email), limit(1));
                                 const sellerSnapshot = await getDocs(sellerQuery);
                                 if (!sellerSnapshot.empty) {
                                     const sellerDoc = sellerSnapshot.docs[0];
@@ -115,7 +142,7 @@ export default function ManageConsultantPage() {
     }
   }, [toast]);
   
-  const fetchAllConsultants = React.useCallback(async () => {
+  const fetchAllConsultantsForDialog = React.useCallback(async () => {
     setIsLoadingConsultants(true);
     try {
         const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
@@ -126,7 +153,7 @@ export default function ManageConsultantPage() {
             getDocs(sellersQuery),
         ]);
         
-        setAllPartners(partnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
+        // No need to set allPartners again as it's fetched in main data fetch
         setAllSellers(sellersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SellerUser)));
     } catch (error) {
         console.error("Error fetching partners:", error);
@@ -137,10 +164,9 @@ export default function ManageConsultantPage() {
 
   React.useEffect(() => {
     fetchConsultantData();
-    fetchAllConsultants();
-  }, [fetchConsultantData, fetchAllConsultants]);
+  }, [fetchConsultantData]);
 
-  const filteredPartners = React.useMemo(() => {
+  const filteredPartnersForDialog = React.useMemo(() => {
       if (!partnerSearchTerm) return [];
       return allPartners.filter(p => p.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(partnerSearchTerm.toLowerCase()));
   }, [allPartners, partnerSearchTerm]);
@@ -164,6 +190,7 @@ export default function ManageConsultantPage() {
     setSelectedCustomer(customerData);
     setNewPartner(customerData.partner || null);
     setNewSeller(customerData.seller || null);
+    fetchAllConsultantsForDialog();
     setIsDialogOpen(true);
   }
   
@@ -204,8 +231,6 @@ export default function ManageConsultantPage() {
              toast({ title: 'Success', description: `${selectedCustomer.customer.name}'s partner has been updated to ${newPartner.name}.` });
         }
         
-        // Note: Seller reassignment is complex as it's tied to the property.
-        // This functionality might need a more detailed implementation if properties need to change.
         if (newSeller && newSeller.id !== selectedCustomer.seller?.id) {
             console.log("Seller reassignment requested. This requires more complex logic not yet implemented.");
             toast({ variant: "default", title: 'Info', description: `Seller reassignment logic is not fully implemented.` });
@@ -372,11 +397,54 @@ export default function ManageConsultantPage() {
                 <CardHeader>
                     <CardTitle>Partner-Consultant Assignments</CardTitle>
                     <CardDescription>
-                        This feature is coming soon.
+                        View all partners and their assigned sellers.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="h-48 flex items-center justify-center text-muted-foreground">
-                    <p>Partner to consultant management will be available here.</p>
+                <CardContent>
+                    <div className="border rounded-lg overflow-x-auto">
+                        <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Partner Name</TableHead>
+                                <TableHead>Partner Role</TableHead>
+                                <TableHead>Assigned Seller</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                            ) : allPartners.length === 0 ? (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">No partners found.</TableCell></TableRow>
+                            ) : (
+                                allPartners.map(partner => (
+                                    <TableRow key={partner.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{partner.name}</div>
+                                            <div className="text-sm text-muted-foreground">{partner.email}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">{roleNameMapping[partner.role] || partner.role}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            {adminProfile ? (
+                                                <div className="font-medium">{adminProfile.name}</div>
+                                            ) : (
+                                                <span className="text-muted-foreground">Admin</span>
+                                            )}
+                                            <div className="text-sm text-muted-foreground">Default Seller</div>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="outline" size="sm" disabled>
+                                                <Pencil className="mr-2 h-4 w-4" /> Modify
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </TabsContent>
@@ -396,7 +464,7 @@ export default function ManageConsultantPage() {
                     setIsChangingPartner,
                     partnerSearchTerm,
                     setPartnerSearchTerm,
-                    filteredPartners,
+                    filteredPartnersForDialog,
                     handleSelectPartner,
                     isLoadingConsultants
                 )}
