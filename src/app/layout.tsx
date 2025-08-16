@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>DealFlow</title>
+        <title>Real Estate</title>
         <meta name="description" content="A professional real estate deal management app." />
         <link rel="icon" href="/logo.png" sizes="any" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
