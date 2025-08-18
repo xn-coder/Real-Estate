@@ -267,7 +267,7 @@ export default function WebsitePanelPage() {
         <Icon className="h-5 w-5 text-muted-foreground" />
         <span className="flex-1 truncate">{url || 'Not set'}</span>
     </div>
-  )
+  );
 
   if (isLoading) {
     return (
@@ -463,43 +463,40 @@ export default function WebsitePanelPage() {
                             name="featuredCatalog"
                             render={({ field }) => (
                                 <FormItem>
-                                <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
-                                    {allProperties.map((item) => (
-                                    <FormItem
-                                        key={item.id}
-                                        className="flex flex-row items-start space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
-                                    >
-                                        <FormControl>
-                                        <Checkbox
-                                            checked={field.value?.includes(item.id)}
-                                            onCheckedChange={(checked) => {
-                                            const currentValues = field.value || [];
-                                            if (checked) {
-                                                if (currentValues.length < 3) {
-                                                field.onChange([...currentValues, item.id]);
-                                                } else {
-                                                toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
-                                                // Uncheck the box visually by not adding the value
-                                                const checkbox = document.querySelector(`input[type="checkbox"][value="${item.id}"]`) as HTMLInputElement;
-                                                if (checkbox) checkbox.checked = false;
-                                                }
-                                            } else {
-                                                field.onChange(
-                                                currentValues.filter(
-                                                    (value) => value !== item.id
-                                                )
-                                                );
-                                            }
-                                            }}
-                                        />
-                                        </FormControl>
-                                        <FormLabel className="font-normal w-full cursor-pointer">
-                                            {item.catalogTitle}
-                                        </FormLabel>
-                                    </FormItem>
-                                    ))}
-                                </div>
-                                <FormMessage />
+                                    <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
+                                        {allProperties.map((item) => (
+                                            <FormItem
+                                                key={item.id}
+                                                className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
+                                            >
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            const currentValues = field.value || [];
+                                                            if (checked) {
+                                                                if (currentValues.length < 3) {
+                                                                    field.onChange([...currentValues, item.id]);
+                                                                } else {
+                                                                    toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
+                                                                }
+                                                            } else {
+                                                                field.onChange(
+                                                                    currentValues.filter(
+                                                                        (value) => value !== item.id
+                                                                    )
+                                                                );
+                                                            }
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="font-normal w-full cursor-pointer">
+                                                    {item.catalogTitle}
+                                                </FormLabel>
+                                            </FormItem>
+                                        ))}
+                                    </div>
+                                    <FormMessage />
                                 </FormItem>
                             )}
                         />
