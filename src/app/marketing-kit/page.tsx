@@ -33,7 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Loader2, PlusCircle, Upload, Paperclip, Download, Search } from "lucide-react"
+import { Loader2, PlusCircle, Upload, Paperclip, Download, Search, Building } from "lucide-react"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { db } from "@/lib/firebase"
@@ -41,6 +41,8 @@ import { collection, addDoc, getDocs, doc, setDoc, query, where } from "firebase
 import { generateUserId } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import type { Property } from "@/types/property"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure", "video"], {
@@ -49,6 +51,7 @@ const marketingKitSchema = z.object({
   title: z.string().min(1, { message: "Title is required." }),
   featureImage: z.any().optional(),
   files: z.any().optional(),
+  propertyId: z.string().optional(),
 })
 
 type MarketingKitForm = z.infer<typeof marketingKitSchema>
@@ -66,6 +69,8 @@ type Kit = {
   featureImage: string;
   files: KitFile[];
   ownerId?: string;
+  propertyId?: string;
+  propertyTitle?: string;
 };
 
 const getFileType = (fileName: string): KitFile['type'] => {
@@ -114,12 +119,15 @@ export default function MarketingKitPage() {
   const { toast } = useToast()
   const { user } = useUser();
   const [kits, setKits] = React.useState<Kit[]>(initialKits)
+  const [allProperties, setAllProperties] = React.useState<Property[]>([])
   const [isLoadingKits, setIsLoadingKits] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDownloading, setIsDownloading] = React.useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [searchTerm, setSearchTerm] = React.useState("")
+  const [propertySearchTerm, setPropertySearchTerm] = React.useState("")
   const [activeFilter, setActiveFilter] = React.useState("all")
+  const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null)
   
   const isSeller = user?.role === 'seller';
   const canAddKits = user?.role === 'admin' || isSeller;
@@ -131,23 +139,34 @@ export default function MarketingKitPage() {
       kitType: "poster",
       featureImage: undefined,
       files: undefined,
+      propertyId: "",
     },
   })
   
-  const fetchKits = React.useCallback(async () => {
+  const fetchKitsAndProperties = React.useCallback(async () => {
     if (!user) return;
-    setIsLoadingKits(true)
+    setIsLoadingKits(true);
     try {
-      const kitsCollection = collection(db, "marketing_kits")
-      let q;
-      if (isSeller) {
-          q = query(kitsCollection, where("ownerId", "==", user.id));
-      } else {
-          q = query(kitsCollection);
-      }
-      
-      const kitsSnapshot = await getDocs(q)
-      const kitsList = kitsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Kit))
+        const kitsCollection = collection(db, "marketing_kits");
+        const propsCollection = collection(db, "properties");
+
+        const [kitsSnapshot, propsSnapshot] = await Promise.all([
+            getDocs(isSeller ? query(kitsCollection, where("ownerId", "==", user.id)) : query(kitsCollection)),
+            getDocs(query(propsCollection, where("status", "==", "For Sale")))
+        ]);
+        
+        const propsList = propsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
+        setAllProperties(propsList);
+
+        const kitsList = await Promise.all(kitsSnapshot.docs.map(async docData => {
+            const data = docData.data() as Omit<Kit, 'propertyTitle'>;
+            let propertyTitle: string | undefined;
+            if (data.propertyId) {
+                const prop = propsList.find(p => p.id === data.propertyId);
+                propertyTitle = prop?.catalogTitle;
+            }
+            return { ...data, propertyTitle };
+        }));
       
       if (!isSeller && kitsList.length === 0) {
         setKits(initialKits);
@@ -169,9 +188,9 @@ export default function MarketingKitPage() {
 
   React.useEffect(() => {
     if (user) {
-        fetchKits();
+        fetchKitsAndProperties();
     }
-  }, [user, fetchKits])
+  }, [user, fetchKitsAndProperties])
 
 
   async function onSubmit(values: MarketingKitForm) {
@@ -198,7 +217,8 @@ export default function MarketingKitPage() {
             id: kitId,
             title: values.title,
             type: values.kitType.charAt(0).toUpperCase() + values.kitType.slice(1),
-            ownerId: user.id, // Assign ownership
+            ownerId: user.id,
+            propertyId: values.propertyId || null,
             featureImage: featureImageUrl,
             files: filesData,
         });
@@ -206,11 +226,12 @@ export default function MarketingKitPage() {
         setIsSubmitting(false);
         setIsDialogOpen(false);
         form.reset();
+        setSelectedProperty(null);
         toast({
             title: "Marketing Kit Created",
             description: "Your new marketing kit has been added successfully.",
         });
-        fetchKits();
+        fetchKitsAndProperties();
     } catch (error) {
         console.error("Error creating kit:", error);
         toast({
@@ -320,6 +341,21 @@ export default function MarketingKitPage() {
         kit.title.toLowerCase().includes(searchTerm.toLowerCase())
       );
   }, [kits, activeFilter, searchTerm]);
+  
+  const filteredProperties = React.useMemo(() => {
+    if (!propertySearchTerm) return [];
+    return allProperties.filter(p =>
+      p.catalogTitle.toLowerCase().includes(propertySearchTerm.toLowerCase()) ||
+      p.id.toLowerCase().includes(propertySearchTerm.toLowerCase())
+    );
+  }, [allProperties, propertySearchTerm]);
+  
+  const handleSelectProperty = (property: Property) => {
+      setSelectedProperty(property);
+      form.setValue("propertyId", property.id);
+      setPropertySearchTerm("");
+  }
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -341,77 +377,61 @@ export default function MarketingKitPage() {
                 </DialogHeader>
                 <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                    control={form.control}
-                    name="kitType"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Kit Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a kit type" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value="poster">Poster</SelectItem>
-                            <SelectItem value="brochure">Brochure</SelectItem>
-                            <SelectItem value="video">Video</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Luxury Villa Showcase" {...field} disabled={isSubmitting} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                    <FormField control={form.control} name="kitType" render={({ field }) => (<FormItem><FormLabel>Kit Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}><FormControl><SelectTrigger><SelectValue placeholder="Select a kit type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="poster">Poster</SelectItem><SelectItem value="brochure">Brochure</SelectItem><SelectItem value="video">Video</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g., Luxury Villa Showcase" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem>)} />
+                    
                     <FormField
                         control={form.control}
-                        name="featureImage"
-                        render={({ field: { onChange, value, ...rest }}) => (
+                        name="propertyId"
+                        render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Feature Image</FormLabel>
+                                <FormLabel>Related Property (Optional)</FormLabel>
                                 <FormControl>
-                                    <Input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => onChange(e.target.files?.[0])}
-                                      {...rest}
-                                    />
+                                   <div className="space-y-2">
+                                        {selectedProperty ? (
+                                            <div className="flex items-center gap-4 p-2 border rounded-md">
+                                                <Avatar>
+                                                    <AvatarImage src={selectedProperty.featureImage} />
+                                                    <AvatarFallback><Building/></AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{selectedProperty.catalogTitle}</p>
+                                                    <p className="text-sm text-muted-foreground">{selectedProperty.id}</p>
+                                                </div>
+                                                <Button variant="ghost" onClick={() => setSelectedProperty(null)}>Change</Button>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <div className="relative">
+                                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                    <Input 
+                                                        placeholder="Search for a property..."
+                                                        className="pl-8"
+                                                        value={propertySearchTerm}
+                                                        onChange={e => setPropertySearchTerm(e.target.value)}
+                                                    />
+                                                </div>
+                                                {propertySearchTerm && (
+                                                    <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                                                        {filteredProperties.length > 0 ? filteredProperties.map(p => (
+                                                            <div key={p.id} onClick={() => handleSelectProperty(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                                                <p>{p.catalogTitle}</p>
+                                                                <p className="text-xs text-muted-foreground">{p.id}</p>
+                                                            </div>
+                                                        )) : <p className="p-4 text-sm text-center text-muted-foreground">No properties found.</p>}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                   </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="files"
-                        render={({ field: { onChange, value, ...rest } }) => (
-                            <FormItem>
-                                <FormLabel>Kit Files (PDF, Image, Video)</FormLabel>
-                                <FormControl>
-                                    <Input
-                                      type="file"
-                                      multiple
-                                      onChange={(e) => onChange(e.target.files)}
-                                      {...rest}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+
+                    <FormField control={form.control} name="featureImage" render={({ field: { onChange, value, ...rest }}) => (<FormItem><FormLabel>Feature Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="files" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Kit Files (PDF, Image, Video)</FormLabel><FormControl><Input type="file" multiple onChange={(e) => onChange(e.target.files)} {...rest} /></FormControl><FormMessage /></FormItem>)} />
                     
                     <DialogFooter>
                     <Button type="submit" disabled={isSubmitting}>
@@ -471,7 +491,7 @@ export default function MarketingKitPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredKits.map((kit) => (
-            <Card key={kit.id}>
+            <Card key={kit.id} className="flex flex-col">
                 <CardHeader className="p-0">
                 <Image
                     src={kit.featureImage}
@@ -482,9 +502,14 @@ export default function MarketingKitPage() {
                     data-ai-hint="marketing material"
                 />
                 </CardHeader>
-                <CardContent className="p-4">
+                <CardContent className="p-4 flex-grow">
                 <Badge variant="secondary" className="mb-2">{kit.type}</Badge>
                 <CardTitle className="text-xl">{kit.title}</CardTitle>
+                {kit.propertyTitle && (
+                    <CardDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <Building className="h-3 w-3" /> {kit.propertyTitle}
+                    </CardDescription>
+                )}
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
                     <Button variant="outline" className="w-full" onClick={() => handleDownload(kit)} disabled={isDownloading === kit.id}>
