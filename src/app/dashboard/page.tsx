@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 import { Home, Users, Loader2, Handshake, UserPlus } from "lucide-react"
-import { collection, query, where, getDocs, Timestamp, startOfMonth } from "firebase/firestore"
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { format, subMonths } from "date-fns"
+import { format, subMonths, startOfMonth } from "date-fns"
 import type { Lead } from "@/types/lead"
 import type { User } from '@/types/user';
 
