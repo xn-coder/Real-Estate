@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info, ExternalLink, PlusCircle, Trash2, Search, Check, ChevronsUpDown } from "lucide-react"
+import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info, ExternalLink, PlusCircle, Trash2, Search } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from "next/image"
 import { Textarea } from "@/components/ui/textarea"
@@ -27,9 +27,6 @@ import { doc, getDoc, setDoc, getDocs, collection, query, where } from "firebase
 import { generateUserId } from "@/lib/utils"
 import type { User } from "@/types/user"
 import type { Property } from "@/types/property"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 
 // Schemas for forms
@@ -455,56 +452,58 @@ export default function WebsitePanelPage() {
         {/* Featured Catalog Dialog */}
         <Dialog open={isCatalogDialogOpen} onOpenChange={closeCatalogDialog}>
             <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-                <DialogTitle>Edit Featured Catalog</DialogTitle>
-                <DialogDescription>Select up to 3 properties to feature on partner websites.</DialogDescription>
-            </DialogHeader>
+                <DialogHeader>
+                    <DialogTitle>Edit Featured Catalog</DialogTitle>
+                    <DialogDescription>Select up to 3 properties to feature on partner websites.</DialogDescription>
+                </DialogHeader>
                 <Form {...featuredCatalogForm}>
-                <form onSubmit={featuredCatalogForm.handleSubmit((values) => handleSave('featuredCatalog', values.featuredCatalog))} className="space-y-6">
-                    <FormField
-                        control={featuredCatalogForm.control}
-                        name="featuredCatalog"
-                        render={({ field }) => (
-                            <FormItem>
-                                <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
-                                {allProperties.map((item) => (
-                                    <FormItem
-                                        key={item.id}
-                                        className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
-                                    >
-                                        <FormControl>
-                                        <Checkbox
-                                            checked={field.value?.includes(item.id)}
-                                            onCheckedChange={(checked) => {
-                                            return checked
-                                                ? field.onChange([...(field.value ?? []), item.id])
-                                                : field.onChange(
-                                                    field.value?.filter(
-                                                    (value) => value !== item.id
-                                                    )
-                                                )
-                                            }}
-                                        />
-                                        </FormControl>
-                                        <FormLabel className="font-normal w-full cursor-pointer">
-                                        {item.catalogTitle}
-                                        </FormLabel>
-                                    </FormItem>
-                                ))}
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                        )}
+                    <form onSubmit={featuredCatalogForm.handleSubmit((values) => handleSave('featuredCatalog', values.featuredCatalog))} className="space-y-6">
+                        <FormField
+                            control={featuredCatalogForm.control}
+                            name="featuredCatalog"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
+                                        {allProperties.map((item) => (
+                                            <FormItem
+                                                key={item.id}
+                                                className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
+                                            >
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value?.includes(item.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            const currentValues = field.value || [];
+                                                            if (checked) {
+                                                                if (currentValues.length < 3) {
+                                                                    field.onChange([...currentValues, item.id]);
+                                                                } else {
+                                                                    toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
+                                                                }
+                                                            } else {
+                                                                field.onChange(currentValues.filter((value) => value !== item.id));
+                                                            }
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="font-normal w-full cursor-pointer">
+                                                    {item.catalogTitle}
+                                                </FormLabel>
+                                            </FormItem>
+                                        ))}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
                         />
-                    <DialogFooter>
-                        <Button type="button" variant="ghost" onClick={closeCatalogDialog}>Cancel</Button>
-                        <Button type="submit" disabled={featuredCatalogForm.formState.isSubmitting}>{featuredCatalogForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save Changes</Button>
-                    </DialogFooter>
-                </form>
-            </Form>
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={closeCatalogDialog}>Cancel</Button>
+                            <Button type="submit" disabled={featuredCatalogForm.formState.isSubmitting}>{featuredCatalogForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Changes</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
             </DialogContent>
         </Dialog>
-
 
         {/* Contact Details Card */}
         <Card>

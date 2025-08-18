@@ -60,8 +60,10 @@ const PartnerWebsitePage = () => {
                 setWebsiteData(finalWebsiteData);
 
                 // Fetch featured properties
-                if (finalWebsiteData.featuredCatalog && finalWebsiteData.featuredCatalog.length > 0) {
-                    const propertiesQuery = query(collection(db, "properties"), where("id", "in", finalWebsiteData.featuredCatalog));
+                const catalogIds = finalWebsiteData.featuredCatalog;
+                if (catalogIds && catalogIds.length > 0) {
+                    // Firestore 'in' queries are limited to 10 items. If more are needed, chunking is required.
+                    const propertiesQuery = query(collection(db, "properties"), where("id", "in", catalogIds));
                     const propertiesSnapshot = await getDocs(propertiesQuery);
                     const propsData = await Promise.all(propertiesSnapshot.docs.map(async (pDoc) => {
                         const data = pDoc.data() as Property;
