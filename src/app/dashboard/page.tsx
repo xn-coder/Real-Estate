@@ -24,9 +24,8 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
-import { Badge } from "@/components/ui/badge"
-import { Briefcase, Home, Users, Calendar, Loader2 } from "lucide-react"
-import { collection, query, where, getDocs, Timestamp, orderBy, doc, getDoc } from "firebase/firestore"
+import { Briefcase, Home, Users, Calendar, Loader2, Handshake, UserPlus } from "lucide-react"
+import { collection, query, where, getDocs, Timestamp, orderBy, doc, getDoc, limit } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { format, subMonths, startOfMonth } from "date-fns"
 import type { Lead } from "@/types/lead"
@@ -38,6 +37,8 @@ type DetailedAppointment = Appointment & {
   property?: Property,
 }
 
+const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
+
 const chartConfig = {
   leads: {
     label: "Leads",
@@ -47,10 +48,10 @@ const chartConfig = {
 
 export default function Dashboard() {
   const [stats, setStats] = React.useState({
-    activeLeads: 0,
-    activeListings: 0,
-    dealsInProgress: 0,
-    upcomingAppointments: 0,
+    totalProperties: 0,
+    newLeads: 0,
+    totalPartners: 0,
+    totalCustomers: 0,
   });
   const [appointments, setAppointments] = React.useState<DetailedAppointment[]>([]);
   const [chartData, setChartData] = React.useState<{ month: string, leads: number }[]>([]);
@@ -61,15 +62,17 @@ export default function Dashboard() {
       setIsLoading(true);
       try {
         // Stats
-        const leadsQuery = query(collection(db, "leads"), where("status", "not-in", ["Lost", "Completed"]));
-        const listingsQuery = query(collection(db, "properties"), where("status", "==", "For Sale"));
-        const dealsQuery = query(collection(db, "leads"), where("status", "in", ["Qualified", "Processing"]));
-        const appointmentsQuery = query(collection(db, "appointments"), where("visitDate", ">=", Timestamp.now()), where("status", "==", "Scheduled"), orderBy("visitDate"));
+        const propertiesQuery = query(collection(db, "properties"));
+        const newLeadsQuery = query(collection(db, "leads"), where("status", "==", "New"));
+        const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
+        const customersQuery = query(collection(db, "users"), where("role", "==", "customer"));
+        const appointmentsQuery = query(collection(db, "appointments"), where("visitDate", ">=", Timestamp.now()), where("status", "==", "Scheduled"), orderBy("visitDate"), limit(5));
 
-        const [leadsSnap, listingsSnap, dealsSnap, appointmentsSnap] = await Promise.all([
-          getDocs(leadsQuery),
-          getDocs(listingsQuery),
-          getDocs(dealsQuery),
+        const [propertiesSnap, newLeadsSnap, partnersSnap, customersSnap, appointmentsSnap] = await Promise.all([
+          getDocs(propertiesQuery),
+          getDocs(newLeadsQuery),
+          getDocs(partnersQuery),
+          getDocs(customersQuery),
           getDocs(appointmentsQuery),
         ]);
 
@@ -89,10 +92,10 @@ export default function Dashboard() {
         setAppointments(appointmentsList);
         
         setStats({
-          activeLeads: leadsSnap.size,
-          activeListings: listingsSnap.size,
-          dealsInProgress: dealsSnap.size,
-          upcomingAppointments: appointmentsSnap.size,
+          totalProperties: propertiesSnap.size,
+          newLeads: newLeadsSnap.size,
+          totalPartners: partnersSnap.size,
+          totalCustomers: customersSnap.size,
         });
 
         // Chart Data
@@ -154,10 +157,10 @@ export default function Dashboard() {
         </h1>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {renderStatCard("Active Leads", stats.activeLeads, Users, "+2 from last month")}
-        {renderStatCard("Active Listings", stats.activeListings, Home, "+5 this month")}
-        {renderStatCard("Deals in Progress", stats.dealsInProgress, Briefcase, "+1 closed this week")}
-        {renderStatCard("Upcoming Appointments", stats.upcomingAppointments, Calendar, `${appointments.filter(a => format(a.visitDate as Date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')).length} today`)}
+        {renderStatCard("Total Properties", stats.totalProperties, Home, "All listed properties")}
+        {renderStatCard("New Leads", stats.newLeads, UserPlus, "Fresh inquiries this month")}
+        {renderStatCard("Total Partners", stats.totalPartners, Handshake, "All active partners")}
+        {renderStatCard("Total Customers", stats.totalCustomers, Users, "All registered customers")}
       </div>
       <div className="grid gap-4 lg:grid-cols-7">
         <Card className="lg:col-span-4">
@@ -185,7 +188,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="text-xl md:text-2xl">Upcoming Appointments</CardTitle>
             <CardDescription>
-              You have {stats.upcomingAppointments} upcoming appointments.
+              Your next 5 upcoming appointments.
             </CardDescription>
           </CardHeader>
           <CardContent>
