@@ -90,7 +90,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 
 type WebsiteData = {
     businessProfile?: z.infer<typeof businessProfileSchema>;
-    slideshow?: z.infer<typeof slideshowSchema>['slides'];
+    slideshow?: z.infer<typeof slideshowItemSchema>[];
     contactDetails?: z.infer<typeof contactDetailsSchema>;
     aboutLegal?: z.infer<typeof aboutLegalSchema>;
     socialLinks?: z.infer<typeof socialLinksSchema>;
@@ -465,35 +465,31 @@ export default function WebsitePanelPage() {
                                 <FormItem>
                                     <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
                                         {allProperties.map((item) => (
-                                            <FormItem
+                                            <div
                                                 key={item.id}
                                                 className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
                                             >
-                                                <FormControl>
-                                                    <Checkbox
-                                                        checked={field.value?.includes(item.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            const currentValues = field.value || [];
-                                                            if (checked) {
-                                                                if (currentValues.length < 3) {
-                                                                    field.onChange([...currentValues, item.id]);
-                                                                } else {
-                                                                    toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
-                                                                }
+                                                <Checkbox
+                                                    checked={field.value?.includes(item.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        let newValues = [...(field.value || [])];
+                                                        if (checked) {
+                                                            if (newValues.length < 3) {
+                                                                newValues.push(item.id);
                                                             } else {
-                                                                field.onChange(
-                                                                    currentValues.filter(
-                                                                        (value) => value !== item.id
-                                                                    )
-                                                                );
+                                                                toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
+                                                                return; // Prevent checking
                                                             }
-                                                        }}
-                                                    />
-                                                </FormControl>
+                                                        } else {
+                                                            newValues = newValues.filter((value) => value !== item.id);
+                                                        }
+                                                        field.onChange(newValues);
+                                                    }}
+                                                />
                                                 <FormLabel className="font-normal w-full cursor-pointer">
                                                     {item.catalogTitle}
                                                 </FormLabel>
-                                            </FormItem>
+                                            </div>
                                         ))}
                                     </div>
                                     <FormMessage />
