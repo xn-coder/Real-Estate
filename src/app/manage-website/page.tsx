@@ -18,16 +18,18 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info, ExternalLink, PlusCircle, Trash2 } from "lucide-react"
+import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Image as ImageIcon, Contact, FileText, Info, ExternalLink, PlusCircle, Trash2, Search } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from "next/image"
 import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { doc, updateDoc, getDoc } from "firebase/firestore"
+import { doc, updateDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { User } from "@/types/user"
+import type { Property } from "@/types/property"
+import { Checkbox } from "@/components/ui/checkbox"
 
 // Schemas for forms
 const businessProfileSchema = z.object({
@@ -45,6 +47,10 @@ const slideshowItemSchema = z.object({
 const slideshowSchema = z.object({
     slides: z.array(slideshowItemSchema)
 });
+
+const featuredCatalogSchema = z.object({
+    featuredCatalog: z.array(z.string()).max(3, "You can select a maximum of 3 properties."),
+})
 
 
 const contactDetailsSchema = z.object({
@@ -89,8 +95,11 @@ export default function ManageWebsitePage() {
   const { toast } = useToast()
   const { user, isLoading: isUserLoading, fetchUser } = useUser()
   const [isSlideDialogOpen, setIsSlideDialogOpen] = React.useState(false);
+  const [isCatalogDialogOpen, setIsCatalogDialogOpen] = React.useState(false);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [displayedData, setDisplayedData] = React.useState<Partial<User['website']>>({});
+  const [allProperties, setAllProperties] = React.useState<Property[]>([]);
+  const [featuredProperties, setFeaturedProperties] = React.useState<Property[]>([]);
 
   const businessProfileForm = useForm<z.infer<typeof businessProfileSchema>>({
     resolver: zodResolver(businessProfileSchema),
@@ -104,6 +113,11 @@ export default function ManageWebsitePage() {
   const { fields: slideFields, append: appendSlide, remove: removeSlide } = useFieldArray({
     control: slideshowForm.control,
     name: "slides"
+  });
+
+  const featuredCatalogForm = useForm<z.infer<typeof featuredCatalogSchema>>({
+    resolver: zodResolver(featuredCatalogSchema),
+    defaultValues: { featuredCatalog: [] },
   });
 
   const contactDetailsForm = useForm<z.infer<typeof contactDetailsSchema>>({
@@ -120,6 +134,21 @@ export default function ManageWebsitePage() {
     if (!user) return;
     setIsDataLoading(true);
     try {
+        const propsQuery = query(collection(db, "properties"), where("status", "==", "For Sale"));
+        const propsSnapshot = await getDocs(propsQuery);
+        const propsData = await Promise.all(propsSnapshot.docs.map(async (pDoc) => {
+            const data = pDoc.data() as Property;
+            let featureImageUrl = 'https://placehold.co/600x400.png';
+            if (data.featureImageId) {
+                const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
+                if (fileDoc.exists()) {
+                    featureImageUrl = fileDoc.data()?.data;
+                }
+            }
+            return { ...data, id: pDoc.id, featureImage: featureImageUrl };
+        }));
+        setAllProperties(propsData);
+        
         const websiteDefaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
         const defaults = websiteDefaultsDoc.exists() ? websiteDefaultsDoc.data() : {};
 
@@ -127,6 +156,7 @@ export default function ManageWebsitePage() {
 
         const finalData = {
             slideshow: partnerWebsiteData.slideshow || defaults.slideshow || [],
+            featuredCatalog: partnerWebsiteData.featuredCatalog || defaults.featuredCatalog || [],
             aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal || { aboutText: '' },
             socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' },
         };
@@ -135,6 +165,14 @@ export default function ManageWebsitePage() {
         businessProfileForm.reset({ businessName: user.name, businessLogo: user.businessLogo || '' });
         
         slideshowForm.reset({ slides: finalData.slideshow });
+
+        featuredCatalogForm.reset({ featuredCatalog: finalData.featuredCatalog });
+
+        if (finalData.featuredCatalog && finalData.featuredCatalog.length > 0) {
+            setFeaturedProperties(propsData.filter(p => finalData.featuredCatalog?.includes(p.id)));
+        } else {
+            setFeaturedProperties([]);
+        }
 
         contactDetailsForm.reset({ 
             name: user.name, 
@@ -155,7 +193,7 @@ export default function ManageWebsitePage() {
     } finally {
         setIsDataLoading(false);
     }
-  }, [user, businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm, toast]);
+  }, [user, businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm, featuredCatalogForm, toast]);
 
 
   React.useEffect(() => {
@@ -232,6 +270,12 @@ export default function ManageWebsitePage() {
   const closeSlideDialog = () => {
       setIsSlideDialogOpen(false);
   }
+  
+  const openCatalogDialog = () => {
+    featuredCatalogForm.reset({ featuredCatalog: displayedData.featuredCatalog || [] });
+    setIsCatalogDialogOpen(true);
+  }
+  const closeCatalogDialog = () => setIsCatalogDialogOpen(false);
 
 
   const renderSocialLink = (label: string, url: string | undefined, Icon: React.ElementType) => (
@@ -305,6 +349,34 @@ export default function ManageWebsitePage() {
           </CardContent>
         </Card>
         
+         {/* Featured Catalog Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              <CardTitle>Featured Catalog</CardTitle>
+            </div>
+             <Button size="sm" onClick={openCatalogDialog}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit Catalog
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {featuredProperties.length > 0 ? (
+                featuredProperties.map(prop => (
+                    <div key={prop.id} className="flex items-center gap-4 p-2 border rounded-md">
+                        <Image src={prop.featureImage || 'https://placehold.co/120x68.png'} alt={prop.catalogTitle} width={120} height={68} className="rounded-md object-cover bg-muted" />
+                        <div className="flex-1">
+                            <p className="font-semibold">{prop.catalogTitle}</p>
+                            <p className="text-sm text-muted-foreground">{prop.city}, {prop.state}</p>
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <p className="text-muted-foreground text-sm text-center py-4">No featured properties selected.</p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Slideshow Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -381,7 +453,7 @@ export default function ManageWebsitePage() {
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
                                     <FormField control={slideshowForm.control} name={`slides.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Promotion Title" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={slideshowForm.control} name={`slides.${index}.linkUrl`} render={({ field }) => (<FormItem><FormLabel>Link</FormLabel><FormControl><Input placeholder="https://example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={slideshowForm.control} name={`slides.${index}.linkUrl`} render={({ field }) => (<FormItem><FormLabel>Link</FormLabel><FormControl><Input placeholder="https://example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
                             </div>
                             <Button
@@ -407,6 +479,70 @@ export default function ManageWebsitePage() {
                     </DialogFooter>
                 </form>
             </Form>
+            </DialogContent>
+        </Dialog>
+
+        {/* Featured Catalog Dialog */}
+        <Dialog open={isCatalogDialogOpen} onOpenChange={closeCatalogDialog}>
+            <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Edit Featured Catalog</DialogTitle>
+                    <DialogDescription>Select up to 3 properties to feature on your website.</DialogDescription>
+                </DialogHeader>
+                <Form {...featuredCatalogForm}>
+                    <form onSubmit={featuredCatalogForm.handleSubmit((values) => handleSave('featuredCatalog', values.featuredCatalog))} className="space-y-6">
+                        <FormField
+                            control={featuredCatalogForm.control}
+                            name="featuredCatalog"
+                            render={() => (
+                                <FormItem>
+                                    <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
+                                        {allProperties.map((item) => (
+                                            <FormField
+                                                key={item.id}
+                                                control={featuredCatalogForm.control}
+                                                name="featuredCatalog"
+                                                render={({ field }) => (
+                                                    <FormItem
+                                                        key={item.id}
+                                                        className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
+                                                    >
+                                                        <FormControl>
+                                                            <Checkbox
+                                                                checked={field.value?.includes(item.id)}
+                                                                onCheckedChange={(checked) => {
+                                                                    const currentValues = field.value || [];
+                                                                    if (checked) {
+                                                                        if (currentValues.length < 3) {
+                                                                            return field.onChange([...currentValues, item.id]);
+                                                                        } else {
+                                                                            toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
+                                                                            return;
+                                                                        }
+                                                                    } else {
+                                                                        return field.onChange(currentValues.filter((value) => value !== item.id));
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormLabel className="font-normal w-full cursor-pointer">
+                                                            {item.catalogTitle}
+                                                        </FormLabel>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        ))}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button type="button" variant="ghost" onClick={closeCatalogDialog}>Cancel</Button>
+                            <Button type="submit" disabled={featuredCatalogForm.formState.isSubmitting}>{featuredCatalogForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Changes</Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
             </DialogContent>
         </Dialog>
 
@@ -478,15 +614,15 @@ export default function ManageWebsitePage() {
             <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Terms & Conditions: {displayedData.aboutLegal?.termsLink ? <a href={displayedData.aboutLegal.termsLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Terms & Conditions: {displayedData.aboutLegal?.termsLink ? <a href={displayedData.aboutLegal.termsLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Privacy Policy: {displayedData.aboutLegal?.privacyLink ? <a href={displayedData.aboutLegal.privacyLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Privacy Policy: {displayedData.aboutLegal?.privacyLink ? <a href={displayedData.aboutLegal.privacyLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Disclaimer: {displayedData.aboutLegal?.disclaimerLink ? <a href={displayedData.aboutLegal.disclaimerLink} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Disclaimer: {displayedData.aboutLegal?.disclaimerLink ? <a href={displayedData.aboutLegal.disclaimerLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
             </div>
           </CardContent>

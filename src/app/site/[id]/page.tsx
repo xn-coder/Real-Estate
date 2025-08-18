@@ -63,7 +63,7 @@ const PartnerWebsitePage = () => {
                 const catalogIds = finalWebsiteData.featuredCatalog;
                 if (catalogIds && catalogIds.length > 0) {
                     // Firestore 'in' queries are limited to 10 items. If more are needed, chunking is required.
-                    const propertiesQuery = query(collection(db, "properties"), where("id", "in", catalogIds));
+                    const propertiesQuery = query(collection(db, "properties"), where("id", "in", catalogIds.slice(0, 10)));
                     const propertiesSnapshot = await getDocs(propertiesQuery);
                     const propsData = await Promise.all(propertiesSnapshot.docs.map(async (pDoc) => {
                         const data = pDoc.data() as Property;
@@ -256,7 +256,7 @@ const PartnerWebsitePage = () => {
                 {/* Catalog Section */}
                 <section id="catalog" className="py-12 md:py-20">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                         <h2 className="text-3xl font-bold font-headline text-center mb-12">Our Catalog</h2>
+                         <h2 className="text-3xl font-bold font-headline text-center mb-12">Our Featured Catalog</h2>
                          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {featuredProperties.length > 0 ? featuredProperties.map(property => (
                                 <div key={property.id} className="border rounded-lg overflow-hidden group">
@@ -327,7 +327,7 @@ const PartnerWebsitePage = () => {
                                 <h4 className="font-semibold">Follow Us</h4>
                                 <div className="flex gap-4">
                                     {socialComponents.map(({ Icon, href }, index) => (
-                                        <a key={index} href={href} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                        <a key={index} href={href || '#'} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
                                             <Icon className="h-6 w-6" />
                                         </a>
                                     ))}
