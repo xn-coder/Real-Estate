@@ -10,33 +10,18 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
-import { Briefcase, Home, Users, Calendar, Loader2, Handshake, UserPlus } from "lucide-react"
-import { collection, query, where, getDocs, Timestamp, orderBy, doc, getDoc, limit } from "firebase/firestore"
+import { Home, Users, Loader2, Handshake, UserPlus } from "lucide-react"
+import { collection, query, where, getDocs, Timestamp, startOfMonth } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { format, subMonths, startOfMonth } from "date-fns"
+import { format, subMonths } from "date-fns"
 import type { Lead } from "@/types/lead"
-import type { Property } from "@/types/property"
-import type { Appointment } from "@/types/appointment"
 import type { User } from '@/types/user';
-
-type DetailedAppointment = Appointment & {
-  lead?: Lead,
-  property?: Property,
-}
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
 
@@ -53,7 +38,6 @@ export default function Dashboard() {
     totalPartners: 0,
     totalCustomers: 0,
   });
-  const [appointments, setAppointments] = React.useState<DetailedAppointment[]>([]);
   const [leadsChartData, setLeadsChartData] = React.useState<{ month: string, leads: number }[]>([]);
   const [partnersChartData, setPartnersChartData] = React.useState<{ month: string, partners: number }[]>([]);
   const [customersChartData, setCustomersChartData] = React.useState<{ month: string, customers: number }[]>([]);
@@ -69,30 +53,13 @@ export default function Dashboard() {
         const newLeadsQuery = query(collection(db, "leads"), where("status", "==", "New"));
         const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
         const customersQuery = query(collection(db, "users"), where("role", "==", "customer"));
-        const appointmentsQuery = query(collection(db, "appointments"), where("visitDate", ">=", Timestamp.now()), where("status", "==", "Scheduled"), orderBy("visitDate"), limit(5));
 
-        const [propertiesSnap, newLeadsSnap, partnersSnap, customersSnap, appointmentsSnap] = await Promise.all([
+        const [propertiesSnap, newLeadsSnap, partnersSnap, customersSnap] = await Promise.all([
           getDocs(propertiesQuery),
           getDocs(newLeadsQuery),
           getDocs(partnersQuery),
           getDocs(customersQuery),
-          getDocs(appointmentsQuery),
         ]);
-
-        const appointmentsListPromises = appointmentsSnap.docs.map(async (docData) => {
-            const appt = { id: docData.id, ...docData.data() } as Appointment;
-            const leadDoc = await getDoc(doc(db, "leads", appt.leadId));
-            const propDoc = await getDoc(doc(db, "properties", appt.propertyId));
-            return {
-                ...appt,
-                visitDate: (appt.visitDate as Timestamp).toDate(),
-                lead: leadDoc.exists() ? leadDoc.data() as Lead : undefined,
-                property: propDoc.exists() ? propDoc.data() as Property : undefined,
-            }
-        });
-
-        const appointmentsList = await Promise.all(appointmentsListPromises);
-        setAppointments(appointmentsList);
         
         setStats({
           totalProperties: propertiesSnap.size,
@@ -122,8 +89,10 @@ export default function Dashboard() {
         const partnersMonthly: { [key: string]: number } = {};
         partnersChartSnap.forEach(doc => {
             const partner = doc.data() as User;
-            const monthKey = format((partner.createdAt as Timestamp).toDate(), 'MMM');
-            partnersMonthly[monthKey] = (partnersMonthly[monthKey] || 0) + 1;
+            if (partner.createdAt) {
+                const monthKey = format((partner.createdAt as Timestamp).toDate(), 'MMM');
+                partnersMonthly[monthKey] = (partnersMonthly[monthKey] || 0) + 1;
+            }
         });
 
         // Customers Chart Data
@@ -132,8 +101,10 @@ export default function Dashboard() {
         const customersMonthly: { [key: string]: number } = {};
         customersChartSnap.forEach(doc => {
             const customer = doc.data() as User;
-            const monthKey = format((customer.createdAt as Timestamp).toDate(), 'MMM');
-            customersMonthly[monthKey] = (customersMonthly[monthKey] || 0) + 1;
+             if (customer.createdAt) {
+                const monthKey = format((customer.createdAt as Timestamp).toDate(), 'MMM');
+                customersMonthly[monthKey] = (customersMonthly[monthKey] || 0) + 1;
+             }
         });
 
         const finalLeadsData = [];
@@ -223,32 +194,6 @@ export default function Dashboard() {
         {renderBarChartCard("Partner Signups", partnersChartData, "partners", "var(--color-partners)")}
         {renderBarChartCard("Customer Signups", customersChartData, "customers", "var(--color-customers)")}
       </div>
-       <Card>
-          <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">Upcoming Appointments</CardTitle>
-            <CardDescription>
-              Your next 5 upcoming appointments.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             {isLoading ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-                <div className="space-y-4">
-                  {appointments.slice(0, 5).map((appointment) => (
-                    <div key={appointment.id} className="flex flex-col sm:flex-row items-start sm:items-center p-3 border rounded-md bg-muted/50 gap-4">
-                        <div className="flex-1 space-y-1 min-w-0">
-                          <p className="font-medium truncate">{appointment.lead?.name || 'N/A'}</p>
-                          <p className="text-sm text-muted-foreground truncate">{appointment.property?.catalogTitle || 'N/A'}</p>
-                        </div>
-                        <div className="text-left sm:text-right flex-shrink-0">
-                           <p className="font-medium text-sm">{format(appointment.visitDate as Date, "PPP")}</p>
-                        </div>
-                    </div>
-                  ))}
-                   {appointments.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No upcoming appointments.</p>}
-                </div>
-             )}
-          </CardContent>
-        </Card>
     </div>
   )
 }

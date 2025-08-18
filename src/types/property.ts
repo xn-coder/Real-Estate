@@ -99,7 +99,7 @@ export type Property = {
     contactTime: "Morning" | "Afternoon" | "Evening";
 
     // Admin fields
-    createdAt?: Date;
+    createdAt?: Date | Timestamp;
     views?: number;
     modificationNotes?: string;
     featureImage?: string; // Keep for display purposes after fetching

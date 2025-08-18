@@ -10,14 +10,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, PlusCircle, Loader2, Search, Ruler, Bed, Bath } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { PlusCircle, Loader2, Search, Ruler, Bed, Bath, SlidersHorizontal } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
@@ -29,6 +22,10 @@ import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Label } from "@/components/ui/label"
+
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'For Sale': 'default',
@@ -37,15 +34,23 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Pending Verification': 'destructive',
 }
 
+const propertyCategories = ["Residential", "Commercial", "Land", "Industrial", "Agriculture", "Rental", "Other"];
+
 export default function ListingsPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { user } = useUser();
     const [allListings, setAllListings] = React.useState<Property[]>([]);
     const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
+    const [cities, setCities] = React.useState<string[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    
+    // Filter states
     const [searchTerm, setSearchTerm] = React.useState("");
     const [propertyTypeFilter, setPropertyTypeFilter] = React.useState<string>("all");
+    const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
+    const [cityFilter, setCityFilter] = React.useState<string>("all");
+    const [budget, setBudget] = React.useState<[number, number]>([0, 50000000]);
 
     const canAddProperties = user?.role === 'seller' || user?.role === 'admin';
 
@@ -58,8 +63,10 @@ export default function ListingsPage() {
 
                 const q = query(collection(db, "properties"), where("status", "!=", "Pending Verification"));
                 const snapshot = await getDocs(q);
+                const uniqueCities = new Set<string>();
                 const listingsData = await Promise.all(snapshot.docs.map(async (docData) => {
                     const data = docData.data() as Property;
+                    if(data.city) uniqueCities.add(data.city);
                     let featureImageUrl = 'https://placehold.co/400x225.png';
                     if (data.featureImageId) {
                         const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
@@ -75,6 +82,7 @@ export default function ListingsPage() {
                     };
                 }));
                 setAllListings(listingsData);
+                setCities(Array.from(uniqueCities));
             } catch (error) {
                 console.error("Error fetching listings:", error);
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch properties.' });
@@ -88,14 +96,19 @@ export default function ListingsPage() {
     const filteredListings = React.useMemo(() => {
         return allListings.filter(listing => {
             const typeMatch = propertyTypeFilter === 'all' || listing.propertyTypeId === propertyTypeFilter;
+            const categoryMatch = categoryFilter === 'all' || listing.propertyCategory === categoryFilter;
+            const cityMatch = cityFilter === 'all' || listing.city === cityFilter;
+            const budgetMatch = listing.listingPrice >= budget[0] && listing.listingPrice <= budget[1];
+
             const searchMatch = searchTerm === "" ||
                 listing.catalogTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.addressLine.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.id.toLowerCase().includes(searchTerm.toLowerCase());
-            return typeMatch && searchMatch;
+
+            return typeMatch && categoryMatch && cityMatch && budgetMatch && searchMatch;
         });
-    }, [allListings, searchTerm, propertyTypeFilter]);
+    }, [allListings, searchTerm, propertyTypeFilter, categoryFilter, cityFilter, budget]);
 
 
   return (
@@ -113,31 +126,75 @@ export default function ListingsPage() {
         )}
       </div>
 
-       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="relative w-full md:w-auto md:flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search by title, address, or ID..."
-            className="pl-8 sm:w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-            <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                    <SelectValue placeholder="Filter by type..." />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    {propertyTypes.map(type => (
-                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-      </div>
+       <Card>
+        <CardContent className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div className="lg:col-span-2">
+                    <Label>Search</Label>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Search title, address, or ID..."
+                            className="pl-8 w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+                 <div>
+                    <Label>Category</Label>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            {propertyCategories.map(cat => (
+                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div>
+                    <Label>Type</Label>
+                    <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            {propertyTypes.map(type => (
+                                <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="lg:col-span-1">
+                    <Label>Budget</Label>
+                     <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                                ₹{budget[0].toLocaleString()} - ₹{budget[1].toLocaleString()}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80" align="start">
+                            <div className="space-y-4 p-2">
+                                <Label>Price Range</Label>
+                                <Slider
+                                    defaultValue={budget}
+                                    onValueChange={(value) => setBudget(value as [number, number])}
+                                    max={50000000}
+                                    step={100000}
+                                />
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>₹{budget[0].toLocaleString()}</span>
+                                    <span>₹{budget[1].toLocaleString()}</span>
+                                </div>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </div>
+        </CardContent>
+       </Card>
       
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -147,7 +204,7 @@ export default function ListingsPage() {
         </div>
       ) : filteredListings.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
-            <p>No properties found.</p>
+            <p>No properties found matching your criteria.</p>
           </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
