@@ -458,7 +458,7 @@ export default function WebsitePanelPage() {
                 </DialogHeader>
                 <Form {...featuredCatalogForm}>
                     <form onSubmit={featuredCatalogForm.handleSubmit((values) => handleSave('featuredCatalog', values.featuredCatalog))} className="space-y-6">
-                       <FormField
+                        <FormField
                             control={featuredCatalogForm.control}
                             name="featuredCatalog"
                             render={({ field }) => (
@@ -472,18 +472,16 @@ export default function WebsitePanelPage() {
                                                 <Checkbox
                                                     checked={field.value?.includes(item.id)}
                                                     onCheckedChange={(checked) => {
-                                                        let newValues = [...(field.value || [])];
+                                                        const currentValues = field.value || [];
                                                         if (checked) {
-                                                            if (newValues.length < 3) {
-                                                                newValues.push(item.id);
+                                                            if (currentValues.length < 3) {
+                                                                field.onChange([...currentValues, item.id]);
                                                             } else {
                                                                 toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
-                                                                return; // Prevent checking
                                                             }
                                                         } else {
-                                                            newValues = newValues.filter((value) => value !== item.id);
+                                                            field.onChange(currentValues.filter((value) => value !== item.id));
                                                         }
-                                                        field.onChange(newValues);
                                                     }}
                                                 />
                                                 <FormLabel className="font-normal w-full cursor-pointer">
