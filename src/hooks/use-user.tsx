@@ -33,9 +33,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const userDoc = await getDoc(userDocRef)
       if (userDoc.exists()) {
         const data = userDoc.data();
-        // Ensure dob is a Date object
-        if (data.dob && data.dob instanceof Timestamp) {
-            data.dob = data.dob.toDate();
+        
+        // Handle date of birth conversion from Timestamp or string
+        if (data.dob) {
+            if (data.dob instanceof Timestamp) {
+                data.dob = data.dob.toDate();
+            } else if (typeof data.dob === 'string') {
+                data.dob = new Date(data.dob);
+            }
         }
         setUser({ id: userDoc.id, ...data } as User)
       } else {
