@@ -3,10 +3,11 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc, setDoc, deleteDoc } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where, Timestamp, addDoc, setDoc, deleteDoc, runTransaction } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Property } from "@/types/property"
-import { Loader2, ArrowLeft, BedDouble, Bath, Car, Ruler, Heart, Share2, Pencil, Trash2, CheckCircle, Calendar as CalendarIcon } from "lucide-react"
+import type { PropertyType } from "@/types/resource"
+import { Loader2, ArrowLeft, BedDouble, Bath, Car, Ruler, Heart, Share2, Pencil, Trash2, CheckCircle, Calendar as CalendarIcon, Building, Info, Sparkles, MapPin, Sofa, DollarSign, List, ShieldCheck, Phone, Mail, User as UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
@@ -88,7 +89,9 @@ export default function PropertyDetailsPage() {
     const propertyId = params.id as string
 
     const [property, setProperty] = React.useState<Property | null>(null)
+    const [propertyType, setPropertyType] = React.useState<PropertyType | null>(null);
     const [imageUrls, setImageUrls] = React.useState<string[]>([])
+    const [enquiryCount, setEnquiryCount] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(true)
     const [isSubmittingEnquiry, setIsSubmittingEnquiry] = React.useState(false);
     const [isOtpSending, setIsOtpSending] = React.useState(false);
@@ -112,7 +115,7 @@ export default function PropertyDetailsPage() {
         resolver: zodResolver(enquiryFormSchema),
         defaultValues: { name: "", phone: "", email: "", city: "", state: "", country: "", otp: "" },
     });
-
+    
     const createLead = async (values: EnquiryFormValues) => {
         if (!user || !property) return;
 
@@ -138,7 +141,7 @@ export default function PropertyDetailsPage() {
                 password: hashedPassword,
                 role: 'customer',
                 status: 'active',
-                address: '', // Customers from leads might not have full address initially
+                address: '', 
                 city: values.city,
                 state: values.state,
                 pincode: '',
@@ -155,7 +158,20 @@ export default function PropertyDetailsPage() {
                 status: "New",
                 createdAt: Timestamp.now(),
             });
+            
+            await runTransaction(db, async (transaction) => {
+              const propertyRef = doc(db, 'properties', propertyId);
+              const propertyDoc = await transaction.get(propertyRef);
+              if (!propertyDoc.exists()) {
+                  throw "Property does not exist!";
+              }
+              const newViews = (propertyDoc.data().views || 0) + 1;
+              transaction.update(propertyRef, { views: newViews });
+            });
+
             setLastLeadId(leadRef.id);
+            setEnquiryCount(prev => prev + 1);
+
             toast({
                 title: "Enquiry Submitted",
                 description: "Your enquiry has been sent. We will get back to you shortly.",
@@ -182,7 +198,6 @@ export default function PropertyDetailsPage() {
 
         setIsOtpSending(true);
         try {
-            // Check if a lead already exists for this user and this property
             const leadsRef = collection(db, "leads");
             const q = query(leadsRef, where("partnerId", "==", user.id), where("propertyId", "==", propertyId));
             const querySnapshot = await getDocs(q);
@@ -268,29 +283,31 @@ export default function PropertyDetailsPage() {
         const fetchProperty = async () => {
             setIsLoading(true);
             try {
-                const docRef = doc(db, "properties", propertyId);
-                const docSnap = await getDoc(docRef);
+                // Fetch property and enquiries in parallel
+                const [docSnap, enquiriesSnap] = await Promise.all([
+                    getDoc(doc(db, "properties", propertyId)),
+                    getDocs(query(collection(db, "leads"), where("propertyId", "==", propertyId)))
+                ]);
+
+                setEnquiryCount(enquiriesSnap.size);
 
                 if (docSnap.exists()) {
                     const data = docSnap.data() as Property;
                     setProperty(data);
                     
-                    const urls: string[] = [];
-                    // Fetch feature image
-                    if (data.featureImageId) {
-                         const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                         if(fileDoc.exists()) urls.push(fileDoc.data()?.data);
+                    const [propTypeSnap, ...imagePromises] = await Promise.all([
+                        getDoc(doc(db, 'property_types', data.propertyTypeId)),
+                        ...(data.featureImageId ? [getDoc(doc(db, 'files', data.featureImageId))] : []),
+                        ...(data.slides ? data.slides.map(slide => slide.image ? getDoc(doc(db, 'files', slide.image)) : Promise.resolve(null)) : [])
+                    ]);
+
+                    if (propTypeSnap.exists()) {
+                        setPropertyType(propTypeSnap.data() as PropertyType);
                     }
-                    // Fetch slide images
-                    if (data.slides) {
-                        for (const slide of data.slides) {
-                            if(slide.image) {
-                                const fileDoc = await getDoc(doc(db, 'files', slide.image));
-                                if(fileDoc.exists()) urls.push(fileDoc.data()?.data);
-                            }
-                        }
-                    }
-                    setImageUrls(urls);
+
+                    const urls = imagePromises.map(imgDoc => imgDoc?.exists() ? imgDoc.data()?.data : null).filter(Boolean);
+                    setImageUrls(urls as string[]);
+
                 } else {
                     console.error("No such document!");
                 }
@@ -318,6 +335,13 @@ export default function PropertyDetailsPage() {
             </div>
         )
     }
+    
+    const detailPill = (Icon: React.ElementType, text: React.ReactNode) => (
+      <div className="flex items-center gap-2 text-sm bg-muted text-muted-foreground p-2 rounded-md">
+        <Icon className="h-4 w-4" />
+        <span>{text}</span>
+      </div>
+    );
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8">
@@ -393,17 +417,23 @@ export default function PropertyDetailsPage() {
                     {/* Overview */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Overview</CardTitle>
+                            <CardTitle>{property.catalogTitle}</CardTitle>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                {detailPill(List, property.propertyCategory)}
+                                {detailPill(Building, propertyType?.name || 'N/A')}
+                                {detailPill(CalendarIcon, property.propertyAge)}
+                                {property.reraApproved && detailPill(ShieldCheck, 'RERA Approved')}
+                            </div>
                         </CardHeader>
                         <CardContent className="prose prose-sm dark:prose-invert max-w-none">
                             <div dangerouslySetInnerHTML={{ __html: property.overview }} />
                         </CardContent>
                     </Card>
 
-                     {/* Amenities */}
+                    {/* Amenities */}
                     {property.amenities && property.amenities.length > 0 && (
                         <Card>
-                            <CardHeader><CardTitle>Amenities</CardTitle></CardHeader>
+                            <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5"/> Amenities</CardTitle></CardHeader>
                             <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {amenitiesList
                                     .filter(amenity => property.amenities?.includes(amenity.id))
@@ -417,6 +447,30 @@ export default function PropertyDetailsPage() {
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* Interior & Furnishing */}
+                    <Card>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><Sofa className="h-5 w-5"/> Interior & Furnishing</CardTitle></CardHeader>
+                        <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                            <p><strong>Status:</strong> <span className="capitalize">{property.furnishingStatus}</span></p>
+                            <p><strong>Flooring:</strong> <span className="capitalize">{property.flooringType}</span></p>
+                            <p><strong>Kitchen:</strong> <span className="capitalize">{property.kitchenType}</span></p>
+                            {property.furnitureIncluded && <p className="col-span-full"><strong>Included:</strong> {property.furnitureIncluded}</p>}
+                        </CardContent>
+                    </Card>
+
+                    {/* Nearby */}
+                    <Card>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5"/> Nearby</CardTitle></CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-4 text-sm">
+                            {property.busStop && <p><strong>Bus Stop:</strong> {property.busStop}</p>}
+                            {property.metroStation && <p><strong>Metro:</strong> {property.metroStation}</p>}
+                            {property.hospitalDistance && <p><strong>Hospital:</strong> {property.hospitalDistance}</p>}
+                            {property.schoolDistance && <p><strong>School:</strong> {property.schoolDistance}</p>}
+                            {property.mallDistance && <p><strong>Mall:</strong> {property.mallDistance}</p>}
+                            {property.airportDistance && <p><strong>Airport:</strong> {property.airportDistance}</p>}
+                        </CardContent>
+                    </Card>
 
                     {/* Location */}
                     <Card>
@@ -434,8 +488,7 @@ export default function PropertyDetailsPage() {
                 </div>
                 
                 <div className="lg:col-span-1 space-y-6">
-                    {/* Price & Actions */}
-                     <Card className="sticky top-20">
+                    <Card className="sticky top-20">
                         <CardHeader>
                             <div className="flex justify-between items-start">
                                 <div>
@@ -443,54 +496,56 @@ export default function PropertyDetailsPage() {
                                     <CardTitle className="text-3xl">₹{property.listingPrice.toLocaleString()}</CardTitle>
                                     <p className="text-muted-foreground">{property.catalogTitle}</p>
                                 </div>
-                                <div className="flex gap-2">
-                                    <Button variant="ghost" size="icon"><Heart className="h-5 w-5"/></Button>
-                                    <Button variant="ghost" size="icon"><Share2 className="h-5 w-5"/></Button>
-                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="flex items-center gap-2"><BedDouble className="h-5 w-5 text-muted-foreground"/><p>{property.bedrooms || 'N/A'} beds</p></div>
-                                <div className="flex items-center gap-2"><Bath className="h-5 w-5 text-muted-foreground"/><p>{property.bathrooms || 'N/A'} baths</p></div>
-                                <div className="flex items-center gap-2"><Car className="h-5 w-5 text-muted-foreground"/><p>{property.parkingSpaces || 'N/A'} parking</p></div>
-                                <div className="flex items-center gap-2"><Ruler className="h-5 w-5 text-muted-foreground"/><p>{property.builtUpArea || 'N/A'} {property.unitOfMeasurement}</p></div>
+                                {detailPill(BedDouble, `${property.bedrooms || 0} Beds`)}
+                                {detailPill(Bath, `${property.bathrooms || 0} Baths`)}
+                                {detailPill(Car, `${property.parkingSpaces || 0} Parking`)}
+                                {detailPill(Ruler, `${property.builtUpArea || 0} ${property.unitOfMeasurement}`)}
+                            </div>
+                            <Separator />
+                            <div className="text-sm space-y-2">
+                                <div className="flex justify-between"><span>Booking Amount:</span><span className="font-medium">₹{property.bookingAmount.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span>Security Deposit:</span><span className="font-medium">₹{property.securityDeposit.toLocaleString()}</span></div>
+                                <div className="flex justify-between"><span>Maintenance:</span><span className="font-medium">₹{property.maintenanceCharge.toLocaleString()}</span></div>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between items-center text-sm text-muted-foreground">
+                                <span>Total Enquiries:</span>
+                                <Badge variant="destructive">{enquiryCount}</Badge>
                             </div>
                         </CardContent>
                     </Card>
 
-                     {/* Contact Info */}
                     <Card>
-                        <CardHeader><CardTitle>Contact Information</CardTitle></CardHeader>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><UserIcon className="h-5 w-5"/> Contact Lister</CardTitle></CardHeader>
                         <CardContent className="space-y-2 text-sm">
-                            <p><strong>Listed By:</strong> {property.listedBy}</p>
                             <p><strong>Name:</strong> {property.name}</p>
-                            <p><strong>Phone:</strong> {property.phone}</p>
-                            <p><strong>Email:</strong> {property.email}</p>
-                            {property.agencyName && <p><strong>Agency:</strong> {property.agencyName}</p>}
+                            <p><strong>Listed By:</strong> {property.listedBy}</p>
+                            <div className="flex gap-2 pt-2">
+                                <Button variant="outline" size="sm" asChild><a href={`tel:${property.phone}`}><Phone className="mr-2 h-4 w-4"/> Call</a></Button>
+                                <Button variant="outline" size="sm" asChild><a href={`mailto:${property.email}`}><Mail className="mr-2 h-4 w-4"/> Email</a></Button>
+                            </div>
                         </CardContent>
                     </Card>
                     
-                    {/* Enquiry Form */}
                     {isPartner && (
                         <Card>
                             <CardHeader>
-                                <CardTitle>Enquiry Form</CardTitle>
+                                <CardTitle>Submit Enquiry</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <Form {...enquiryForm}>
                                     <form onSubmit={(e) => { e.preventDefault(); handleInitiateEnquiry(); }} className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="propertyId">Property ID</Label>
-                                            <Input id="propertyId" defaultValue={propertyId} disabled />
-                                        </div>
-                                        <FormField control={enquiryForm.control} name="name" render={({ field }) => ( <FormItem> <Label>Full Name</Label> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                        <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <Label>Phone Number</Label> <FormControl><Input type="tel" placeholder="(123) 456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                        <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <Label>Email</Label> <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={enquiryForm.control} name="name" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Full Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Phone</FormLabel> <FormControl><Input type="tel" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                        <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Email</FormLabel> <FormControl><Input type="email" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         <div className="grid grid-cols-3 gap-2">
-                                            <FormField control={enquiryForm.control} name="city" render={({ field }) => ( <FormItem className="col-span-1"> <Label>City</Label> <FormControl><Input placeholder="City" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <Label>State</Label> <FormControl><Input placeholder="State" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <Label>Country</Label> <FormControl><Input placeholder="Country" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="city" render={({ field }) => ( <FormItem className="col-span-1"> <Label className="text-xs">City</Label> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <Label className="text-xs">State</Label> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <Label className="text-xs">Country</Label> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         </div>
                                         <Button type="submit" className="w-full" disabled={isSubmittingEnquiry || isOtpSending}>
                                             {(isSubmittingEnquiry || isOtpSending) && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
@@ -570,8 +625,6 @@ export default function PropertyDetailsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-
         </div>
     )
 }
