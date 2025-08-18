@@ -31,6 +31,7 @@ import { format, subMonths, startOfMonth } from "date-fns"
 import type { Lead } from "@/types/lead"
 import type { Property } from "@/types/property"
 import type { Appointment } from "@/types/appointment"
+import type { User } from '@/types/user';
 
 type DetailedAppointment = Appointment & {
   lead?: Lead,
@@ -40,10 +41,9 @@ type DetailedAppointment = Appointment & {
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
 
 const chartConfig = {
-  leads: {
-    label: "Leads",
-    color: "hsl(var(--primary))",
-  },
+  leads: { label: "Leads", color: "hsl(var(--chart-1))" },
+  partners: { label: "Partners", color: "hsl(var(--chart-2))" },
+  customers: { label: "Customers", color: "hsl(var(--chart-3))" },
 } satisfies ChartConfig
 
 export default function Dashboard() {
@@ -54,7 +54,10 @@ export default function Dashboard() {
     totalCustomers: 0,
   });
   const [appointments, setAppointments] = React.useState<DetailedAppointment[]>([]);
-  const [chartData, setChartData] = React.useState<{ month: string, leads: number }[]>([]);
+  const [leadsChartData, setLeadsChartData] = React.useState<{ month: string, leads: number }[]>([]);
+  const [partnersChartData, setPartnersChartData] = React.useState<{ month: string, partners: number }[]>([]);
+  const [customersChartData, setCustomersChartData] = React.useState<{ month: string, customers: number }[]>([]);
+
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -99,26 +102,55 @@ export default function Dashboard() {
         });
 
         // Chart Data
-        const leadsCollection = collection(db, "leads");
-        const monthlyData: { [key: string]: number } = {};
         const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
+        const timestampSixMonthsAgo = Timestamp.fromDate(sixMonthsAgo);
 
-        const leadsChartQuery = query(leadsCollection, where("createdAt", ">=", Timestamp.fromDate(sixMonthsAgo)));
+        // Leads Chart Data
+        const leadsCollection = collection(db, "leads");
+        const leadsChartQuery = query(leadsCollection, where("createdAt", ">=", timestampSixMonthsAgo));
         const leadsChartSnap = await getDocs(leadsChartQuery);
-
+        const leadsMonthly: { [key: string]: number } = {};
         leadsChartSnap.forEach(doc => {
             const lead = doc.data() as Lead;
             const monthKey = format((lead.createdAt as Timestamp).toDate(), 'MMM');
-            monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
+            leadsMonthly[monthKey] = (leadsMonthly[monthKey] || 0) + 1;
         });
 
-        const finalChartData = Array.from({ length: 6 }, (_, i) => {
+        // Partners Chart Data
+        const partnersChartQuery = query(collection(db, "users"), where("role", "in", partnerRoles), where("createdAt", ">=", timestampSixMonthsAgo));
+        const partnersChartSnap = await getDocs(partnersChartQuery);
+        const partnersMonthly: { [key: string]: number } = {};
+        partnersChartSnap.forEach(doc => {
+            const partner = doc.data() as User;
+            const monthKey = format((partner.createdAt as Timestamp).toDate(), 'MMM');
+            partnersMonthly[monthKey] = (partnersMonthly[monthKey] || 0) + 1;
+        });
+
+        // Customers Chart Data
+        const customersChartQuery = query(collection(db, "users"), where("role", "==", "customer"), where("createdAt", ">=", timestampSixMonthsAgo));
+        const customersChartSnap = await getDocs(customersChartQuery);
+        const customersMonthly: { [key: string]: number } = {};
+        customersChartSnap.forEach(doc => {
+            const customer = doc.data() as User;
+            const monthKey = format((customer.createdAt as Timestamp).toDate(), 'MMM');
+            customersMonthly[monthKey] = (customersMonthly[monthKey] || 0) + 1;
+        });
+
+        const finalLeadsData = [];
+        const finalPartnersData = [];
+        const finalCustomersData = [];
+
+        for (let i = 0; i < 6; i++) {
             const date = subMonths(new Date(), 5 - i);
             const month = format(date, 'MMM');
-            return { month, leads: monthlyData[month] || 0 };
-        });
-
-        setChartData(finalChartData);
+            finalLeadsData.push({ month, leads: leadsMonthly[month] || 0 });
+            finalPartnersData.push({ month, partners: partnersMonthly[month] || 0 });
+            finalCustomersData.push({ month, customers: customersMonthly[month] || 0 });
+        }
+        
+        setLeadsChartData(finalLeadsData);
+        setPartnersChartData(finalPartnersData);
+        setCustomersChartData(finalCustomersData);
 
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -149,6 +181,30 @@ export default function Dashboard() {
     </Card>
   );
 
+  const renderBarChartCard = (title: string, data: any[], dataKey: string, chartColor: string) => (
+     <Card>
+          <CardHeader>
+            <CardTitle className="text-xl md:text-2xl">{title}</CardTitle>
+            <CardDescription>Last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+             {isLoading ? <div className="h-[300px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+              <ChartContainer config={chartConfig} className="min-h-[250px] h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey={dataKey} fill={chartColor} radius={4} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+             )}
+          </CardContent>
+        </Card>
+  )
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -162,29 +218,12 @@ export default function Dashboard() {
         {renderStatCard("Total Partners", stats.totalPartners, Handshake, "All active partners")}
         {renderStatCard("Total Customers", stats.totalCustomers, Users, "All registered customers")}
       </div>
-      <div className="grid gap-4 lg:grid-cols-7">
-        <Card className="lg:col-span-4">
-          <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">Lead Generation Overview</CardTitle>
-            <CardDescription>Last 6 months</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-             {isLoading ? <div className="h-[300px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-              <ChartContainer config={chartConfig} className="min-h-[250px] h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="leads" fill="var(--color-leads)" radius={4} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-             )}
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-3">
+      <div className="grid gap-4 lg:grid-cols-3">
+        {renderBarChartCard("Lead Generation", leadsChartData, "leads", "var(--color-leads)")}
+        {renderBarChartCard("Partner Signups", partnersChartData, "partners", "var(--color-partners)")}
+        {renderBarChartCard("Customer Signups", customersChartData, "customers", "var(--color-customers)")}
+      </div>
+       <Card>
           <CardHeader>
             <CardTitle className="text-xl md:text-2xl">Upcoming Appointments</CardTitle>
             <CardDescription>
@@ -210,7 +249,6 @@ export default function Dashboard() {
              )}
           </CardContent>
         </Card>
-      </div>
     </div>
   )
 }
