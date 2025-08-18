@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Loader2, Search, Ruler, Bed, Bath, SlidersHorizontal } from "lucide-react"
+import { PlusCircle, Loader2, Search, SlidersHorizontal, MapPin, Building } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
@@ -212,28 +212,28 @@ export default function ListingsPage() {
               <Link href={`/listings/${listing.id}`} key={listing.id} className="block hover:shadow-lg transition-shadow rounded-lg">
                 <Card className="flex flex-col overflow-hidden shadow-md h-full">
                     <CardHeader className="p-0 relative">
-                        <Image
-                            alt={listing.catalogTitle || "Property image"}
-                            className="aspect-video object-cover"
-                            height="225"
-                            src={listing.featureImage || 'https://placehold.co/400x225.png'}
-                            width="400"
-                            data-ai-hint="house exterior"
-                        />
-                         <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/70 to-transparent">
-                             <h3 className="font-semibold text-lg text-white leading-tight truncate" title={listing.catalogTitle}>{listing.catalogTitle}</h3>
-                             <p className="text-sm text-gray-200 truncate">{listing.addressLine}</p>
+                        <div className="aspect-video relative">
+                            <Image
+                                alt={listing.catalogTitle || "Property image"}
+                                className="object-cover"
+                                fill
+                                src={listing.featureImage || 'https://placehold.co/400x225.png'}
+                                data-ai-hint="house exterior"
+                            />
                         </div>
+                         <Badge variant={statusColors[listing.status] || 'default'} className="absolute top-2 right-2">{listing.status}</Badge>
                     </CardHeader>
-                    <CardContent className="p-4 flex-grow grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground"><Bed className="h-4 w-4"/><span>{listing.bedrooms} Beds</span></div>
-                        <div className="flex items-center gap-2 text-muted-foreground"><Bath className="h-4 w-4"/><span>{listing.bathrooms} Baths</span></div>
-                        <div className="col-span-2 flex items-center gap-2 text-muted-foreground"><Ruler className="h-4 w-4"/><span>{listing.builtUpArea?.toLocaleString() || 'N/A'} {listing.unitOfMeasurement}</span></div>
+                    <CardContent className="p-4 flex-grow flex flex-col">
+                        <Badge variant="secondary" className="mb-2 w-fit">{listing.propertyCategory}</Badge>
+                        <h3 className="font-semibold text-lg leading-tight flex-grow" title={listing.catalogTitle}>{listing.catalogTitle}</h3>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="h-4 w-4"/>
+                            {listing.addressLine}, {listing.city}
+                        </p>
                     </CardContent>
                     <CardFooter className="p-4 pt-0 border-t mt-auto bg-muted/50">
                         <div className="flex justify-between items-center w-full">
                             <span className="font-bold text-lg text-primary">₹{listing.listingPrice.toLocaleString()}</span>
-                             <Badge variant={statusColors[listing.status] || 'default'}>{listing.status}</Badge>
                         </div>
                     </CardFooter>
                 </Card>
@@ -244,3 +244,6 @@ export default function ListingsPage() {
     </div>
   )
 }
+
+
+    
