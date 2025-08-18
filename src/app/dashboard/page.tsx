@@ -189,7 +189,7 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">Partner Signups</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">Partner Onboarding</CardTitle>
             <CardDescription>Last 6 months</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
@@ -216,7 +216,7 @@ export default function Dashboard() {
         </Card>
          <Card>
           <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">Customer Signups</CardTitle>
+            <CardTitle className="text-xl md:text-2xl">Customer</CardTitle>
             <CardDescription>Last 6 months</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
