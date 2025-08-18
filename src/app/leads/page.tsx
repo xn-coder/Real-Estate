@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw, Pencil, Search } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw, Pencil, Search, FileCog, Edit } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +31,7 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc, deleteDoc } from "firebase/firestore"
-import type { Lead } from "@/types/lead"
+import type { Lead, LeadStatus, ApplicationStatus } from "@/types/lead"
 import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
@@ -46,6 +46,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New': 'default',
+  'Link Share': 'default',
+  'In Progress': 'default',
+  'Sale': 'default',
+  'Partially Completed': 'default',
+  'Sale Completed': 'outline',
+  'Application Rejected': 'destructive',
+  'Lead Expired': 'destructive',
+
   'Contacted': 'secondary',
   'Qualified': 'outline',
   'Lost': 'destructive',
@@ -55,7 +63,27 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Completed': 'outline',
 }
 
-const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'New', 'Pending', 'Processing', 'Completed'];
+const applicationStatusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
+    'Application Not Started': 'secondary',
+    'Application Incompleted': 'secondary',
+    'Documentation Pending': 'secondary',
+    'KYC Pending': 'secondary',
+    'Payment Pending': 'secondary',
+    'Approval Pending from Brand': 'secondary',
+    'Activation Pending': 'secondary',
+    'Packed': 'default',
+    'Shipped': 'default',
+    'Out of Delivery': 'default',
+    'Delivered': 'outline',
+    'Failed Attempt': 'destructive',
+    'Returned': 'destructive',
+    'Cancelled': 'destructive',
+}
+
+
+const filterStatuses: (LeadStatus | 'All')[] = ['All', 'New', 'In Progress', 'Sale', 'Sale Completed', 'Application Rejected'];
+const leadStatusOptions: LeadStatus[] = ['Link Share', 'In Progress', 'Sale', 'Partially Completed', 'Sale Completed', 'Application Rejected', 'Lead Expired'];
+const applicationStatusOptions: ApplicationStatus[] = ['Application Not Started', 'Application Incompleted', 'Documentation Pending', 'KYC Pending', 'Payment Pending', 'Approval Pending from Brand', 'Activation Pending', 'Packed', 'Shipped', 'Out of Delivery', 'Delivered', 'Failed Attempt', 'Returned', 'Cancelled'];
 
 export default function LeadsPage() {
   const { user } = useUser();
@@ -74,13 +102,19 @@ export default function LeadsPage() {
   const [selectedPartnerForLead, setSelectedPartnerForLead] = React.useState<string | null>(null);
   const [isSending, setIsSending] = React.useState(false);
 
-  const [isStatusDialogOpen, setIsStatusDialogOpen] = React.useState(false);
-  const [selectedLeadForStatus, setSelectedLeadForStatus] = React.useState<Lead | null>(null);
-  const [newStatus, setNewStatus] = React.useState<Lead['status'] | null>(null);
-  const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
+  const [isLeadStatusDialogOpen, setIsLeadStatusDialogOpen] = React.useState(false);
+  const [selectedLeadForLeadStatus, setSelectedLeadForLeadStatus] = React.useState<Lead | null>(null);
+  const [newLeadStatus, setNewLeadStatus] = React.useState<LeadStatus | null>(null);
+  const [isUpdatingLeadStatus, setIsUpdatingLeadStatus] = React.useState(false);
+  
+  const [isAppStatusDialogOpen, setIsAppStatusDialogOpen] = React.useState(false);
+  const [selectedLeadForAppStatus, setSelectedLeadForAppStatus] = React.useState<Lead | null>(null);
+  const [newAppStatus, setNewAppStatus] = React.useState<ApplicationStatus | null>(null);
+  const [isUpdatingAppStatus, setIsUpdatingAppStatus] = React.useState(false);
+
 
   const [searchTerm, setSearchTerm] = React.useState("");
-  const [activeFilter, setActiveFilter] = React.useState<Lead['status'] | 'All'>("All");
+  const [activeFilter, setActiveFilter] = React.useState<LeadStatus | 'All'>("All");
 
   const canSendToPartner = user?.role && ['associate', 'channel', 'franchisee'].includes(user.role);
   const canChangeStatus = user?.role === 'admin' || user?.role === 'seller';
@@ -116,6 +150,7 @@ export default function LeadsPage() {
               id: doc.id,
               ...data,
               createdAt: (data.createdAt as Timestamp).toDate(),
+              applicationStatus: data.applicationStatus || 'Application Not Started',
           } as Lead;
       });
       setLeads(leadsData.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
@@ -193,28 +228,52 @@ export default function LeadsPage() {
     setIsSendToPartnerDialogOpen(true);
   };
 
-  const handleChangeStatusClick = (lead: Lead) => {
-    setSelectedLeadForStatus(lead);
-    setNewStatus(lead.status);
-    setIsStatusDialogOpen(true);
+  const handleChangeLeadStatusClick = (lead: Lead) => {
+    setSelectedLeadForLeadStatus(lead);
+    setNewLeadStatus(lead.status);
+    setIsLeadStatusDialogOpen(true);
+  }
+  
+  const handleChangeAppStatusClick = (lead: Lead) => {
+    setSelectedLeadForAppStatus(lead);
+    setNewAppStatus(lead.applicationStatus || 'Application Not Started');
+    setIsAppStatusDialogOpen(true);
   }
 
-  const handleUpdateStatus = async () => {
-    if (!selectedLeadForStatus || !newStatus) return;
-    setIsUpdatingStatus(true);
+  const handleUpdateLeadStatus = async () => {
+    if (!selectedLeadForLeadStatus || !newLeadStatus) return;
+    setIsUpdatingLeadStatus(true);
     try {
-      const leadRef = doc(db, 'leads', selectedLeadForStatus.id);
-      await updateDoc(leadRef, { status: newStatus });
-      toast({ title: 'Status Updated', description: `Lead status updated to ${newStatus}.`});
+      const leadRef = doc(db, 'leads', selectedLeadForLeadStatus.id);
+      await updateDoc(leadRef, { status: newLeadStatus });
+      toast({ title: 'Lead Status Updated', description: `Lead status updated to ${newLeadStatus}.`});
       fetchLeads();
-      setIsStatusDialogOpen(false);
+      setIsLeadStatusDialogOpen(false);
     } catch (error) {
-       console.error("Error updating status:", error);
+       console.error("Error updating lead status:", error);
        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update lead status.' });
     } finally {
-      setIsUpdatingStatus(false);
+      setIsUpdatingLeadStatus(false);
     }
   }
+
+  const handleUpdateAppStatus = async () => {
+    if (!selectedLeadForAppStatus || !newAppStatus) return;
+    setIsUpdatingAppStatus(true);
+    try {
+      const leadRef = doc(db, 'leads', selectedLeadForAppStatus.id);
+      await updateDoc(leadRef, { applicationStatus: newAppStatus });
+      toast({ title: 'Application Status Updated', description: `Application status updated to ${newAppStatus}.`});
+      fetchLeads();
+      setIsAppStatusDialogOpen(false);
+    } catch (error) {
+       console.error("Error updating application status:", error);
+       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update application status.' });
+    } finally {
+      setIsUpdatingAppStatus(false);
+    }
+  }
+
 
   const handleSendLeadToPartner = async () => {
     const partner = teamMembers.find(m => m.id === selectedPartnerForLead);
@@ -298,7 +357,7 @@ export default function LeadsPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as Lead['status'] | 'All')}>
+        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as LeadStatus | 'All')}>
           <TabsList>
             {filterStatuses.map(status => (
                  <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
@@ -308,45 +367,45 @@ export default function LeadsPage() {
       </div>
 
       <div className="overflow-x-auto">
-        <div className="border rounded-lg min-w-[800px]">
+        <div className="border rounded-lg min-w-[1000px]">
             <Table>
             <TableHeader>
                 <TableRow>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>
-                    <span className="sr-only">Actions</span>
-                </TableHead>
+                    <TableHead>Catalog Code</TableHead>
+                    <TableHead>Full Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone No.</TableHead>
+                    <TableHead>Lead Status</TableHead>
+                    <TableHead>Application Status</TableHead>
+                    <TableHead>
+                        <span className="sr-only">Actions</span>
+                    </TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {isLoading ? (
                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                             <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                         </TableCell>
                     </TableRow>
                 ) : filteredLeads.length === 0 ? (
                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                             No leads found.
                         </TableCell>
                     </TableRow>
                 ) : (
                     filteredLeads.map((lead) => (
                     <TableRow key={lead.id}>
-                        <TableCell className="font-medium whitespace-nowrap">{lead.name}</TableCell>
-                        <TableCell className="whitespace-nowrap">
-                            <Button variant="link" asChild className="p-0 h-auto">
-                            <Link href={`/listings/${lead.propertyId}`}>
-                                    <Building className="mr-2 h-4 w-4" />
+                        <TableCell className="whitespace-nowrap font-mono text-xs">
+                             <Button variant="link" asChild className="p-0 h-auto">
+                                <Link href={`/listings/${lead.propertyId}`}>
                                     {lead.propertyId}
                                 </Link>
                             </Button>
                         </TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{lead.name}</TableCell>
                         <TableCell className="whitespace-nowrap">{lead.email}</TableCell>
                         <TableCell className="whitespace-nowrap">{lead.phone}</TableCell>
                         <TableCell>
@@ -354,6 +413,9 @@ export default function LeadsPage() {
                             {lead.status === 'Forwarded' && (
                                 <p className="text-xs text-muted-foreground">to {lead.forwardedTo?.partnerName}</p>
                             )}
+                        </TableCell>
+                         <TableCell>
+                            <Badge variant={applicationStatusColors[lead.applicationStatus] || 'default'}>{lead.applicationStatus}</Badge>
                         </TableCell>
                         <TableCell>
                         <DropdownMenu>
@@ -369,16 +431,22 @@ export default function LeadsPage() {
                                 <UserIcon className="mr-2 h-4 w-4" />
                                 View Customer
                             </DropdownMenuItem>
-                            {canChangeStatus && (
-                                <DropdownMenuItem onSelect={() => handleChangeStatusClick(lead)}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Change Status
-                                </DropdownMenuItem>
-                            )}
                             <DropdownMenuItem onClick={() => handleScheduleClick(lead)} disabled={lead.status === 'Forwarded'}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 Schedule Visit
                             </DropdownMenuItem>
+                            {canChangeStatus && (
+                                <>
+                                <DropdownMenuItem onSelect={() => handleChangeLeadStatusClick(lead)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Change Lead Status
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleChangeAppStatusClick(lead)}>
+                                    <FileCog className="mr-2 h-4 w-4" />
+                                    Change Application Status
+                                </DropdownMenuItem>
+                                </>
+                            )}
                             {canSendToPartner && (
                                 lead.status === 'Forwarded' ? (
                                     <DropdownMenuItem onSelect={() => handleRetakeLead(lead)}>
@@ -472,46 +540,62 @@ export default function LeadsPage() {
             </DialogContent>
         </Dialog>
 
-        {/* Change Status Dialog */}
-        <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+        {/* Change Lead Status Dialog */}
+        <Dialog open={isLeadStatusDialogOpen} onOpenChange={setIsLeadStatusDialogOpen}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Change Lead Status</DialogTitle>
                     <DialogDescription>
-                        Update the status for lead: {selectedLeadForStatus?.name}.
+                        Update the lead status for: {selectedLeadForLeadStatus?.name}.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                    <RadioGroup onValueChange={(value) => setNewStatus(value as Lead['status'])} value={newStatus || undefined}>
-                         <div className="space-y-2">
-                            <Label htmlFor="pending" className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
-                                <RadioGroupItem value="Pending" id="pending" />
-                                <div>
-                                    <p className="font-medium">Pending</p>
-                                    <p className="text-sm text-muted-foreground">The lead is waiting for further action.</p>
-                                </div>
-                            </Label>
-                            <Label htmlFor="processing" className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
-                                <RadioGroupItem value="Processing" id="processing" />
-                                <div>
-                                    <p className="font-medium">Processing</p>
-                                    <p className="text-sm text-muted-foreground">The lead is actively being worked on.</p>
-                                </div>
-                            </Label>
-                            <Label htmlFor="completed" className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
-                                <RadioGroupItem value="Completed" id="completed" />
-                                <div>
-                                    <p className="font-medium">Completed</p>
-                                    <p className="text-sm text-muted-foreground">The lead process has been successfully completed.</p>
-                                </div>
-                            </Label>
+                    <RadioGroup onValueChange={(value) => setNewLeadStatus(value as LeadStatus)} value={newLeadStatus || undefined}>
+                         <div className="space-y-2 max-h-80 overflow-y-auto">
+                           {leadStatusOptions.map(status => (
+                                <Label key={status} htmlFor={status} className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                                    <RadioGroupItem value={status} id={status} />
+                                    <p className="font-medium">{status}</p>
+                                </Label>
+                            ))}
                         </div>
                     </RadioGroup>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleUpdateStatus} disabled={isUpdatingStatus}>
-                        {isUpdatingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Button variant="outline" onClick={() => setIsLeadStatusDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleUpdateLeadStatus} disabled={isUpdatingLeadStatus}>
+                        {isUpdatingLeadStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Update Status
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        
+         {/* Change Application Status Dialog */}
+        <Dialog open={isAppStatusDialogOpen} onOpenChange={setIsAppStatusDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Change Application Status</DialogTitle>
+                    <DialogDescription>
+                        Update the application status for: {selectedLeadForAppStatus?.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <RadioGroup onValueChange={(value) => setNewAppStatus(value as ApplicationStatus)} value={newAppStatus || undefined}>
+                         <div className="space-y-2 max-h-80 overflow-y-auto">
+                           {applicationStatusOptions.map(status => (
+                                <Label key={status} htmlFor={status} className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
+                                    <RadioGroupItem value={status} id={status} />
+                                    <p className="font-medium">{status}</p>
+                                </Label>
+                            ))}
+                        </div>
+                    </RadioGroup>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAppStatusDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleUpdateAppStatus} disabled={isUpdatingAppStatus}>
+                        {isUpdatingAppStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Update Status
                     </Button>
                 </DialogFooter>
