@@ -15,7 +15,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
+import { BarChart, Bar, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
 import { Home, Users, Loader2, Handshake, UserPlus } from "lucide-react"
 import { collection, query, where, getDocs, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -152,30 +152,6 @@ export default function Dashboard() {
     </Card>
   );
 
-  const renderBarChartCard = (title: string, data: any[], dataKey: string, chartColor: string) => (
-     <Card>
-          <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">{title}</CardTitle>
-            <CardDescription>Last 6 months</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-             {isLoading ? <div className="h-[300px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-              <ChartContainer config={chartConfig} className="min-h-[250px] h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey={dataKey} fill={chartColor} radius={4} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-             )}
-          </CardContent>
-        </Card>
-  )
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
@@ -190,9 +166,75 @@ export default function Dashboard() {
         {renderStatCard("Total Customers", stats.totalCustomers, Users, "All registered customers")}
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
-        {renderBarChartCard("Lead Generation", leadsChartData, "leads", "var(--color-leads)")}
-        {renderBarChartCard("Partner Signups", partnersChartData, "partners", "var(--color-partners)")}
-        {renderBarChartCard("Customer Signups", customersChartData, "customers", "var(--color-customers)")}
+         <Card>
+          <CardHeader>
+            <CardTitle className="text-xl md:text-2xl">Lead Generation</CardTitle>
+            <CardDescription>Last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+             {isLoading ? <div className="h-[300px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+              <ChartContainer config={chartConfig} className="min-h-[250px] h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={leadsChartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                    <Bar dataKey="leads" fill="var(--color-leads)" radius={8} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+             )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl md:text-2xl">Partner Signups</CardTitle>
+            <CardDescription>Last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+             {isLoading ? <div className="h-[300px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+              <ChartContainer config={chartConfig} className="min-h-[250px] h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={partnersChartData} margin={{ left: 12, right: 12 }}>
+                     <defs>
+                      <linearGradient id="colorPartners" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--color-partners)" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="var(--color-partners)" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                    <Area dataKey="partners" type="monotone" fill="url(#colorPartners)" stroke="var(--color-partners)" stackId="1" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+             )}
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader>
+            <CardTitle className="text-xl md:text-2xl">Customer Signups</CardTitle>
+            <CardDescription>Last 6 months</CardDescription>
+          </CardHeader>
+          <CardContent className="pl-2">
+             {isLoading ? <div className="h-[300px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+              <ChartContainer config={chartConfig} className="min-h-[250px] h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={customersChartData} margin={{ left: 12, right: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                    <Line dataKey="customers" type="monotone" stroke="var(--color-customers)" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+             )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
