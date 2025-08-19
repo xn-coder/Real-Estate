@@ -418,7 +418,7 @@ export default function LeadsPage() {
                             )}
                         </TableCell>
                          <TableCell>
-                            <Badge variant={dealStatusColors[lead.dealStatus] || 'default'}>{lead.dealStatus}</Badge>
+                            <Badge variant={dealStatusColors[lead.dealStatus] || 'default'} className="capitalize">{lead.dealStatus}</Badge>
                         </TableCell>
                         <TableCell>
                         <DropdownMenu>
@@ -591,7 +591,7 @@ export default function LeadsPage() {
                            {dealStatusOptions.map(status => (
                                 <Label key={status} htmlFor={status} className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
                                     <RadioGroupItem value={status} id={status} />
-                                    <p className="font-medium">{status}</p>
+                                    <p className="font-medium capitalize">{status}</p>
                                 </Label>
                             ))}
                         </div>
