@@ -18,12 +18,11 @@ import { useUser } from "@/hooks/use-user"
 import { Separator } from "@/components/ui/separator"
 import Autoplay from "embla-carousel-autoplay"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -543,9 +542,9 @@ export default function PropertyDetailsPage() {
                                         <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Phone</FormLabel> <FormControl><Input type="tel" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Email</FormLabel> <FormControl><Input type="email" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         <div className="grid grid-cols-3 gap-2">
-                                            <FormField control={enquiryForm.control} name="city" render={({ field }) => ( <FormItem className="col-span-1"> <Label className="text-xs">City</Label> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <Label className="text-xs">State</Label> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <Label className="text-xs">Country</Label> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="city" render={({ field }) => ( <FormItem className="col-span-1"> <FormLabel className="text-xs">City</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <FormLabel className="text-xs">State</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                            <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <FormLabel className="text-xs">Country</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         </div>
                                         <Button type="submit" className="w-full" disabled={isSubmittingEnquiry || isOtpSending}>
                                             {(isSubmittingEnquiry || isOtpSending) && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
@@ -575,7 +574,7 @@ export default function PropertyDetailsPage() {
                                 name="otp" 
                                 render={({ field }) => ( 
                                     <FormItem>
-                                        <Label>Enter OTP</Label>
+                                        <FormLabel>Enter OTP</FormLabel>
                                         <FormControl>
                                             <Input 
                                                 placeholder="_ _ _ _ _ _" 
