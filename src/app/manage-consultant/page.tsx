@@ -158,11 +158,17 @@ export default function ManageConsultantPage() {
   const fetchAllConsultantsForDialog = React.useCallback(async () => {
     setIsLoadingConsultants(true);
     try {
-        // Partners already fetched in main data load
-        const sellersQuery = query(collection(db, "users"), where("role", "in", sellerRoles));
+        const usersCollection = collection(db, "users");
+        // Partners
+        const partnersQuery = query(usersCollection, where("role", "in", partnerRoles));
+        const partnersSnapshot = await getDocs(partnersQuery);
+        setAllPartners(partnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
+
+        // Sellers
+        const sellersQuery = query(usersCollection, where("role", "in", sellerRoles));
         const sellersSnapshot = await getDocs(sellersQuery);
-        
         setAllSellers(sellersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SellerUser)));
+
     } catch (error) {
         console.error("Error fetching partners:", error);
     } finally {
@@ -230,11 +236,13 @@ export default function ManageConsultantPage() {
                 toast({ variant: 'destructive', title: 'No Leads', description: 'This customer has no leads to reassign.' });
             } else {
                 const batch = writeBatch(db);
+                const fieldToUpdate = newConsultant.role === 'seller' ? 'sellerId' : 'partnerId';
+
                 leadsSnapshot.docs.forEach(leadDoc => {
-                    batch.update(doc(db, "leads", leadDoc.id), { partnerId: newConsultant.id });
+                    batch.update(doc(db, "leads", leadDoc.id), { [fieldToUpdate]: newConsultant.id });
                 });
                 await batch.commit();
-                toast({ title: 'Success', description: `Partner for ${selectedCustomer.customer.name} has been updated.` });
+                toast({ title: 'Success', description: `${activeDialogTab} for ${selectedCustomer.customer.name} has been updated.` });
             }
         } else if (selectedPartner) { // Reassigning for a partner
             const partnerRef = doc(db, "users", selectedPartner.partner.id);
@@ -267,7 +275,7 @@ export default function ManageConsultantPage() {
               </Avatar>
               <div className="flex-1">
                   <p className="font-medium">{currentConsultant?.name || 'Not selected'}</p>
-                  <p className="text-sm text-muted-foreground capitalize">{type}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{currentConsultant?.role.replace('_', ' ') || type}</p>
               </div>
           </div>
           <div className="mt-2">
@@ -349,7 +357,7 @@ export default function ManageConsultantPage() {
                                 {c.partner ? (
                                 <Link href={`/manage-partner/${c.partner.id}`} className="hover:underline">
                                     <div className="font-medium">{c.partner.name}</div>
-                                    <div className="text-sm text-muted-foreground capitalize font-mono">{c.partner.id}</div>
+                                    <div className="text-sm text-muted-foreground font-mono">{c.partner.id}</div>
                                 </Link>
                                 ) : (
                                 <span className="text-muted-foreground">Not Assigned</span>
@@ -359,7 +367,7 @@ export default function ManageConsultantPage() {
                                 {c.seller ? (
                                 <Link href={`/manage-seller/details/${c.seller.id}`} className="hover:underline">
                                     <div className="font-medium">{c.seller.name}</div>
-                                    <div className="text-sm text-muted-foreground capitalize font-mono">
+                                    <div className="text-sm text-muted-foreground font-mono">
                                         {c.seller.id}
                                     </div>
                                 </Link>
@@ -448,13 +456,29 @@ export default function ManageConsultantPage() {
         <DialogContent className="max-w-lg">
             <DialogHeader>
                  <DialogTitle>Modify Consultant for {selectedCustomer?.customer.name || selectedPartner?.partner.name}</DialogTitle>
-                <DialogDescription>Change the assigned {selectedCustomer ? 'Partner' : 'Seller'}.</DialogDescription>
+                 {selectedCustomer && (
+                     <DialogDescription>Change the assigned partner or seller.</DialogDescription>
+                 )}
+                 {selectedPartner && (
+                      <DialogDescription>Change the assigned seller.</DialogDescription>
+                 )}
             </DialogHeader>
             <div className="space-y-4 py-4">
-                {renderConsultantSelector(
-                    activeDialogTab,
-                    newConsultant
+                {selectedCustomer && (
+                    <Tabs value={activeDialogTab} onValueChange={(value) => setActiveDialogTab(value as 'partner' | 'seller')} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="partner">Assign Partner</TabsTrigger>
+                            <TabsTrigger value="seller">Assign Seller</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="partner">
+                            {renderConsultantSelector('partner', newConsultant?.role !== 'seller' ? newConsultant : null)}
+                        </TabsContent>
+                         <TabsContent value="seller">
+                            {renderConsultantSelector('seller', newConsultant?.role === 'seller' ? newConsultant : null)}
+                        </TabsContent>
+                    </Tabs>
                 )}
+                 {selectedPartner && renderConsultantSelector('seller', newConsultant)}
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
