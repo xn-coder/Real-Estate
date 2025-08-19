@@ -22,7 +22,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useToast } from "@/hooks/use-toast"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel } from "@/components/ui/form"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -122,31 +122,51 @@ export default function PropertyDetailsPage() {
         try {
             const { otp, ...leadData } = values;
 
-            // Create customer record
-            const customerId = generateUserId("CUS");
-            const [firstName, ...lastNameParts] = values.name.split(' ');
-            const lastName = lastNameParts.join(' ');
-            
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash("password", salt);
+            const usersCollection = collection(db, "users");
+            const emailQuery = query(usersCollection, where("email", "==", values.email));
+            const phoneQuery = query(usersCollection, where("phone", "==", values.phone));
 
-            await setDoc(doc(db, "users", customerId), {
-                id: customerId,
-                name: values.name,
-                firstName: firstName,
-                lastName: lastName,
-                email: values.email,
-                phone: values.phone,
-                password: hashedPassword,
-                role: 'customer',
-                status: 'active',
-                address: '', 
-                city: values.city,
-                state: values.state,
-                pincode: '',
-                country: values.country,
-                createdAt: Timestamp.now(),
-            });
+            const [emailSnapshot, phoneSnapshot] = await Promise.all([
+                getDocs(emailQuery),
+                getDocs(phoneQuery),
+            ]);
+
+            let customerId: string;
+            let existingUser = false;
+            
+            if (!emailSnapshot.empty) {
+                customerId = emailSnapshot.docs[0].id;
+                existingUser = true;
+            } else if (!phoneSnapshot.empty) {
+                customerId = phoneSnapshot.docs[0].id;
+                existingUser = true;
+            } else {
+                // Create new customer record
+                customerId = generateUserId("CUS");
+                const [firstName, ...lastNameParts] = values.name.split(' ');
+                const lastName = lastNameParts.join(' ');
+                
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash("password", salt);
+
+                await setDoc(doc(db, "users", customerId), {
+                    id: customerId,
+                    name: values.name,
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: values.email,
+                    phone: values.phone,
+                    password: hashedPassword,
+                    role: 'customer',
+                    status: 'active',
+                    address: '', 
+                    city: values.city,
+                    state: values.state,
+                    pincode: '',
+                    country: values.country,
+                    createdAt: Timestamp.now(),
+                });
+            }
             
             // Create lead record
             const leadRef = await addDoc(collection(db, "leads"), {
@@ -154,7 +174,8 @@ export default function PropertyDetailsPage() {
                 propertyId: property.id,
                 partnerId: user.id,
                 customerId: customerId,
-                status: "New",
+                status: "New lead",
+                dealStatus: "New lead",
                 createdAt: Timestamp.now(),
             });
             
