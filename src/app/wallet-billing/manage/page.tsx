@@ -24,8 +24,21 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, ArrowLeft, Wallet } from "lucide-react"
+import { Loader2, ArrowLeft, Wallet, Paperclip } from "lucide-react"
 import Link from "next/link"
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 const manageWalletSchema = z.object({
   transactionType: z.enum(["topup", "send_partner", "send_customer"], {
@@ -46,6 +59,7 @@ const manageWalletSchema = z.object({
   ], {
     required_error: "Please select a payment method.",
   }),
+  proof: z.any().optional(),
 }).refine(data => {
     if ((data.transactionType === "send_partner" || data.transactionType === "send_customer") && !data.recipientId) {
         return false;
@@ -70,10 +84,21 @@ export default function ManageWalletPage() {
   })
 
   const transactionType = form.watch("transactionType");
+  const proofFile = form.watch("proof");
 
   async function onSubmit(values: ManageWalletForm) {
     setIsSubmitting(true)
-    console.log(values)
+    
+    let proofUrl = "";
+    if (values.proof) {
+        proofUrl = await fileToDataUrl(values.proof);
+        console.log("Proof of transaction uploaded (Data URL):", proofUrl.substring(0, 100) + "...");
+    }
+
+    const submissionData = { ...values, proofUrl };
+    delete submissionData.proof;
+
+    console.log(submissionData)
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))
     toast({
@@ -188,6 +213,31 @@ export default function ManageWalletPage() {
                     </Select>
                     <FormMessage />
                   </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="proof"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Upload Proof (Optional)</FormLabel>
+                        <FormControl>
+                            <Input 
+                                type="file" 
+                                accept="image/*,application/pdf" 
+                                onChange={(e) => field.onChange(e.target.files?.[0])}
+                                disabled={isSubmitting}
+                            />
+                        </FormControl>
+                        {proofFile && (
+                            <div className="text-sm text-muted-foreground pt-2 flex items-center gap-2">
+                                <Paperclip className="h-4 w-4"/>
+                                <span>{proofFile.name}</span>
+                            </div>
+                        )}
+                        <FormMessage />
+                    </FormItem>
                 )}
               />
 
