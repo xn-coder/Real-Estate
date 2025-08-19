@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 
 
 type CustomerWithConsultants = {
@@ -342,26 +343,26 @@ export default function ManageConsultantPage() {
                             <TableRow key={c.customer.id}>
                             <TableCell>
                                 <div className="font-medium">{c.customer.name}</div>
-                                <div className="text-sm text-muted-foreground">{c.customer.email}</div>
+                                <div className="text-sm text-muted-foreground font-mono">{c.customer.id}</div>
                             </TableCell>
                             <TableCell>
                                 {c.partner ? (
-                                <>
+                                <Link href={`/manage-partner/${c.partner.id}`} className="hover:underline">
                                     <div className="font-medium">{c.partner.name}</div>
-                                    <div className="text-sm text-muted-foreground capitalize">Partner</div>
-                                </>
+                                    <div className="text-sm text-muted-foreground capitalize font-mono">{c.partner.id}</div>
+                                </Link>
                                 ) : (
                                 <span className="text-muted-foreground">Not Assigned</span>
                                 )}
                             </TableCell>
                             <TableCell>
                                 {c.seller ? (
-                                <>
+                                <Link href={`/manage-seller/details/${c.seller.id}`} className="hover:underline">
                                     <div className="font-medium">{c.seller.name}</div>
-                                    <div className="text-sm text-muted-foreground capitalize">
-                                        {c.seller.role === 'admin' ? 'Seller' : c.seller.role}
+                                    <div className="text-sm text-muted-foreground capitalize font-mono">
+                                        {c.seller.id}
                                     </div>
-                                </>
+                                </Link>
                                 ) : (
                                 <span className="text-muted-foreground">Not Assigned</span>
                                 )}
@@ -410,19 +411,19 @@ export default function ManageConsultantPage() {
                                     <TableRow key={p.partner.id}>
                                         <TableCell>
                                             <div className="font-medium">{p.partner.name}</div>
-                                            <div className="text-sm text-muted-foreground">{p.partner.email}</div>
+                                            <div className="text-sm text-muted-foreground font-mono">{p.partner.id}</div>
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline">{roleNameMapping[p.partner.role] || p.partner.role}</Badge>
                                         </TableCell>
                                         <TableCell>
                                             {p.seller ? (
-                                                <>
+                                                <Link href={`/manage-seller/details/${p.seller.id}`} className="hover:underline">
                                                     <div className="font-medium">{p.seller.name}</div>
-                                                    <div className="text-sm text-muted-foreground">
-                                                        {p.seller.role === 'admin' ? 'Default Seller' : 'Seller'}
+                                                    <div className="text-sm text-muted-foreground font-mono">
+                                                        {p.seller.id}
                                                     </div>
-                                                </>
+                                                </Link>
                                             ) : (
                                                 <span className="text-muted-foreground">Default (Admin)</span>
                                             )}
