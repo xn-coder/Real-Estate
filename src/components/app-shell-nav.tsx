@@ -87,7 +87,6 @@ const adminNavItems: NavItem[] = [
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
     { href: '/deals', icon: Handshake, label: 'Manage Deals' },
     { href: '/manage-customer', icon: Users2, label: 'Manage Customer' },
-    { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
     { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
     { href: '/manage-consultant', icon: Users, label: 'Manage Consultant' },
     { href: '/manage-requirements', icon: FilePlus, label: 'Manage Requirements' },
@@ -130,7 +129,6 @@ const sellerNavItems: NavItem[] = [
     { href: '/leads', icon: UserPlus, label: 'Manage Lead' },
     { href: '/deals', icon: Handshake, label: 'Manage Deals' },
     { href: '/manage-customer', icon: Users, label: 'Manage Customer' },
-    { href: '/customer-verify', icon: UserCheck, label: 'Customer Verify' },
     { href: '/manage-visitor', icon: User, label: 'Manage Visitor' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
 ];

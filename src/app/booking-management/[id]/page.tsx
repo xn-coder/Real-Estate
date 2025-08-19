@@ -134,9 +134,9 @@ export default function BookingDetailsPage() {
             const leadRef = doc(db, "leads", details.lead.id);
             batch.update(leadRef, { status: 'Completed' });
 
-            // Update customer status for verification
+            // Update customer status to active
             const customerRef = doc(db, "users", customerId);
-            batch.update(customerRef, { status: 'pending_verification' });
+            batch.update(customerRef, { status: 'active' });
 
             await batch.commit();
             
@@ -281,7 +281,7 @@ export default function BookingDetailsPage() {
                             )}
                            <Button className="w-full" onClick={handleUploadAndComplete} disabled={isCompleting}>
                                 {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                {isUploading ? "Uploading..." : "Complete & Verify"}
+                                {isUploading ? "Uploading..." : "Complete Deal"}
                             </Button>
                         </CardContent>
                     </Card>
