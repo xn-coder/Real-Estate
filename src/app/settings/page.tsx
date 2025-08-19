@@ -187,7 +187,7 @@ export default function SettingsPage() {
 
         const salt = await bcrypt.genSalt(10)
         const hashedPassword = await bcrypt.hash(values.password, salt)
-        const userId = generateUserId("ADM")
+        const userId = generateUserId("SEL")
 
         await setDoc(doc(db, "users", userId), {
             id: userId,
