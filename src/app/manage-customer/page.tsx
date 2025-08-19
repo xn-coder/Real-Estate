@@ -23,13 +23,6 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
-const statusColors: { [key: string]: "default" | "secondary" | "destructive" } = {
-  active: 'default',
-  inactive: 'secondary',
-};
-
-const filterStatuses: (CustomerUser['status'] | 'all')[] = ['all', 'active', 'inactive'];
-
 export default function ManageCustomerPage() {
   const { toast } = useToast()
   const router = useRouter();
@@ -38,7 +31,7 @@ export default function ManageCustomerPage() {
   const [customers, setCustomers] = React.useState<CustomerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("");
-  const [activeFilter, setActiveFilter] = React.useState<CustomerUser['status'] | 'all'>("all");
+  const [activeFilter, setActiveFilter] = React.useState<string>("all");
 
   const partnerIdFilter = searchParams.get('partnerId');
 
@@ -51,7 +44,6 @@ export default function ManageCustomerPage() {
         const leadsCollection = collection(db, "leads");
 
         if (partnerIdFilter) {
-            // If a partnerId is provided in the URL, fetch customers for that partner
             const partnerLeadsQuery = query(leadsCollection, where("partnerId", "==", partnerIdFilter));
             const partnerLeadsSnapshot = await getDocs(partnerLeadsQuery);
             const customerIds = [...new Set(partnerLeadsSnapshot.docs.map(doc => (doc.data() as Lead).customerId).filter(id => id))];
@@ -124,7 +116,7 @@ export default function ManageCustomerPage() {
   
   const filteredCustomers = React.useMemo(() => {
     return customers.filter(customer => {
-        const statusMatch = activeFilter === 'all' || (customer.status || 'active') === activeFilter;
+        const statusMatch = activeFilter === 'all' || (customer.status || 'New lead') === activeFilter;
         const searchMatch = searchTerm === "" ||
             customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -149,13 +141,6 @@ export default function ManageCustomerPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as CustomerUser['status'] | 'all')}>
-          <TabsList>
-            {filterStatuses.map(status => (
-                 <TabsTrigger key={status} value={status} className="capitalize">{status}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
       </div>
 
       <div className="border rounded-lg overflow-x-auto">
@@ -188,8 +173,8 @@ export default function ManageCustomerPage() {
               <TableRow key={customer.id}>
                 <TableCell className="font-medium">{customer.name}</TableCell>
                  <TableCell>
-                    <Badge variant={statusColors[customer.status || 'active'] || 'default'} className="capitalize">
-                        {customer.status || 'active'}
+                    <Badge variant={"outline"} className="capitalize">
+                        {customer.status || 'New lead'}
                     </Badge>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">{customer.email}</TableCell>

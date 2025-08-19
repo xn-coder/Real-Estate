@@ -1,5 +1,6 @@
 
 import type { Timestamp } from "firebase/firestore";
+import type { DealStatus } from "./lead";
 
 export type User = {
   id: string
@@ -11,7 +12,7 @@ export type User = {
   password?: string
   whatsappNumber?: string;
   role: string
-  status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended' | 'pending_verification';
+  status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended' | 'pending_verification' | DealStatus;
   profileImage?: string;
   dob?: Date;
   gender?: "male" | "female" | "other";

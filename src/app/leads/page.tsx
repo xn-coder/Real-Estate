@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw, Pencil, Search, FileCog, Edit } from "lucide-react"
+import { MoreHorizontal, Loader2, Calendar as CalendarIcon, Eye, Building, User as UserIcon, Send, RefreshCw, Pencil, Search, FileCog, Edit, Download } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +44,8 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { utils, writeFile } from 'xlsx';
+
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
   'New lead': 'default',
@@ -83,7 +85,7 @@ const filterStatuses: (LeadStatus | 'All')[] = ['All', 'New lead', 'Contacted', 
 const leadStatusOptions: LeadStatus[] = ['New lead', 'Contacted', 'Interested', 'Site visit scheduled', 'Site visited', 'In negotiation', 'Booking confirmed', 'Deal closed', 'Follow-up required', 'Lost lead'];
 const dealStatusOptions: DealStatus[] = ['New lead', 'Contacted', 'Interested', 'site visit scheduled', 'site visit done', 'negotiation in progress', 'booking form filled', 'booking amount received', 'property reserved', 'kyc documents collected', 'agreement drafted', 'agreement signed', 'part payment pending', 'payment in progress', 'registration done', 'handover/possession given', 'booking cancelled'];
 
-export default function LeadsPage() {
+export default function ManageBookingPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
@@ -265,12 +267,9 @@ export default function LeadsPage() {
         const leadRef = doc(db, 'leads', selectedLeadForDealStatus.id);
         batch.update(leadRef, { dealStatus: newDealStatus });
 
-        // Also update the customer's status based on the deal status
         if (selectedLeadForDealStatus.customerId) {
             const customerRef = doc(db, 'users', selectedLeadForDealStatus.customerId);
-            const isCustomerActive = newDealStatus !== 'booking cancelled';
-            const newCustomerStatus = isCustomerActive ? 'active' : 'inactive';
-            batch.update(customerRef, { status: newCustomerStatus });
+            batch.update(customerRef, { status: newDealStatus });
         }
         
         await batch.commit();
@@ -350,12 +349,49 @@ export default function LeadsPage() {
         setIsSending(false);
     }
   }
+  
+    const exportToCSV = () => {
+        const dataToExport = filteredLeads.map(lead => ({
+            "Catalog Code": lead.propertyId,
+            "Full Name": lead.name,
+            "Email": lead.email,
+            "Phone No.": lead.phone,
+            "Lead Status": lead.status,
+            "Deal Status": lead.dealStatus,
+            "Created At": new Date(lead.createdAt.seconds * 1000).toLocaleString(),
+        }));
+        const worksheet = utils.json_to_sheet(dataToExport);
+        const workbook = utils.book_new();
+        utils.book_append_sheet(workbook, worksheet, "Bookings");
+        writeFile(workbook, "Bookings_Export.csv");
+    };
+
+    const exportToExcel = () => {
+        const dataToExport = filteredLeads.map(lead => ({
+            "Catalog Code": lead.propertyId,
+            "Full Name": lead.name,
+            "Email": lead.email,
+            "Phone No.": lead.phone,
+            "Lead Status": lead.status,
+            "Deal Status": lead.dealStatus,
+            "Created At": new Date(lead.createdAt.seconds * 1000).toLocaleString(),
+        }));
+        const worksheet = utils.json_to_sheet(dataToExport);
+        const workbook = utils.book_new();
+        utils.book_append_sheet(workbook, worksheet, "Bookings");
+        writeFile(workbook, "Bookings_Export.xlsx");
+    };
 
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Leads</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Booking</h1>
+         <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => router.push('/manage-customer')}>Manage Customer</Button>
+            <Button variant="outline" onClick={exportToCSV}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
+            <Button variant="outline" onClick={exportToExcel}><Download className="mr-2 h-4 w-4" /> Export Excel</Button>
+        </div>
       </div>
 
        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
