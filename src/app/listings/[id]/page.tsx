@@ -197,15 +197,6 @@ export default function PropertyDetailsPage() {
 
         setIsOtpSending(true);
         try {
-            const leadsRef = collection(db, "leads");
-            const q = query(leadsRef, where("partnerId", "==", user.id), where("propertyId", "==", propertyId));
-            const querySnapshot = await getDocs(q);
-
-            if (!querySnapshot.empty) {
-                toast({ variant: "destructive", title: "Already Enquired", description: "You have already submitted an enquiry for this property." });
-                return;
-            }
-            
             const email = enquiryForm.getValues("email");
             await sendOtp(email);
             setIsOtpDialogOpen(true);
