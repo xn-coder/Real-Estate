@@ -45,22 +45,16 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
-  'New': 'default',
-  'Link Share': 'default',
-  'In Progress': 'default',
-  'Sale': 'default',
-  'Partially Completed': 'default',
-  'Sale Completed': 'outline',
-  'Application Rejected': 'destructive',
-  'Lead Expired': 'destructive',
-
+  'New lead': 'default',
   'Contacted': 'secondary',
-  'Qualified': 'outline',
-  'Lost': 'destructive',
-  'Forwarded': 'outline',
-  'Pending': 'secondary',
-  'Processing': 'default',
-  'Completed': 'outline',
+  'Interested': 'secondary',
+  'Site visit scheduled': 'secondary',
+  'Site visited': 'secondary',
+  'In negotiation': 'outline',
+  'Booking confirmed': 'outline',
+  'Deal closed': 'default',
+  'Follow-up required': 'secondary',
+  'Lost lead': 'destructive',
 }
 
 const dealStatusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
@@ -84,8 +78,8 @@ const dealStatusColors: { [key: string]: "default" | "secondary" | "outline" | "
 }
 
 
-const filterStatuses: (LeadStatus | 'All')[] = ['All', 'New', 'In Progress', 'Sale', 'Sale Completed', 'Application Rejected'];
-const leadStatusOptions: LeadStatus[] = ['Link Share', 'In Progress', 'Sale', 'Partially Completed', 'Sale Completed', 'Application Rejected', 'Lead Expired'];
+const filterStatuses: (LeadStatus | 'All')[] = ['All', 'New lead', 'Contacted', 'Interested', 'Booking confirmed', 'Deal closed', 'Lost lead'];
+const leadStatusOptions: LeadStatus[] = ['New lead', 'Contacted', 'Interested', 'Site visit scheduled', 'Site visited', 'In negotiation', 'Booking confirmed', 'Deal closed', 'Follow-up required', 'Lost lead'];
 const dealStatusOptions: DealStatus[] = ['New lead', 'Contacted', 'Interested', 'site visit scheduled', 'site visit done', 'negotiation in progress', 'booking form filled', 'booking amount received', 'property reserved', 'kyc documents collected', 'agreement drafted', 'agreement signed', 'part payment pending', 'payment in progress', 'registration done', 'handover/possession given', 'booking cancelled'];
 
 export default function LeadsPage() {
@@ -153,6 +147,7 @@ export default function LeadsPage() {
               id: doc.id,
               ...data,
               createdAt: (data.createdAt as Timestamp).toDate(),
+              status: data.status || 'New lead',
               dealStatus: data.dealStatus || 'New lead',
           } as Lead;
       });
@@ -327,7 +322,7 @@ export default function LeadsPage() {
 
         const originalLeadRef = doc(db, 'leads', lead.id);
         await updateDoc(originalLeadRef, {
-            status: 'New', // Or whatever its original status was
+            status: 'New lead', // Or whatever its original status was
             forwardedTo: null,
         });
         
@@ -363,7 +358,7 @@ export default function LeadsPage() {
         <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as LeadStatus | 'All')}>
           <TabsList>
             {filterStatuses.map(status => (
-                 <TabsTrigger key={status} value={status}>{status}</TabsTrigger>
+                 <TabsTrigger key={status} value={status} className="capitalize">{status}</TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
@@ -412,7 +407,7 @@ export default function LeadsPage() {
                         <TableCell className="whitespace-nowrap">{lead.email}</TableCell>
                         <TableCell className="whitespace-nowrap">{lead.phone}</TableCell>
                         <TableCell>
-                            <Badge variant={statusColors[lead.status] || 'default'}>{lead.status}</Badge>
+                            <Badge variant={statusColors[lead.status] || 'default'} className="capitalize">{lead.status}</Badge>
                             {lead.status === 'Forwarded' && (
                                 <p className="text-xs text-muted-foreground">to {lead.forwardedTo?.partnerName}</p>
                             )}
@@ -560,7 +555,7 @@ export default function LeadsPage() {
                            {leadStatusOptions.map(status => (
                                 <Label key={status} htmlFor={status} className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
                                     <RadioGroupItem value={status} id={status} />
-                                    <p className="font-medium">{status}</p>
+                                    <p className="font-medium capitalize">{status}</p>
                                 </Label>
                             ))}
                         </div>

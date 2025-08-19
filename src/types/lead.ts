@@ -1,7 +1,7 @@
 
 import type { Timestamp } from "firebase/firestore";
 
-export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Lost' | 'Forwarded' | 'Pending' | 'Processing' | 'Completed' | 'Link Share' | 'In Progress' | 'Sale' | 'Partially Completed' | 'Sale Completed' | 'Application Rejected' | 'Lead Expired';
+export type LeadStatus = 'New lead' | 'Contacted' | 'Interested' | 'Site visit scheduled' | 'Site visited' | 'In negotiation' | 'Booking confirmed' | 'Deal closed' | 'Follow-up required' | 'Lost lead' | 'Forwarded';
 
 export type DealStatus = 'New lead' | 'Contacted' | 'Interested' | 'site visit scheduled' | 'site visit done' | 'negotiation in progress' | 'booking form filled' | 'booking amount received' | 'property reserved' | 'kyc documents collected' | 'agreement drafted' | 'agreement signed' | 'part payment pending' | 'payment in progress' | 'registration done' | 'handover/possession given' | 'booking cancelled';
 
