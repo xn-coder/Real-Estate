@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from "react"
@@ -17,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2, ArrowLeft, Search } from "lucide-react"
+import { Loader2, ArrowLeft, Search, CheckCircle, XCircle, Paperclip } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
@@ -29,7 +30,8 @@ import { format } from "date-fns"
 import type { User } from "@/types/user"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const requestFormSchema = z.object({
   amount: z.coerce.number().min(100, "Withdrawal amount must be at least ₹100."),
@@ -41,6 +43,28 @@ const requestFormSchema = z.object({
 });
 
 type RequestFormValues = z.infer<typeof requestFormSchema>
+
+const approvalFormSchema = z.object({
+    amountPaid: z.coerce.number().min(1, "Amount must be greater than 0."),
+    paymentMethod: z.string().min(1, "Payment method is required."),
+    proofOfPayment: z.any().optional(),
+    rejectionReason: z.string().optional(),
+});
+type ApprovalFormValues = z.infer<typeof approvalFormSchema>;
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
 
 const statusColors: Record<WithdrawalRequest['status'], "default" | "secondary" | "destructive"> = {
     Pending: 'secondary',
@@ -63,6 +87,10 @@ export default function WithdrawalRequestPage() {
   
   const [mainSearchTerm, setMainSearchTerm] = React.useState("");
   const [activeFilter, setActiveFilter] = React.useState<WithdrawalRequest['status'] | 'all'>('all');
+  
+  const [selectedRequest, setSelectedRequest] = React.useState<WithdrawalRequest | null>(null);
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+
 
   const isAdmin = user?.role === 'admin';
   const isSeller = user?.role === 'seller';
@@ -74,6 +102,12 @@ export default function WithdrawalRequestPage() {
     resolver: zodResolver(requestFormSchema),
     defaultValues: { amount: 100, notes: "" },
   })
+
+  const approvalForm = useForm<ApprovalFormValues>({
+    resolver: zodResolver(approvalFormSchema),
+  });
+
+  const proofFile = approvalForm.watch("proofOfPayment");
   
   const fetchRequests = React.useCallback(async () => {
     if (!user) return;
@@ -164,15 +198,28 @@ export default function WithdrawalRequestPage() {
     }
   }
 
-  const handleUpdateRequest = async (requestId: string, newStatus: 'Approved' | 'Rejected') => {
-    setIsUpdating(requestId);
+  const handleUpdateRequest = async (values: ApprovalFormValues) => {
+    if (!selectedRequest) return;
+    setIsUpdating(selectedRequest.id);
     try {
-        await updateDoc(doc(db, "withdrawal_requests", requestId), {
+        const isApproved = !values.rejectionReason;
+        const newStatus = isApproved ? 'Approved' : 'Rejected';
+
+        const proofOfPaymentUrl = values.proofOfPayment ? await fileToDataUrl(values.proofOfPayment) : null;
+        
+        await updateDoc(doc(db, "withdrawal_requests", selectedRequest.id), {
             status: newStatus,
             processedAt: Timestamp.now(),
+            amountPaid: isApproved ? values.amountPaid : 0,
+            paymentMethod: isApproved ? values.paymentMethod : null,
+            proofOfPayment: proofOfPaymentUrl,
+            rejectionReason: isApproved ? null : values.rejectionReason,
         });
+
         toast({ title: "Success", description: `Request has been ${newStatus.toLowerCase()}.` });
         fetchRequests();
+        setIsApprovalDialogOpen(false);
+
     } catch(error) {
         console.error("Error updating request:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to update request." });
@@ -206,6 +253,17 @@ export default function WithdrawalRequestPage() {
     form.clearErrors("sellerId");
     setSellerSearchTerm("");
   }
+  
+  const openApprovalDialog = (request: WithdrawalRequest) => {
+    setSelectedRequest(request);
+    approvalForm.reset({
+        amountPaid: request.amount,
+        paymentMethod: undefined,
+        proofOfPayment: undefined,
+        rejectionReason: ""
+    });
+    setIsApprovalDialogOpen(true);
+  };
 
 
   if (isUserLoading) {
@@ -380,14 +438,9 @@ export default function WithdrawalRequestPage() {
                                     {canManage && (
                                         <TableCell className="text-right">
                                             {request.status === 'Pending' ? (
-                                                <div className="space-x-2">
-                                                    <Button size="sm" variant="outline" disabled={!!isUpdating} onClick={() => handleUpdateRequest(request.id, 'Approved')}>
-                                                        {isUpdating === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : "Approve"}
-                                                    </Button>
-                                                     <Button size="sm" variant="destructive" disabled={!!isUpdating} onClick={() => handleUpdateRequest(request.id, 'Rejected')}>
-                                                        {isUpdating === request.id ? <Loader2 className="h-4 w-4 animate-spin"/> : "Reject"}
-                                                    </Button>
-                                                </div>
+                                                <Button size="sm" variant="outline" onClick={() => openApprovalDialog(request)}>
+                                                    Manage
+                                                </Button>
                                             ) : (
                                                 <span className="text-xs text-muted-foreground">Processed</span>
                                             )}
@@ -401,6 +454,94 @@ export default function WithdrawalRequestPage() {
             </div>
         </CardContent>
       </Card>
+      
+      <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Process Withdrawal Request</DialogTitle>
+                <DialogDescription>Approve or reject the request for {selectedRequest?.userName}.</DialogDescription>
+            </DialogHeader>
+            <Form {...approvalForm}>
+                <form onSubmit={approvalForm.handleSubmit(handleUpdateRequest)} className="space-y-4">
+                    <div className="p-2 border rounded-md">
+                        <p className="text-sm font-medium">Request Amount: <span className="font-bold">₹{selectedRequest?.amount.toLocaleString()}</span></p>
+                    </div>
+                     <FormField
+                        control={approvalForm.control}
+                        name="amountPaid"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Amount Paid</FormLabel>
+                                <FormControl>
+                                    <Input type="number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={approvalForm.control}
+                        name="paymentMethod"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Payment Method</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                                        <SelectItem value="UPI">UPI</SelectItem>
+                                        <SelectItem value="Cash">Cash</SelectItem>
+                                        <SelectItem value="Other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={approvalForm.control}
+                        name="proofOfPayment"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Proof of Payment</FormLabel>
+                                <FormControl>
+                                    <Input type="file" accept="image/*,application/pdf" onChange={(e) => field.onChange(e.target.files?.[0])}/>
+                                </FormControl>
+                                {proofFile && <div className="text-sm pt-2 text-muted-foreground flex items-center gap-2"><Paperclip className="h-4 w-4" />{proofFile.name}</div>}
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <div className="border-t pt-4 space-y-2">
+                         <FormField
+                            control={approvalForm.control}
+                            name="rejectionReason"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Reason for Rejection (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="If rejecting, provide a reason..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    <DialogFooter className="gap-2 sm:justify-between">
+                         <Button type="button" variant="destructive" onClick={() => approvalForm.handleSubmit((values) => handleUpdateRequest({...values, rejectionReason: values.rejectionReason || "Request rejected by admin."}))()} disabled={!!isUpdating}>
+                            <XCircle className="mr-2 h-4 w-4"/> Reject
+                        </Button>
+                         <Button type="submit" disabled={!!isUpdating}>
+                            {isUpdating === selectedRequest?.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                            Approve
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

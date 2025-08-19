@@ -23,9 +23,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { db } from "@/lib/firebase"
+import { doc, getDoc } from "firebase/firestore"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Loader2, ArrowLeft, Wallet, Paperclip } from "lucide-react"
 import Link from "next/link"
+import { useUser } from "@/hooks/use-user"
+import bcrypt from "bcryptjs"
+
 
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -60,6 +65,7 @@ const manageWalletSchema = z.object({
     required_error: "Please select a payment method.",
   }),
   proof: z.any().optional(),
+  adminPassword: z.string().min(1, "Admin password is required."),
 }).refine(data => {
     if ((data.transactionType === "send_partner" || data.transactionType === "send_customer") && !data.recipientId) {
         return false;
@@ -74,12 +80,14 @@ type ManageWalletForm = z.infer<typeof manageWalletSchema>
 
 export default function ManageWalletPage() {
   const { toast } = useToast()
+  const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const form = useForm<ManageWalletForm>({
     resolver: zodResolver(manageWalletSchema),
     defaultValues: {
       amount: 0,
+      adminPassword: "",
     },
   })
 
@@ -87,26 +95,48 @@ export default function ManageWalletPage() {
   const proofFile = form.watch("proof");
 
   async function onSubmit(values: ManageWalletForm) {
+    if(!user) return;
     setIsSubmitting(true)
     
-    let proofUrl = "";
-    if (values.proof) {
-        proofUrl = await fileToDataUrl(values.proof);
-        console.log("Proof of transaction uploaded (Data URL):", proofUrl.substring(0, 100) + "...");
+    try {
+        const adminDocRef = doc(db, "users", user.id);
+        const adminDoc = await getDoc(adminDocRef);
+        if(!adminDoc.exists()) {
+            toast({ variant: "destructive", title: "Authentication Failed", description: "Admin user not found."});
+            setIsSubmitting(false);
+            return;
+        }
+
+        const isPasswordValid = await bcrypt.compare(values.adminPassword, adminDoc.data().password);
+        if (!isPasswordValid) {
+            form.setError("adminPassword", { message: "Incorrect password." });
+            setIsSubmitting(false);
+            return;
+        }
+
+        let proofUrl = "";
+        if (values.proof) {
+            proofUrl = await fileToDataUrl(values.proof);
+        }
+
+        const submissionData = { ...values, proofUrl };
+        delete submissionData.proof;
+        delete submissionData.adminPassword;
+
+        console.log("Transaction Data:", submissionData)
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        toast({
+        title: "Transaction Successful",
+        description: "The transaction has been processed successfully.",
+        })
+        form.reset({ amount: 0, adminPassword: "" });
+    } catch (error) {
+        console.error("Transaction Error:", error);
+        toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred." });
+    } finally {
+        setIsSubmitting(false)
     }
-
-    const submissionData = { ...values, proofUrl };
-    delete submissionData.proof;
-
-    console.log(submissionData)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    toast({
-      title: "Transaction Successful",
-      description: "The transaction has been processed successfully.",
-    })
-    form.reset({ amount: 0 });
-    setIsSubmitting(false)
   }
 
   return (
@@ -240,6 +270,20 @@ export default function ManageWalletPage() {
                     </FormItem>
                 )}
               />
+
+                <FormField
+                    control={form.control}
+                    name="adminPassword"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Admin Password</FormLabel>
+                        <FormControl>
+                        <Input type="password" placeholder="Enter your password to confirm" {...field} disabled={isSubmitting} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
 
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
