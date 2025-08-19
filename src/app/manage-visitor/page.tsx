@@ -11,10 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Building, User, Users, Search } from "lucide-react"
+import { Loader2, Eye, Building, User, Users, Search, CheckCircle, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, getDoc, Timestamp } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, getDoc, Timestamp, updateDoc } from "firebase/firestore"
 import type { User as UserType } from "@/types/user"
 import type { Appointment } from "@/types/appointment"
 import type { Property } from "@/types/property"
@@ -36,12 +36,10 @@ type VisitWithProof = {
 
 type AggregatedVisit = {
   id: string; // Unique key for aggregation
+  appointment: Appointment;
   customer?: UserType;
   partner?: UserType;
   property?: Property;
-  status: Appointment['status'];
-  visitCount: number;
-  visits: VisitWithProof[];
 };
 
 export default function ManageVisitorPage() {
@@ -50,6 +48,7 @@ export default function ManageVisitorPage() {
   const { user } = useUser();
   const [allVisits, setAllVisits] = React.useState<AggregatedVisit[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [isUpdating, setIsUpdating] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("")
   const [activeFilter, setActiveFilter] = React.useState<Appointment['status'] | 'all'>('all');
 
@@ -85,7 +84,7 @@ export default function ManageVisitorPage() {
       const appointmentsSnapshot = await getDocs(appointmentsQuery);
       
       const detailedVisitsPromises = appointmentsSnapshot.docs.map(async (appointmentDoc) => {
-        const appointmentData = appointmentDoc.data() as Appointment;
+        const appointmentData = { id: appointmentDoc.id, ...appointmentDoc.data() } as Appointment;
         
         const [customerDoc, partnerDoc, propertyDoc] = await Promise.all([
             appointmentData.customerId ? getDoc(doc(db, "users", appointmentData.customerId)) : null,
@@ -95,41 +94,15 @@ export default function ManageVisitorPage() {
 
         return {
             id: appointmentDoc.id,
-            status: appointmentData.status,
+            appointment: appointmentData,
             customer: customerDoc?.exists() ? { id: customerDoc.id, ...customerDoc.data() } as UserType : undefined,
             partner: partnerDoc.exists() ? { id: partnerDoc.id, ...partnerDoc.data() } as UserType : undefined,
             property: propertyDoc.exists() ? { id: propertyDoc.id, ...propertyDoc.data() } as Property : undefined,
-            visitDate: (appointmentData.visitDate as Timestamp).toDate(),
-            visitProofUrl: appointmentData.visitProofUrl
         };
       });
 
       const detailedVisits = await Promise.all(detailedVisitsPromises);
-
-      const aggregatedVisitsMap = new Map<string, AggregatedVisit>();
-
-      for (const visit of detailedVisits) {
-          if (!visit.customer || !visit.partner || !visit.property) continue;
-
-          const key = `${visit.customer.id}-${visit.partner.id}-${visit.property.id}`;
-          if (aggregatedVisitsMap.has(key)) {
-              const existing = aggregatedVisitsMap.get(key)!;
-              existing.visitCount += 1;
-              existing.visits.push({ date: visit.visitDate, proofUrl: visit.visitProofUrl });
-          } else {
-              aggregatedVisitsMap.set(key, {
-                  id: key,
-                  customer: visit.customer,
-                  partner: visit.partner,
-                  property: visit.property,
-                  status: visit.status,
-                  visitCount: 1,
-                  visits: [{ date: visit.visitDate, proofUrl: visit.visitProofUrl }],
-              });
-          }
-      }
-
-      setAllVisits(Array.from(aggregatedVisitsMap.values()));
+      setAllVisits(detailedVisits);
 
     } catch (error) {
       console.error("Error fetching visitors:", error)
@@ -142,6 +115,19 @@ export default function ManageVisitorPage() {
       setIsLoading(false)
     }
   }, [user, toast]);
+  
+  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Rejected') => {
+    setIsUpdating(true);
+    try {
+        await updateDoc(doc(db, "appointments", appointmentId), { status });
+        toast({ title: "Success", description: `Visit has been ${status.toLowerCase()}.` });
+        fetchConfirmedVisits();
+    } catch (error) {
+        toast({ variant: 'destructive', title: "Error", description: "Failed to update visit status." });
+    } finally {
+        setIsUpdating(false);
+    }
+  }
 
   React.useEffect(() => {
     if (user) {
@@ -153,7 +139,7 @@ export default function ManageVisitorPage() {
     return allVisits
       .filter(visit => {
         if (activeFilter === 'all') return true;
-        return visit.status.toLowerCase() === activeFilter.toLowerCase();
+        return visit.appointment.status.toLowerCase() === activeFilter.toLowerCase();
       })
       .filter(visit => {
         if (!searchTerm) return true;
@@ -186,6 +172,7 @@ export default function ManageVisitorPage() {
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="Scheduled">Scheduled</TabsTrigger>
+            <TabsTrigger value="Pending Verification">Pending Verification</TabsTrigger>
             <TabsTrigger value="Completed">Completed</TabsTrigger>
             <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
           </TabsList>
@@ -198,7 +185,7 @@ export default function ManageVisitorPage() {
               <TableHead>Visitor Name</TableHead>
               <TableHead>Associated Partner</TableHead>
               <TableHead>Property Visited</TableHead>
-              <TableHead>No. of Visits</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -244,52 +231,42 @@ export default function ManageVisitorPage() {
                     )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{visit.visitCount}</Badge>
+                    <Badge variant={visit.appointment.status === 'Completed' ? 'default' : 'secondary'}>
+                        {visit.appointment.status}
+                    </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <Eye className="h-4 w-4" />
-                                <span className="sr-only">View Visit Dates</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Visit History</DialogTitle>
-                                <DialogDescription>
-                                    All confirmed visit dates for {visit.customer?.name} at {visit.property?.catalogTitle}.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="max-h-60 overflow-y-auto">
-                                <ul className="space-y-2">
-                                    {visit.visits.sort((a,b) => b.date.getTime() - a.date.getTime()).map((v, index) => (
-                                        <li key={index} className="text-sm p-2 bg-muted rounded-md flex justify-between items-center">
-                                            <span>{format(v.date, "PPP")}</span>
-                                            {v.proofUrl && (
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button variant="outline" size="sm">View Proof</Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="max-h-[90vh] overflow-y-auto">
-                                                        <DialogHeader>
-                                                            <DialogTitle>Visit Proof</DialogTitle>
-                                                            <DialogDescription>
-                                                                Image uploaded for visit on {format(v.date, "PPP")}.
-                                                            </DialogDescription>
-                                                        </DialogHeader>
-                                                        <div className="p-4 flex justify-center">
-                                                            <Image src={v.proofUrl} alt="Visit proof" width={600} height={800} className="max-w-full max-h-[70vh] h-auto rounded-lg object-contain" />
-                                                        </div>
-                                                    </DialogContent>
-                                                </Dialog>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                    {visit.appointment.status === 'Pending Verification' ? (
+                        <div className="flex gap-2 justify-end">
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                        <Eye className="mr-2 h-4 w-4"/> View Proof
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                                    <DialogHeader>
+                                        <DialogTitle>Visit Proof</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="p-4 flex justify-center">
+                                        {visit.appointment.visitProofUrl ? (
+                                            <Image src={visit.appointment.visitProofUrl} alt="Visit proof" width={600} height={800} className="max-w-full max-h-[70vh] h-auto rounded-lg object-contain" />
+                                        ) : <p>No proof uploaded.</p>}
+                                    </div>
+                                    <DialogFooter className="gap-2 sm:justify-between">
+                                        <Button variant="destructive" onClick={() => handleUpdateStatus(visit.id, 'Rejected')} disabled={isUpdating}>
+                                            <XCircle className="mr-2 h-4 w-4" /> Reject
+                                        </Button>
+                                        <Button onClick={() => handleUpdateStatus(visit.id, 'Completed')} disabled={isUpdating}>
+                                            <CheckCircle className="mr-2 h-4 w-4" /> Approve
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    ) : (
+                        <span className="text-xs text-muted-foreground">No action needed</span>
+                    )}
                 </TableCell>
               </TableRow>
             ))}

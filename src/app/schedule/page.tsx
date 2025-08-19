@@ -4,7 +4,7 @@
 import React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle, Ban, Building, Upload } from "lucide-react"
+import { PlusCircle, Loader2, Map, Calendar as CalendarIcon, X, MoreHorizontal, CheckCircle, Ban, Building, Upload, Hourglass } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, getDoc, updateDoc } from "firebase/firestore"
@@ -187,7 +187,7 @@ export default function SchedulePage() {
     setIsMapOpen(true);
   }
   
-  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Cancelled', proofUrl?: string) => {
+  const handleUpdateStatus = async (appointmentId: string, status: Appointment['status'], proofUrl?: string) => {
       setIsUpdating(appointmentId);
       try {
           const appointmentRef = doc(db, "appointments", appointmentId);
@@ -198,7 +198,7 @@ export default function SchedulePage() {
           await updateDoc(appointmentRef, updateData);
           toast({ title: `Visit ${status}`, description: `The appointment status has been updated to '${status}'.`});
           fetchAppointments();
-          if (status === 'Completed') {
+          if (status === 'Pending Verification') {
               setIsConfirmVisitOpen(false);
           }
       } catch (error) {
@@ -219,7 +219,7 @@ export default function SchedulePage() {
         toast({ variant: 'destructive', title: "Missing Proof", description: "Please upload an image as proof of visit." });
         return;
     }
-    await handleUpdateStatus(selectedAppointment.id, 'Completed', visitProofUrl);
+    await handleUpdateStatus(selectedAppointment.id, 'Pending Verification', visitProofUrl);
   };
 
 
@@ -254,6 +254,8 @@ export default function SchedulePage() {
               return <Badge>Confirmed</Badge>;
           case 'Cancelled':
               return <Badge variant="destructive">Cancelled</Badge>;
+          case 'Pending Verification':
+              return <Badge variant="outline">Pending Verification</Badge>;
           default:
               return <Badge variant="outline">{status}</Badge>;
       }
@@ -480,7 +482,7 @@ export default function SchedulePage() {
                 <DialogHeader>
                     <DialogTitle>Confirm Site Visit</DialogTitle>
                     <DialogDescription>
-                        Upload proof of the visit for {selectedAppointment?.lead?.name}.
+                        Upload proof of the visit for {selectedAppointment?.lead?.name}. This will be sent for verification.
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4">

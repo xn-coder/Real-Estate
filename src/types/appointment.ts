@@ -8,7 +8,7 @@ export type Appointment = {
     partnerId: string;
     customerId: string;
     visitDate: Date | Timestamp;
-    status: 'Scheduled' | 'Completed' | 'Cancelled';
+    status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Pending Verification' | 'Rejected';
     createdAt: Date | Timestamp;
     notes?: string;
     visitProofUrl?: string;
