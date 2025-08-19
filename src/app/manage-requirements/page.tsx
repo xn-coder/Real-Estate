@@ -12,17 +12,26 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, Eye, Search, Building, User as UserIcon, DollarSign, Ruler } from "lucide-react"
+import { Loader2, Eye, Search, Building, User as UserIcon, DollarSign, Ruler, MapPin, Sparkles, Sofa, List, ShieldCheck, Calendar as CalendarIcon, Phone, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, orderBy, Timestamp, where } from "firebase/firestore"
-import type { Requirement } from "@/types/requirement"
+import type { Property } from "@/types/property"
 import { format } from "date-fns"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useUser } from "@/hooks/use-user"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
+// Requirements will now be based on the Property type
+type Requirement = Property & {
+    createdAt: Date | Timestamp;
+    userName: string;
+    userEmail: string;
+    userPhone: string;
+}
 
 export default function ManageRequirementsPage() {
   const { toast } = useToast()
@@ -42,7 +51,7 @@ export default function ManageRequirementsPage() {
       if (user.role === 'admin') {
         q = query(requirementsRef, orderBy("createdAt", "desc"))
       } else {
-        q = query(requirementsRef, where("userId", "==", user.id), orderBy("createdAt", "desc"));
+        q = query(requirementsRef, where("ownerId", "==", user.id), orderBy("createdAt", "desc"));
       }
 
       const snapshot = await getDocs(q)
@@ -76,8 +85,8 @@ export default function ManageRequirementsPage() {
   const filteredRequirements = React.useMemo(() => {
     return requirements.filter(req =>
       req.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.propertyType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.preferredLocation.toLowerCase().includes(searchTerm.toLowerCase())
+      req.propertyCategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      req.locality.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [requirements, searchTerm])
 
@@ -87,7 +96,7 @@ export default function ManageRequirementsPage() {
   }
 
   const pageTitle = user?.role === 'admin' ? "Manage Customer Requirements" : "My Submitted Requirements";
-  const searchPlaceholder = user?.role === 'admin' ? "Search by name, property type, or location..." : "Search your requirements...";
+  const searchPlaceholder = user?.role === 'admin' ? "Search by name, category, or location..." : "Search your requirements...";
 
 
   return (
@@ -134,9 +143,9 @@ export default function ManageRequirementsPage() {
             ) : filteredRequirements.map((req) => (
               <TableRow key={req.id}>
                 {user?.role === 'admin' && <TableCell className="font-medium">{req.userName}</TableCell>}
-                <TableCell>{req.propertyType}</TableCell>
-                <TableCell>₹{req.minBudget.toLocaleString()} - ₹{req.maxBudget.toLocaleString()}</TableCell>
-                <TableCell>{req.preferredLocation}</TableCell>
+                <TableCell>{req.propertyCategory}</TableCell>
+                <TableCell>₹{req.listingPrice.toLocaleString()}</TableCell>
+                <TableCell>{req.locality}</TableCell>
                 <TableCell>{format(req.createdAt, 'PPP')}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="outline" size="sm" onClick={() => handleViewDetails(req)}>
@@ -157,45 +166,22 @@ export default function ManageRequirementsPage() {
           {selectedRequirement && (
             <div className="max-h-[70vh] overflow-y-auto space-y-6 p-1">
                 <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><UserIcon className="h-5 w-5"/> Personal Details</CardTitle></CardHeader>
-                    <CardContent className="text-sm space-y-2">
+                    <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><UserIcon className="h-5 w-5"/> Submitter Details</CardTitle></CardHeader>
+                    <CardContent className="text-sm grid grid-cols-1 md:grid-cols-2 gap-2">
                         <p><strong>Name:</strong> {selectedRequirement.userName}</p>
                         <p><strong>Email:</strong> {selectedRequirement.userEmail}</p>
                         <p><strong>Phone:</strong> {selectedRequirement.userPhone}</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Building className="h-5 w-5"/> Property Details</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Building className="h-5 w-5"/> Core Requirements</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                        <p><strong>Type:</strong> {selectedRequirement.propertyType}</p>
-                        <p><strong>Location:</strong> {selectedRequirement.preferredLocation}</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><DollarSign className="h-5 w-5"/> Budget & Size</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                        <p><strong>Min. Budget:</strong> ₹{selectedRequirement.minBudget.toLocaleString()}</p>
-                        <p><strong>Max. Budget:</strong> ₹{selectedRequirement.maxBudget.toLocaleString()}</p>
-                        <p><strong>Min. Size:</strong> {selectedRequirement.minSize} sqft</p>
-                        <p><strong>Max. Size:</strong> {selectedRequirement.maxSize} sqft</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Ruler className="h-5 w-5"/> Additional Preferences</CardTitle></CardHeader>
-                    <CardContent className="text-sm space-y-3">
-                        <div>
-                            <strong>Furnishing:</strong> <Badge variant="outline" className="capitalize">{selectedRequirement.furnishing}</Badge>
-                        </div>
-                        <div>
-                            <strong>Amenities:</strong>
-                            {selectedRequirement.amenities && selectedRequirement.amenities.length > 0 ? (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {selectedRequirement.amenities.map(amenity => (
-                                        <Badge key={amenity} variant="secondary">{amenity}</Badge>
-                                    ))}
-                                </div>
-                            ) : <p className="text-muted-foreground">No specific amenities listed.</p>}
-                        </div>
+                        <p><strong>Category:</strong> {selectedRequirement.propertyCategory}</p>
+                        <p><strong>Location:</strong> {`${selectedRequirement.locality}, ${selectedRequirement.city}`}</p>
+                        <p><strong>Price:</strong> ₹{selectedRequirement.listingPrice.toLocaleString()}</p>
+                        <p><strong>Area:</strong> {selectedRequirement.builtUpArea} {selectedRequirement.unitOfMeasurement}</p>
+                        <p><strong>Bedrooms:</strong> {selectedRequirement.bedrooms}</p>
+                        <p><strong>Bathrooms:</strong> {selectedRequirement.bathrooms}</p>
                     </CardContent>
                 </Card>
             </div>
