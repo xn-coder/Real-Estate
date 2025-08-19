@@ -31,7 +31,7 @@ import {
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc, deleteDoc } from "firebase/firestore"
-import type { Lead, LeadStatus, ApplicationStatus } from "@/types/lead"
+import type { Lead, LeadStatus, DealStatus } from "@/types/lead"
 import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
@@ -63,27 +63,30 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Completed': 'outline',
 }
 
-const applicationStatusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
-    'Application Not Started': 'secondary',
-    'Application Incompleted': 'secondary',
-    'Documentation Pending': 'secondary',
-    'KYC Pending': 'secondary',
-    'Payment Pending': 'secondary',
-    'Approval Pending from Brand': 'secondary',
-    'Activation Pending': 'secondary',
-    'Packed': 'default',
-    'Shipped': 'default',
-    'Out of Delivery': 'default',
-    'Delivered': 'outline',
-    'Failed Attempt': 'destructive',
-    'Returned': 'destructive',
-    'Cancelled': 'destructive',
+const dealStatusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
+    'New lead': 'secondary',
+    'Contacted': 'secondary',
+    'Interested': 'secondary',
+    'site visit scheduled': 'secondary',
+    'site visit done': 'default',
+    'negotiation in progress': 'default',
+    'booking form filled': 'default',
+    'booking amount received': 'default',
+    'property reserved': 'default',
+    'kyc documents collected': 'outline',
+    'agreement drafted': 'outline',
+    'agreement signed': 'outline',
+    'part payment pending': 'outline',
+    'payment in progress': 'outline',
+    'registration done': 'outline',
+    'handover/possession given': 'outline',
+    'booking cancelled': 'destructive',
 }
 
 
 const filterStatuses: (LeadStatus | 'All')[] = ['All', 'New', 'In Progress', 'Sale', 'Sale Completed', 'Application Rejected'];
 const leadStatusOptions: LeadStatus[] = ['Link Share', 'In Progress', 'Sale', 'Partially Completed', 'Sale Completed', 'Application Rejected', 'Lead Expired'];
-const applicationStatusOptions: ApplicationStatus[] = ['Application Not Started', 'Application Incompleted', 'Documentation Pending', 'KYC Pending', 'Payment Pending', 'Approval Pending from Brand', 'Activation Pending', 'Packed', 'Shipped', 'Out of Delivery', 'Delivered', 'Failed Attempt', 'Returned', 'Cancelled'];
+const dealStatusOptions: DealStatus[] = ['New lead', 'Contacted', 'Interested', 'site visit scheduled', 'site visit done', 'negotiation in progress', 'booking form filled', 'booking amount received', 'property reserved', 'kyc documents collected', 'agreement drafted', 'agreement signed', 'part payment pending', 'payment in progress', 'registration done', 'handover/possession given', 'booking cancelled'];
 
 export default function LeadsPage() {
   const { user } = useUser();
@@ -107,10 +110,10 @@ export default function LeadsPage() {
   const [newLeadStatus, setNewLeadStatus] = React.useState<LeadStatus | null>(null);
   const [isUpdatingLeadStatus, setIsUpdatingLeadStatus] = React.useState(false);
   
-  const [isAppStatusDialogOpen, setIsAppStatusDialogOpen] = React.useState(false);
-  const [selectedLeadForAppStatus, setSelectedLeadForAppStatus] = React.useState<Lead | null>(null);
-  const [newAppStatus, setNewAppStatus] = React.useState<ApplicationStatus | null>(null);
-  const [isUpdatingAppStatus, setIsUpdatingAppStatus] = React.useState(false);
+  const [isDealStatusDialogOpen, setIsDealStatusDialogOpen] = React.useState(false);
+  const [selectedLeadForDealStatus, setSelectedLeadForDealStatus] = React.useState<Lead | null>(null);
+  const [newDealStatus, setNewDealStatus] = React.useState<DealStatus | null>(null);
+  const [isUpdatingDealStatus, setIsUpdatingDealStatus] = React.useState(false);
 
 
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -150,7 +153,7 @@ export default function LeadsPage() {
               id: doc.id,
               ...data,
               createdAt: (data.createdAt as Timestamp).toDate(),
-              applicationStatus: data.applicationStatus || 'Application Not Started',
+              dealStatus: data.dealStatus || 'New lead',
           } as Lead;
       });
       setLeads(leadsData.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
@@ -234,10 +237,10 @@ export default function LeadsPage() {
     setIsLeadStatusDialogOpen(true);
   }
   
-  const handleChangeAppStatusClick = (lead: Lead) => {
-    setSelectedLeadForAppStatus(lead);
-    setNewAppStatus(lead.applicationStatus || 'Application Not Started');
-    setIsAppStatusDialogOpen(true);
+  const handleChangeDealStatusClick = (lead: Lead) => {
+    setSelectedLeadForDealStatus(lead);
+    setNewDealStatus(lead.dealStatus || 'New lead');
+    setIsDealStatusDialogOpen(true);
   }
 
   const handleUpdateLeadStatus = async () => {
@@ -257,20 +260,20 @@ export default function LeadsPage() {
     }
   }
 
-  const handleUpdateAppStatus = async () => {
-    if (!selectedLeadForAppStatus || !newAppStatus) return;
-    setIsUpdatingAppStatus(true);
+  const handleUpdateDealStatus = async () => {
+    if (!selectedLeadForDealStatus || !newDealStatus) return;
+    setIsUpdatingDealStatus(true);
     try {
-      const leadRef = doc(db, 'leads', selectedLeadForAppStatus.id);
-      await updateDoc(leadRef, { applicationStatus: newAppStatus });
-      toast({ title: 'Application Status Updated', description: `Application status updated to ${newAppStatus}.`});
+      const leadRef = doc(db, 'leads', selectedLeadForDealStatus.id);
+      await updateDoc(leadRef, { dealStatus: newDealStatus });
+      toast({ title: 'Deal Status Updated', description: `Deal status updated to ${newDealStatus}.`});
       fetchLeads();
-      setIsAppStatusDialogOpen(false);
+      setIsDealStatusDialogOpen(false);
     } catch (error) {
-       console.error("Error updating application status:", error);
-       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update application status.' });
+       console.error("Error updating deal status:", error);
+       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update deal status.' });
     } finally {
-      setIsUpdatingAppStatus(false);
+      setIsUpdatingDealStatus(false);
     }
   }
 
@@ -376,7 +379,7 @@ export default function LeadsPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Phone No.</TableHead>
                     <TableHead>Lead Status</TableHead>
-                    <TableHead>Application Status</TableHead>
+                    <TableHead>Deal Status</TableHead>
                     <TableHead>
                         <span className="sr-only">Actions</span>
                     </TableHead>
@@ -415,7 +418,7 @@ export default function LeadsPage() {
                             )}
                         </TableCell>
                          <TableCell>
-                            <Badge variant={applicationStatusColors[lead.applicationStatus] || 'default'}>{lead.applicationStatus}</Badge>
+                            <Badge variant={dealStatusColors[lead.dealStatus] || 'default'}>{lead.dealStatus}</Badge>
                         </TableCell>
                         <TableCell>
                         <DropdownMenu>
@@ -443,9 +446,9 @@ export default function LeadsPage() {
                                     <Edit className="mr-2 h-4 w-4" />
                                     Change Lead Status
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleChangeAppStatusClick(lead)}>
+                                <DropdownMenuItem onSelect={() => handleChangeDealStatusClick(lead)}>
                                     <FileCog className="mr-2 h-4 w-4" />
-                                    Change Application Status
+                                    Change Deal Status
                                 </DropdownMenuItem>
                                 </>
                             )}
@@ -573,19 +576,19 @@ export default function LeadsPage() {
             </DialogContent>
         </Dialog>
         
-         {/* Change Application Status Dialog */}
-        <Dialog open={isAppStatusDialogOpen} onOpenChange={setIsAppStatusDialogOpen}>
+         {/* Change Deal Status Dialog */}
+        <Dialog open={isDealStatusDialogOpen} onOpenChange={setIsDealStatusDialogOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Change Application Status</DialogTitle>
+                    <DialogTitle>Change Deal Status</DialogTitle>
                     <DialogDescription>
-                        Update the application status for: {selectedLeadForAppStatus?.name}.
+                        Update the deal status for: {selectedLeadForDealStatus?.name}.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                    <RadioGroup onValueChange={(value) => setNewAppStatus(value as ApplicationStatus)} value={newAppStatus || undefined}>
+                    <RadioGroup onValueChange={(value) => setNewDealStatus(value as DealStatus)} value={newDealStatus || undefined}>
                          <div className="space-y-2 max-h-80 overflow-y-auto">
-                           {applicationStatusOptions.map(status => (
+                           {dealStatusOptions.map(status => (
                                 <Label key={status} htmlFor={status} className="flex items-center gap-3 border rounded-md p-3 cursor-pointer hover:bg-muted">
                                     <RadioGroupItem value={status} id={status} />
                                     <p className="font-medium">{status}</p>
@@ -595,9 +598,9 @@ export default function LeadsPage() {
                     </RadioGroup>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAppStatusDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleUpdateAppStatus} disabled={isUpdatingAppStatus}>
-                        {isUpdatingAppStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Button variant="outline" onClick={() => setIsDealStatusDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleUpdateDealStatus} disabled={isUpdatingDealStatus}>
+                        {isUpdatingDealStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Update Status
                     </Button>
                 </DialogFooter>
