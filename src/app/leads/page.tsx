@@ -431,10 +431,12 @@ export default function LeadsPage() {
                                 <UserIcon className="mr-2 h-4 w-4" />
                                 View Customer
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleScheduleClick(lead)} disabled={lead.status === 'Forwarded'}>
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                Schedule Visit
-                            </DropdownMenuItem>
+                            {user?.role !== 'admin' && (
+                                <DropdownMenuItem onClick={() => handleScheduleClick(lead)} disabled={lead.status === 'Forwarded'}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    Schedule Visit
+                                </DropdownMenuItem>
+                            )}
                             {canChangeStatus && (
                                 <>
                                 <DropdownMenuItem onSelect={() => handleChangeLeadStatusClick(lead)}>
