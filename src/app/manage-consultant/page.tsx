@@ -113,6 +113,13 @@ export default function ManageConsultantPage() {
 
                 let partner: PartnerUser | undefined;
                 let seller: SellerUser | undefined;
+                
+                // Directly assigned seller takes precedence
+                if (customer.teamLeadId) {
+                    const sellerDoc = await getDoc(doc(db, "users", customer.teamLeadId));
+                    if (sellerDoc.exists()) seller = { id: sellerDoc.id, ...sellerDoc.data() } as SellerUser;
+                }
+
 
                 if (!leadsSnapshot.empty) {
                     const lead = leadsSnapshot.docs[0].data() as Lead;
@@ -124,7 +131,8 @@ export default function ManageConsultantPage() {
                         }
                     }
                     
-                    if (lead.propertyId) {
+                    // If no seller is directly assigned, try to infer from property
+                    if (!seller && lead.propertyId) {
                         const propertyDoc = await getDoc(doc(db, "properties", lead.propertyId));
                         if (propertyDoc.exists()) {
                             const propertyData = propertyDoc.data() as Property;
@@ -179,7 +187,10 @@ export default function ManageConsultantPage() {
 
   const filteredConsultantsForDialog = React.useMemo(() => {
       if (!consultantSearchTerm) return [];
-      const listToSearch = activeDialogTab === 'partner' ? allPartners : allSellers;
+      let listToSearch: (PartnerUser | SellerUser)[] = [];
+      if (activeDialogTab === 'partner') listToSearch = allPartners;
+      if (activeDialogTab === 'seller') listToSearch = allSellers.filter(s => s.id.startsWith("SEL") || s.role === 'admin');
+
       return listToSearch.filter(p => p.name.toLowerCase().includes(consultantSearchTerm.toLowerCase()) || p.email.toLowerCase().includes(consultantSearchTerm.toLowerCase()));
   }, [allPartners, allSellers, consultantSearchTerm, activeDialogTab]);
 
@@ -227,36 +238,15 @@ export default function ManageConsultantPage() {
       setIsUpdating(true);
       try {
         if(selectedCustomer) {
-            const batch = writeBatch(db);
             const customer = selectedCustomer.customer;
+            const customerRef = doc(db, "users", customer.id);
+            const batch = writeBatch(db);
 
             if (newConsultant.role === 'seller' || newConsultant.role === 'admin') {
-                const propertiesQuery = query(collection(db, "properties"), where("email", "==", newConsultant.email), limit(1));
-                const propertiesSnapshot = await getDocs(propertiesQuery);
-                if (propertiesSnapshot.empty) {
-                    toast({ variant: 'destructive', title: 'No Properties', description: 'This seller has no properties to create a lead for.' });
-                    setIsUpdating(false);
-                    return;
-                }
-                const property = propertiesSnapshot.docs[0].data() as Property;
-                const newLead = {
-                    name: customer.name,
-                    email: customer.email,
-                    phone: customer.phone,
-                    city: customer.city || '',
-                    state: customer.state || '',
-                    country: customer.country || '',
-                    propertyId: property.id,
-                    partnerId: selectedCustomer.partner?.id || '',
-                    customerId: customer.id,
-                    status: 'New lead',
-                    dealStatus: 'New lead',
-                    createdAt: Timestamp.now(),
-                };
-                const newLeadRef = doc(collection(db, "leads"));
-                batch.set(newLeadRef, newLead);
-
+                // Directly assign seller to customer
+                batch.update(customerRef, { teamLeadId: newConsultant.id });
             } else { // It's a partner
+                // Reassign all of the customer's leads to the new partner
                 const leadsQuery = query(collection(db, "leads"), where("customerId", "==", customer.id));
                 const leadsSnapshot = await getDocs(leadsQuery);
                 if (leadsSnapshot.empty) {
