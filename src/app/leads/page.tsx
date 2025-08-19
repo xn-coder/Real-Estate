@@ -260,17 +260,18 @@ export default function LeadsPage() {
     if (!selectedLeadForDealStatus || !newDealStatus) return;
     setIsUpdatingDealStatus(true);
     try {
-        const leadRef = doc(db, 'leads', selectedLeadForDealStatus.id);
-        const customerRef = doc(db, 'users', selectedLeadForDealStatus.customerId);
-        
-        // Map deal status to a simplified customer status
-        const isCustomerActive = newDealStatus !== 'booking cancelled';
-        const newCustomerStatus = isCustomerActive ? 'active' : 'inactive';
-
         const batch = writeBatch(db);
         
+        const leadRef = doc(db, 'leads', selectedLeadForDealStatus.id);
         batch.update(leadRef, { dealStatus: newDealStatus });
-        batch.update(customerRef, { status: newCustomerStatus });
+
+        // Also update the customer's status based on the deal status
+        if (selectedLeadForDealStatus.customerId) {
+            const customerRef = doc(db, 'users', selectedLeadForDealStatus.customerId);
+            const isCustomerActive = newDealStatus !== 'booking cancelled';
+            const newCustomerStatus = isCustomerActive ? 'active' : 'inactive';
+            batch.update(customerRef, { status: newCustomerStatus });
+        }
         
         await batch.commit();
 
