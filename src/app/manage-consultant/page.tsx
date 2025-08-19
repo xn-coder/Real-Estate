@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Pencil, Search, User as UserIcon, Users, Handshake, Replace } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, getDoc, writeBatch, Timestamp, orderBy, limit, updateDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, getDoc, writeBatch, Timestamp, orderBy, limit, updateDoc, addDoc } from "firebase/firestore"
 import type { User as CustomerUser } from "@/types/user"
 import type { User as PartnerUser } from "@/types/user"
 import type { User as SellerUser } from "@/types/user"
@@ -42,7 +42,7 @@ type PartnerWithSeller = {
 }
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
-const sellerRoles = ['seller']; // Only allow reassigning to actual sellers, not other admins
+const sellerRoles = ['seller', 'admin'];
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
   super_affiliate: 'Super Affiliate Partner',
@@ -81,19 +81,17 @@ export default function ManageConsultantPage() {
     try {
         const usersCollection = collection(db, "users");
         
-        // Fetch Admin profile to show as default seller
         const adminQuery = query(usersCollection, where("role", "==", "admin"), limit(1));
         const adminSnapshot = await getDocs(adminQuery);
         const adminProfile = adminSnapshot.empty ? null : {id: adminSnapshot.docs[0].id, ...adminSnapshot.docs[0].data()} as SellerUser;
 
-        // Fetch All Partners and their assigned sellers
         const allPartnersQuery = query(usersCollection, where("role", "in", partnerRoles));
         const allPartnersSnapshot = await getDocs(allPartnersQuery);
         const partnersList = await Promise.all(
             allPartnersSnapshot.docs.map(async pDoc => {
                 const partnerData = {id: pDoc.id, ...pDoc.data()} as PartnerUser;
                 let seller: SellerUser | undefined;
-                if(partnerData.teamLeadId) { // teamLeadId is used to store assigned seller for partners
+                if(partnerData.teamLeadId) { 
                     const sellerDoc = await getDoc(doc(db, "users", partnerData.teamLeadId));
                     if(sellerDoc.exists()) seller = {id: sellerDoc.id, ...sellerDoc.data()} as SellerUser;
                 }
@@ -104,7 +102,6 @@ export default function ManageConsultantPage() {
         setAllPartners(partnersList.map(p => p.partner));
 
 
-        // Fetch Customers and their assigned consultants
         const customersQuery = query(usersCollection, where("role", "==", "customer"));
         const customersSnapshot = await getDocs(customersQuery);
         const customerList = customersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as CustomerUser));
@@ -159,12 +156,12 @@ export default function ManageConsultantPage() {
     setIsLoadingConsultants(true);
     try {
         const usersCollection = collection(db, "users");
-        // Partners
+        
         const partnersQuery = query(usersCollection, where("role", "in", partnerRoles));
         const partnersSnapshot = await getDocs(partnersQuery);
         setAllPartners(partnersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as PartnerUser)));
 
-        // Sellers
+        
         const sellersQuery = query(usersCollection, where("role", "in", sellerRoles));
         const sellersSnapshot = await getDocs(sellersQuery);
         setAllSellers(sellersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as SellerUser)));
@@ -229,24 +226,53 @@ export default function ManageConsultantPage() {
       
       setIsUpdating(true);
       try {
-        if(selectedCustomer) { // Reassigning for a customer
-            const leadsQuery = query(collection(db, "leads"), where("customerId", "==", selectedCustomer.customer.id));
-            const leadsSnapshot = await getDocs(leadsQuery);
-            if (leadsSnapshot.empty) {
-                toast({ variant: 'destructive', title: 'No Leads', description: 'This customer has no leads to reassign.' });
-            } else {
-                const batch = writeBatch(db);
-                const fieldToUpdate = newConsultant.role === 'seller' ? 'sellerId' : 'partnerId';
+        if(selectedCustomer) {
+            const batch = writeBatch(db);
+            const customer = selectedCustomer.customer;
 
-                leadsSnapshot.docs.forEach(leadDoc => {
-                    batch.update(doc(db, "leads", leadDoc.id), { [fieldToUpdate]: newConsultant.id });
-                });
-                await batch.commit();
-                toast({ title: 'Success', description: `${activeDialogTab} for ${selectedCustomer.customer.name} has been updated.` });
+            if (newConsultant.role === 'seller' || newConsultant.role === 'admin') {
+                const propertiesQuery = query(collection(db, "properties"), where("email", "==", newConsultant.email), limit(1));
+                const propertiesSnapshot = await getDocs(propertiesQuery);
+                if (propertiesSnapshot.empty) {
+                    toast({ variant: 'destructive', title: 'No Properties', description: 'This seller has no properties to create a lead for.' });
+                    setIsUpdating(false);
+                    return;
+                }
+                const property = propertiesSnapshot.docs[0].data() as Property;
+                const newLead = {
+                    name: customer.name,
+                    email: customer.email,
+                    phone: customer.phone,
+                    city: customer.city || '',
+                    state: customer.state || '',
+                    country: customer.country || '',
+                    propertyId: property.id,
+                    partnerId: selectedCustomer.partner?.id || '',
+                    customerId: customer.id,
+                    status: 'New lead',
+                    dealStatus: 'New lead',
+                    createdAt: Timestamp.now(),
+                };
+                const newLeadRef = doc(collection(db, "leads"));
+                batch.set(newLeadRef, newLead);
+
+            } else { // It's a partner
+                const leadsQuery = query(collection(db, "leads"), where("customerId", "==", customer.id));
+                const leadsSnapshot = await getDocs(leadsQuery);
+                if (leadsSnapshot.empty) {
+                    toast({ variant: 'destructive', title: 'No Leads', description: 'This customer has no leads to reassign.' });
+                } else {
+                    leadsSnapshot.docs.forEach(leadDoc => {
+                        batch.update(doc(db, "leads", leadDoc.id), { partnerId: newConsultant.id });
+                    });
+                }
             }
-        } else if (selectedPartner) { // Reassigning for a partner
+            await batch.commit();
+            toast({ title: 'Success', description: `${activeDialogTab} for ${customer.name} has been updated.` });
+
+        } else if (selectedPartner) {
             const partnerRef = doc(db, "users", selectedPartner.partner.id);
-            await updateDoc(partnerRef, { teamLeadId: newConsultant.id }); // teamLeadId holds assigned seller
+            await updateDoc(partnerRef, { teamLeadId: newConsultant.id });
             toast({ title: 'Success', description: `Seller for ${selectedPartner.partner.name} has been updated.` });
         }
         
