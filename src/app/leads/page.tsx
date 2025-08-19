@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc, deleteDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import type { Lead, LeadStatus, DealStatus } from "@/types/lead"
 import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
@@ -267,7 +267,7 @@ export default function LeadsPage() {
         const isCustomerActive = newDealStatus !== 'booking cancelled';
         const newCustomerStatus = isCustomerActive ? 'active' : 'inactive';
 
-        const batch = doc(db).firestore.batch();
+        const batch = writeBatch(db);
         
         batch.update(leadRef, { dealStatus: newDealStatus });
         batch.update(customerRef, { status: newCustomerStatus });
@@ -617,4 +617,3 @@ export default function LeadsPage() {
     </div>
   )
 }
-
