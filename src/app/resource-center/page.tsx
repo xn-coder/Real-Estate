@@ -44,7 +44,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Loader2, PlusCircle, Trash2, Pencil, Eye, Search } from "lucide-react"
+import { Loader2, PlusCircle, Trash2, Pencil, Eye, Search, Building } from "lucide-react"
 import Image from "next/image"
 import {
   Table,
@@ -59,6 +59,7 @@ import { db } from "@/lib/firebase"
 import { collection, doc, setDoc, getDocs, Timestamp, updateDoc, deleteDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { Resource, PropertyType } from "@/types/resource"
+import type { Property } from "@/types/property"
 import { useUser } from "@/hooks/use-user"
 import {
   Accordion,
@@ -67,6 +68,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -75,7 +78,7 @@ const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
 
 const baseSchema = z.object({
   title: z.string().min(1, "Title is required."),
-  propertyTypeId: z.string().min(1, "Please select a property type."),
+  propertyId: z.string().optional(),
   featureImage: z.any().optional(),
 });
 
@@ -137,7 +140,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 const defaultResourceValues: Partial<ResourceFormValues> = {
     title: "",
     contentType: "article" as const,
-    propertyTypeId: "",
+    propertyId: "",
     faqs: [{ question: "", answer: "" }],
     articleContent: "",
     videoUrl: "",
@@ -148,13 +151,15 @@ export default function ResourceCenterPage() {
   const { toast } = useToast()
   const { user, isLoading: isUserLoading } = useUser();
   const [resources, setResources] = React.useState<Resource[]>([])
-  const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([])
+  const [properties, setProperties] = React.useState<Property[]>([]);
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isResourceDialogOpen, setIsResourceDialogOpen] = React.useState(false)
   const [editingResource, setEditingResource] = React.useState<Resource | null>(null);
   const [viewingResource, setViewingResource] = React.useState<Resource | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [propertySearchTerm, setPropertySearchTerm] = React.useState("");
+  const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null)
   const [activeFilter, setActiveFilter] = React.useState<Resource['contentType'] | 'all'>('all');
 
   const isAdmin = user?.role === 'admin';
@@ -177,9 +182,22 @@ export default function ResourceCenterPage() {
     setIsLoading(true);
     try {
       const resourcesSnapshot = await getDocs(collection(db, "resources"));
-      const propertyTypesSnapshot = await getDocs(collection(db, "property_types"));
-      setResources(resourcesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource)));
-      setPropertyTypes(propertyTypesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PropertyType)));
+      const propertiesSnapshot = await getDocs(collection(db, "properties"));
+      
+      const propsList = propertiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
+      setProperties(propsList);
+      
+      const resourcesList = resourcesSnapshot.docs.map(doc => {
+        const data = doc.data() as Resource
+        const property = propsList.find(p => p.id === data.propertyId);
+        return { 
+          id: doc.id, 
+          ...data,
+          propertyTitle: property?.catalogTitle,
+        }
+      })
+      setResources(resourcesList as Resource[]);
+
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({ variant: "destructive", title: "Error", description: "Failed to fetch data." });
@@ -200,11 +218,21 @@ export default function ResourceCenterPage() {
         return statusMatch && searchMatch;
     });
   }, [resources, searchTerm, activeFilter]);
+  
+  const filteredProperties = React.useMemo(() => {
+    if (!propertySearchTerm) return [];
+    return properties.filter(p =>
+      p.catalogTitle.toLowerCase().includes(propertySearchTerm.toLowerCase()) ||
+      p.id.toLowerCase().includes(propertySearchTerm.toLowerCase())
+    );
+  }, [properties, propertySearchTerm]);
 
 
   const openResourceDialog = (resource: Resource | null) => {
     setEditingResource(resource);
     if (resource) {
+        const property = properties.find(p => p.id === resource.propertyId);
+        setSelectedProperty(property || null);
         resourceForm.reset({
             ...defaultResourceValues,
             ...resource,
@@ -215,6 +243,7 @@ export default function ResourceCenterPage() {
         } as ResourceFormValues);
     } else {
         resourceForm.reset(defaultResourceValues as ResourceFormValues);
+        setSelectedProperty(null);
     }
     setIsResourceDialogOpen(true);
   }
@@ -243,7 +272,7 @@ export default function ResourceCenterPage() {
   
       const resourceData: Omit<Resource, 'id' | 'createdAt'> & { id?: string; createdAt?: Timestamp; ownerId?: string } = {
         title: values.title,
-        propertyTypeId: values.propertyTypeId,
+        propertyId: values.propertyId || null,
         contentType: values.contentType,
         featureImage: featureImageUrl,
         articleContent: values.contentType === 'article' || values.contentType === 'terms_condition' ? values.articleContent || null : null,
@@ -284,12 +313,15 @@ export default function ResourceCenterPage() {
     }
   };
 
+  const handleSelectProperty = (property: Property) => {
+      setSelectedProperty(property);
+      resourceForm.setValue("propertyId", property.id);
+      setPropertySearchTerm("");
+  }
+
+
   const contentType = resourceForm.watch("contentType");
   const featureImage = resourceForm.watch("featureImage");
-
-  const getPropertyTypeName = (propertyTypeId: string) => {
-    return propertyTypes.find(c => c.id === propertyTypeId)?.name || 'N/A';
-  }
 
   const contentTypeDisplay: Record<Resource['contentType'], string> = {
     article: 'Article',
@@ -359,7 +391,7 @@ export default function ResourceCenterPage() {
             <DialogHeader>
                 <DialogTitle>{viewingResource.title}</DialogTitle>
                 <DialogDescription>
-                    {contentTypeDisplay[viewingResource.contentType]} - {getPropertyTypeName(viewingResource.propertyTypeId)}
+                    {contentTypeDisplay[viewingResource.contentType]} - {viewingResource.propertyTitle || 'General'}
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[70vh] overflow-y-auto pr-4">
@@ -419,18 +451,51 @@ export default function ResourceCenterPage() {
                             />
 
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField
+                               <FormField
                                     control={resourceForm.control}
-                                    name="propertyTypeId"
+                                    name="propertyId"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Property Type</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Select a property type" /></SelectTrigger></FormControl>
-                                                <SelectContent>
-                                                    {propertyTypes.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
+                                            <FormLabel>Related Property (Optional)</FormLabel>
+                                            <FormControl>
+                                            <div className="space-y-2">
+                                                    {selectedProperty ? (
+                                                        <div className="flex items-center gap-4 p-2 border rounded-md">
+                                                            <Avatar>
+                                                                <AvatarImage src={selectedProperty.featureImage} />
+                                                                <AvatarFallback><Building/></AvatarFallback>
+                                                            </Avatar>
+                                                            <div className="flex-1">
+                                                                <p className="font-medium">{selectedProperty.catalogTitle}</p>
+                                                                <p className="text-sm text-muted-foreground">{selectedProperty.id}</p>
+                                                            </div>
+                                                            <Button variant="ghost" onClick={() => setSelectedProperty(null)}>Change</Button>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <div className="relative">
+                                                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                                <Input 
+                                                                    placeholder="Search for a property..."
+                                                                    className="pl-8"
+                                                                    value={propertySearchTerm}
+                                                                    onChange={e => setPropertySearchTerm(e.target.value)}
+                                                                />
+                                                            </div>
+                                                            {propertySearchTerm && (
+                                                                <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                                                                    {filteredProperties.length > 0 ? filteredProperties.map(p => (
+                                                                        <div key={p.id} onClick={() => handleSelectProperty(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                                                            <p>{p.catalogTitle}</p>
+                                                                            <p className="text-xs text-muted-foreground">{p.id}</p>
+                                                                        </div>
+                                                                    )) : <p className="p-4 text-sm text-center text-muted-foreground">No properties found.</p>}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                            </div>
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -604,7 +669,7 @@ export default function ResourceCenterPage() {
                 <TableRow>
                     <TableHead>Feature Image</TableHead>
                     <TableHead>Title</TableHead>
-                    <TableHead>Property Type</TableHead>
+                    <TableHead>Property</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -623,7 +688,7 @@ export default function ResourceCenterPage() {
                                     <Image src={resource.featureImage} alt={resource.title} width={40} height={40} className="rounded-md object-cover" />
                                 </TableCell>
                                 <TableCell>{resource.title}</TableCell>
-                                <TableCell>{getPropertyTypeName(resource.propertyTypeId)}</TableCell>
+                                <TableCell>{resource.propertyTitle || 'General'}</TableCell>
                                 <TableCell className="capitalize">{contentTypeDisplay[resource.contentType]}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" onClick={() => setViewingResource(resource)}>
