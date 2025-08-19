@@ -56,9 +56,9 @@ import {
 } from "@/components/ui/table"
 import dynamic from 'next/dynamic'
 import { db } from "@/lib/firebase"
-import { collection, doc, setDoc, getDocs, Timestamp, updateDoc, deleteDoc } from "firebase/firestore"
+import { collection, doc, setDoc, getDocs, Timestamp, updateDoc, deleteDoc, query, where } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
-import type { Resource, PropertyType } from "@/types/resource"
+import type { Resource } from "@/types/resource"
 import type { Property } from "@/types/property"
 import { useUser } from "@/hooks/use-user"
 import {
@@ -68,7 +68,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
