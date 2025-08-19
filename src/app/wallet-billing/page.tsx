@@ -95,6 +95,7 @@ export default function WalletBillingPage() {
     ...(isAdmin || isSeller ? [{ name: "Manage Wallet", href: "/wallet-billing/manage" }] : []),
     { name: "Withdrawal Request", href: "/wallet-billing/withdrawal" },
     { name: (isAdmin || isSeller) ? "Send Reward Points" : "Claim Reward Points", href: "/wallet-billing/rewards" },
+    ...(isAdmin ? [{ name: "Post Reward Offers", href: "/wallet-billing/post-reward" }] : []),
     { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
     ...(isAdmin || isSeller ? [
       { name: "Receivable Cash List", href: "/wallet-billing/receivable" },

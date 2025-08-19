@@ -55,3 +55,11 @@ export type Payable = {
     notes?: string;
     sellerId?: string;
 };
+
+export type RewardOffer = {
+    id: string;
+    title: string;
+    image: string;
+    points: number;
+    details: string;
+};
