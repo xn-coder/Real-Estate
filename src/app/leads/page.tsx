@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -259,11 +260,23 @@ export default function LeadsPage() {
     if (!selectedLeadForDealStatus || !newDealStatus) return;
     setIsUpdatingDealStatus(true);
     try {
-      const leadRef = doc(db, 'leads', selectedLeadForDealStatus.id);
-      await updateDoc(leadRef, { dealStatus: newDealStatus });
-      toast({ title: 'Deal Status Updated', description: `Deal status updated to ${newDealStatus}.`});
-      fetchLeads();
-      setIsDealStatusDialogOpen(false);
+        const leadRef = doc(db, 'leads', selectedLeadForDealStatus.id);
+        const customerRef = doc(db, 'users', selectedLeadForDealStatus.customerId);
+        
+        // Map deal status to a simplified customer status
+        const isCustomerActive = newDealStatus !== 'booking cancelled';
+        const newCustomerStatus = isCustomerActive ? 'active' : 'inactive';
+
+        const batch = doc(db).firestore.batch();
+        
+        batch.update(leadRef, { dealStatus: newDealStatus });
+        batch.update(customerRef, { status: newCustomerStatus });
+        
+        await batch.commit();
+
+        toast({ title: 'Deal Status Updated', description: `Deal and customer status updated to ${newDealStatus}.` });
+        fetchLeads();
+        setIsDealStatusDialogOpen(false);
     } catch (error) {
        console.error("Error updating deal status:", error);
        toast({ variant: 'destructive', title: 'Error', description: 'Failed to update deal status.' });
@@ -604,3 +617,4 @@ export default function LeadsPage() {
     </div>
   )
 }
+
