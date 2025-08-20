@@ -32,10 +32,12 @@ import type { Property } from "@/types/property"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useUser } from "@/hooks/use-user"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { User as PartnerUser } from "@/types/user"
 
 
 const earningRuleSchema = z.object({
     propertyId: z.string().min(1, "A property must be selected."),
+    partnerId: z.string().min(1, "A partner must be selected."),
     type: z.enum(["reward_points", "commission_percentage", "flat_amount", "per_sq_ft"]),
     value: z.coerce.number().min(0, "Value must be a positive number."),
     totalSqFt: z.coerce.number().optional(),
@@ -60,55 +62,57 @@ export default function PartnerEarningPage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false)
 
     const [properties, setProperties] = React.useState<Property[]>([]);
-    const [isLoadingProperties, setIsLoadingProperties] = React.useState(true);
+    const [partners, setPartners] = React.useState<PartnerUser[]>([]);
+    const [isLoadingData, setIsLoadingData] = React.useState(true);
+    
     const [propertySearchTerm, setPropertySearchTerm] = React.useState("");
+    const [partnerSearchTerm, setPartnerSearchTerm] = React.useState("");
+
     const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null);
+    const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null);
+
 
     const form = useForm<EarningRuleFormValues>({
         resolver: zodResolver(earningRuleSchema),
     });
 
-    const fetchEarningRules = React.useCallback(async () => {
+    const fetchData = React.useCallback(async () => {
         setIsLoading(true);
+        setIsLoadingData(true);
         try {
             const rulesRef = collection(db, "earning_rules");
-            const snapshot = await getDocs(query(rulesRef, orderBy("createdAt", "desc")));
+            const rulesSnapshot = await getDocs(query(rulesRef, orderBy("createdAt", "desc")));
             
             const propertiesSnapshot = await getDocs(collection(db, "properties"));
-            const propsMap = new Map(propertiesSnapshot.docs.map(doc => [doc.id, doc.data().catalogTitle]));
+            const propsMap = new Map(propertiesSnapshot.docs.map(doc => [doc.id, doc.data() as Property]));
+            setProperties(Array.from(propsMap.values()));
 
-            const rulesList = snapshot.docs.map(doc => ({
+            const partnersSnapshot = await getDocs(query(collection(db, "users"), where("role", "in", ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'])));
+            const partnersMap = new Map(partnersSnapshot.docs.map(doc => [doc.id, doc.data() as PartnerUser]));
+            setPartners(Array.from(partnersMap.values()));
+
+
+            const rulesList = rulesSnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
-                propertyTitle: propsMap.get(doc.data().propertyId) || 'Unknown Property',
+                propertyTitle: propsMap.get(doc.data().propertyId)?.catalogTitle || 'Unknown Property',
+                partnerName: partnersMap.get(doc.data().partnerId)?.name || 'Unknown Partner',
                 createdAt: (doc.data().createdAt as Timestamp).toDate(),
             } as EarningRule));
             setEarningRules(rulesList);
 
         } catch (error) {
-            console.error("Error fetching earning rules:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch earning rules.' });
+            console.error("Error fetching data:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch data.' });
         } finally {
             setIsLoading(false);
+            setIsLoadingData(false);
         }
     }, [toast]);
     
-    const fetchProperties = React.useCallback(async () => {
-        setIsLoadingProperties(true);
-        try {
-            const propsSnapshot = await getDocs(query(collection(db, "properties"), where("status", "==", "For Sale")));
-            setProperties(propsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property)));
-        } catch (error) {
-            console.error("Error fetching properties:", error);
-        } finally {
-            setIsLoadingProperties(false);
-        }
-    }, []);
-
     React.useEffect(() => {
-        fetchEarningRules();
-        fetchProperties();
-    }, [fetchEarningRules, fetchProperties]);
+        fetchData();
+    }, [fetchData]);
 
     const filteredProperties = React.useMemo(() => {
         if (!propertySearchTerm) return [];
@@ -116,28 +120,44 @@ export default function PartnerEarningPage() {
             p.catalogTitle.toLowerCase().includes(propertySearchTerm.toLowerCase())
         );
     }, [properties, propertySearchTerm]);
+    
+    const filteredPartners = React.useMemo(() => {
+        if (!partnerSearchTerm) return [];
+        return partners.filter(p =>
+            p.name.toLowerCase().includes(partnerSearchTerm.toLowerCase())
+        );
+    }, [partners, partnerSearchTerm]);
 
     const handleSelectProperty = (property: Property) => {
         setSelectedProperty(property);
         form.setValue("propertyId", property.id);
         setPropertySearchTerm("");
     }
+    
+    const handleSelectPartner = (partner: PartnerUser) => {
+        setSelectedPartner(partner);
+        form.setValue("partnerId", partner.id);
+        setPartnerSearchTerm("");
+    }
+
 
     const onSubmit = async (values: EarningRuleFormValues) => {
-        if (!user) return;
+        if (!user || !selectedProperty || !selectedPartner) return;
         setIsSubmitting(true);
         try {
-            await setDoc(doc(db, "earning_rules", values.propertyId), {
+            const ruleId = `${values.propertyId}_${values.partnerId}`;
+            await setDoc(doc(db, "earning_rules", ruleId), {
                 ...values,
                 createdAt: Timestamp.now(),
                 setterId: user.id,
             });
 
-            toast({ title: "Success", description: "Earning rule has been set for the property." });
+            toast({ title: "Success", description: "Earning rule has been set." });
             setIsDialogOpen(false);
             form.reset();
             setSelectedProperty(null);
-            fetchEarningRules();
+            setSelectedPartner(null);
+            fetchData();
         } catch (error) {
             console.error("Error setting earning rule:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not set the earning rule.' });
@@ -167,12 +187,12 @@ export default function PartnerEarningPage() {
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Earning</h1>
+                    <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Earning Rules</h1>
                 </div>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Set Default Pricing
+                            <PlusCircle className="mr-2 h-4 w-4" /> Set Earning Rule
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
@@ -181,6 +201,39 @@ export default function PartnerEarningPage() {
                         </DialogHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="partnerId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Partner</FormLabel>
+                                            <FormControl>
+                                                {selectedPartner ? (
+                                                    <div className="flex items-center gap-4 p-2 border rounded-md">
+                                                        <p className="font-medium flex-1">{selectedPartner.name}</p>
+                                                        <Button variant="ghost" size="sm" onClick={() => { setSelectedPartner(null); form.setValue("partnerId", ""); }}>Change</Button>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <Input placeholder="Search for a partner..." value={partnerSearchTerm} onChange={e => setPartnerSearchTerm(e.target.value)} />
+                                                        {partnerSearchTerm && (
+                                                            <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
+                                                                {isLoadingData ? <p className="p-2 text-sm text-muted-foreground">Loading...</p> : 
+                                                                    filteredPartners.map(p => (
+                                                                        <div key={p.id} onClick={() => handleSelectPartner(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
+                                                                            {p.name}
+                                                                        </div>
+                                                                    ))
+                                                                }
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                               />
                                <FormField
                                     control={form.control}
                                     name="propertyId"
@@ -198,7 +251,7 @@ export default function PartnerEarningPage() {
                                                         <Input placeholder="Search for a property..." value={propertySearchTerm} onChange={e => setPropertySearchTerm(e.target.value)} />
                                                         {propertySearchTerm && (
                                                             <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
-                                                                {isLoadingProperties ? <p className="p-2 text-sm text-muted-foreground">Loading...</p> : 
+                                                                {isLoadingData ? <p className="p-2 text-sm text-muted-foreground">Loading...</p> : 
                                                                     filteredProperties.map(p => (
                                                                         <div key={p.id} onClick={() => handleSelectProperty(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
                                                                             {p.catalogTitle}
@@ -262,7 +315,7 @@ export default function PartnerEarningPage() {
                                     </div>
                                 )}
                                 <DialogFooter>
-                                    <Button type="submit" disabled={isSubmitting || !selectedProperty}>
+                                    <Button type="submit" disabled={isSubmitting || !selectedProperty || !selectedPartner}>
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         Set Rule
                                     </Button>
@@ -283,19 +336,21 @@ export default function PartnerEarningPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Property</TableHead>
+                                    <TableHead>Partner</TableHead>
                                     <TableHead>Earning Rule</TableHead>
                                     <TableHead>Value</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {isLoading ? (
-                                    <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                                 ) : earningRules.length === 0 ? (
-                                    <TableRow><TableCell colSpan={3} className="h-24 text-center">No earning rules set.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="h-24 text-center">No earning rules set.</TableCell></TableRow>
                                 ) : (
                                     earningRules.map(rule => (
                                         <TableRow key={rule.id}>
                                             <TableCell className="font-medium">{rule.propertyTitle}</TableCell>
+                                            <TableCell className="font-medium">{rule.partnerName}</TableCell>
                                             <TableCell className="capitalize">{rule.type.replace(/_/g, ' ')}</TableCell>
                                             <TableCell>{formatValue(rule)}</TableCell>
                                         </TableRow>

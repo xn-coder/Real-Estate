@@ -69,6 +69,8 @@ export type EarningRule = {
     id: string;
     propertyId: string;
     propertyTitle?: string;
+    partnerId: string;
+    partnerName?: string;
     type: "reward_points" | "commission_percentage" | "flat_amount" | "per_sq_ft";
     value: number;
     totalSqFt?: number;
