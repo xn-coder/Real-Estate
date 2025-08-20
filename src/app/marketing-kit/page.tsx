@@ -309,7 +309,10 @@ export default function MarketingKitPage() {
         let fileUrl = file.url;
         let fileName = file.name;
 
-        if (file.type === 'image' && user.businessName && user.phone) {
+        // Check if the current user is a partner and has branding info
+        const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+
+        if (file.type === 'image' && isPartner && user.businessName && user.phone) {
             try {
                 const brandedImageUri = await embedProfileWithCanvas(file.url, user.businessName, user.phone);
                 fileUrl = brandedImageUri;
