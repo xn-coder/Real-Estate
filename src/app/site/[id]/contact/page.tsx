@@ -63,6 +63,7 @@ const PartnerContactPage = () => {
                     businessProfile: partnerWebsiteData.businessProfile || defaults.businessProfile,
                     contactDetails: partnerWebsiteData.contactDetails || defaults.contactDetails,
                     socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks,
+                    aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal,
                 };
                 setWebsiteData(finalWebsiteData);
             } else {
@@ -106,6 +107,7 @@ const PartnerContactPage = () => {
     const partnerLogo = websiteData?.businessProfile?.businessLogo || partner?.businessLogo || '';
     const contactDetails = websiteData?.contactDetails || partner;
     const socialLinks = websiteData?.socialLinks;
+    const aboutLegal = websiteData?.aboutLegal;
 
     const socialComponents = [
         { Icon: Instagram, href: socialLinks?.instagram },
@@ -250,6 +252,51 @@ const PartnerContactPage = () => {
                     </div>
                 </div>
             </main>
+            {/* Footer */}
+            <footer id="footer-contact" className="bg-gray-800 text-white">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
+                        <div>
+                            <h4 className="font-bold text-lg mb-2">{partnerName}</h4>
+                             <div className="space-y-2 text-gray-400 text-sm">
+                                <div className="flex items-center gap-2 justify-center md:justify-start">
+                                    <Mail className="h-4 w-4" />
+                                    <a href={`mailto:${contactDetails.email}`} className="hover:text-white">{contactDetails.email}</a>
+                                </div>
+                                <div className="flex items-center gap-2 justify-center md:justify-start">
+                                    <Phone className="h-4 w-4" />
+                                    <a href={`tel:${contactDetails.phone}`} className="hover:text-white">{contactDetails.phone}</a>
+                                </div>
+                                <div className="flex items-start gap-2 justify-center md:justify-start">
+                                    <MapPin className="h-4 w-4 mt-1 flex-shrink-0" />
+                                    <p>{`${contactDetails.address}, ${contactDetails.city}, ${contactDetails.state} - ${contactDetails.pincode}`}</p>
+                                </div>
+                             </div>
+                        </div>
+                         <div>
+                            <h4 className="font-bold text-lg mb-2">Follow Us</h4>
+                            <div className="flex gap-4 justify-center md:justify-start">
+                                {socialComponents.map(({ Icon, href }, index) => (
+                                    <a key={index} href={href || '#'} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
+                                        <Icon className="h-6 w-6" />
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                         <div>
+                            <h4 className="font-bold text-lg mb-2">Legal</h4>
+                             <ul className="space-y-1 text-sm">
+                                {aboutLegal?.termsLink && <li><a href={aboutLegal.termsLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Terms & Conditions</a></li>}
+                                {aboutLegal?.privacyLink && <li><a href={aboutLegal.privacyLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Privacy Policy</a></li>}
+                                {aboutLegal?.disclaimerLink && <li><a href={aboutLegal.disclaimerLink as string} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">Disclaimer</a></li>}
+                            </ul>
+                        </div>
+                    </div>
+                    <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
+                        <p>&copy; {new Date().getFullYear()} {partnerName}. All Rights Reserved.</p>
+                    </div>
+                </div>
+            </footer>
         </div>
     )
 }
