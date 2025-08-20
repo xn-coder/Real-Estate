@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion, ChevronRight, Eye, CheckCircle, XCircle } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, updateDoc, collection, query, getDocs, Timestamp, deleteDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, collection, query, getDocs, Timestamp, deleteDoc, where } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User } from "@/types/user"
 import type { UserDocument } from "@/types/document"
+import type { Lead } from "@/types/lead"
+import type { Property } from "@/types/property"
 import { useParams, useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -29,12 +31,12 @@ const roleNameMapping: Record<string, string> = {
   franchisee: 'Franchisee',
 };
 
-const salesStats = [
-    { icon: BarChart, label: "Total Enquiries", value: "150", color: "text-blue-500" },
-    { icon: UserRound, label: "Total Customers", value: "32", color: "text-green-500" },
-    { icon: DollarSign, label: "Total Revenue", value: "₹12,500", color: "text-yellow-500" },
-    { icon: Star, label: "Reward Points", value: "1,200", color: "text-purple-500" },
-]
+type SalesStats = {
+    totalEnquiries: number;
+    totalCustomers: number;
+    totalRevenue: number;
+    rewardPoints: number;
+}
 
 export default function PartnerProfilePage() {
   const { toast } = useToast()
@@ -48,6 +50,8 @@ export default function PartnerProfilePage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isLoadingDocs, setIsLoadingDocs] = React.useState(true);
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [salesStats, setSalesStats] = React.useState<SalesStats>({ totalEnquiries: 0, totalCustomers: 0, totalRevenue: 0, rewardPoints: 0 });
+  const [isLoadingStats, setIsLoadingStats] = React.useState(true);
 
   const fetchPartnerData = React.useCallback(async () => {
     if (!partnerId) return;
@@ -96,12 +100,48 @@ export default function PartnerProfilePage() {
       setIsLoadingDocs(false)
     }
   }, [partnerId, toast, router, adminUser?.role])
+  
+  const fetchSalesStats = React.useCallback(async () => {
+    if (!partnerId) return;
+    setIsLoadingStats(true);
+    try {
+        const leadsQuery = query(collection(db, "leads"), where("partnerId", "==", partnerId));
+        const leadsSnapshot = await getDocs(leadsQuery);
+        const leads = leadsSnapshot.docs.map(doc => doc.data() as Lead);
+
+        const totalEnquiries = leads.length;
+        const totalCustomers = new Set(leads.map(lead => lead.customerId)).size;
+
+        let totalRevenue = 0;
+        const completedLeads = leads.filter(l => l.status === 'Completed');
+        for (const lead of completedLeads) {
+            if (lead.propertyId) {
+                const propDoc = await getDoc(doc(db, "properties", lead.propertyId));
+                if (propDoc.exists()) {
+                    totalRevenue += (propDoc.data() as Property).listingPrice || 0;
+                }
+            }
+        }
+        
+        const walletDoc = await getDoc(doc(db, "wallets", partnerId));
+        const rewardPoints = walletDoc.exists() ? walletDoc.data().rewardBalance || 0 : 0;
+
+        setSalesStats({ totalEnquiries, totalCustomers, totalRevenue, rewardPoints });
+
+    } catch (error) {
+         console.error("Failed to fetch sales stats:", error)
+    } finally {
+        setIsLoadingStats(false);
+    }
+  }, [partnerId]);
+
 
   React.useEffect(() => {
     if(adminUser) { // ensure adminUser is loaded before fetching
         fetchPartnerData()
+        fetchSalesStats()
     }
-  }, [fetchPartnerData, adminUser])
+  }, [fetchPartnerData, fetchSalesStats, adminUser])
   
   const handleApprove = async () => {
     if (!partnerId) return;
@@ -174,6 +214,14 @@ export default function PartnerProfilePage() {
 
   const statusColor = partner.status === 'active' ? 'bg-green-500' : 'bg-red-500';
 
+  const statsDisplay = [
+    { icon: BarChart, label: "Total Enquiries", value: salesStats.totalEnquiries, color: "text-blue-500" },
+    { icon: UserRound, label: "Total Customers", value: salesStats.totalCustomers, color: "text-green-500" },
+    { icon: DollarSign, label: "Total Revenue", value: `₹${salesStats.totalRevenue.toLocaleString()}`, color: "text-yellow-500" },
+    { icon: Star, label: "Reward Points", value: salesStats.rewardPoints.toLocaleString(), color: "text-purple-500" },
+]
+
+
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
@@ -222,10 +270,10 @@ export default function PartnerProfilePage() {
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    {salesStats.map(stat => (
+                    {statsDisplay.map(stat => (
                          <div key={stat.label} className="p-4 rounded-lg bg-muted flex flex-col items-center justify-center">
                              <stat.icon className={`h-8 w-8 mb-2 ${stat.color}`}/>
-                            <p className="text-2xl font-bold">{stat.value}</p>
+                            <p className="text-2xl font-bold">{isLoadingStats ? <Loader2 className="h-6 w-6 animate-spin"/> : stat.value}</p>
                             <p className="text-sm text-muted-foreground">{stat.label}</p>
                         </div>
                     ))}
@@ -364,10 +412,12 @@ export default function PartnerProfilePage() {
             </div>
              <Card>
                 <CardContent className="p-0">
-                    <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
-                        <span className="font-medium">View Enquiry</span>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </div>
+                    <Link href={`/leads?partnerId=${partner.id}`} className="block">
+                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
+                            <span className="font-medium">View Enquiry</span>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                    </Link>
                     <Separator />
                     <Link href={`/manage-customer?partnerId=${partner.id}`} className="block">
                         <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
@@ -381,3 +431,4 @@ export default function PartnerProfilePage() {
     </div>
   )
 }
+

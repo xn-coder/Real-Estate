@@ -31,13 +31,13 @@ import {
 } from "@/components/ui/dialog"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc, deleteDoc, writeBatch } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, doc, updateDoc, addDoc, deleteDoc, writeBatch, documentId } from "firebase/firestore"
 import type { Lead, LeadStatus, DealStatus } from "@/types/lead"
 import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -89,6 +89,7 @@ export default function ManageBookingPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [leads, setLeads] = React.useState<Lead[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
@@ -118,6 +119,8 @@ export default function ManageBookingPage() {
 
   const canSendToPartner = user?.role && ['associate', 'channel', 'franchisee'].includes(user.role);
   const canChangeStatus = user?.role === 'admin' || user?.role === 'seller';
+  const partnerIdFilter = searchParams.get('partnerId');
+
 
   const fetchLeads = React.useCallback(async () => {
     if (!user) return;
@@ -126,7 +129,9 @@ export default function ManageBookingPage() {
       const leadsCollection = collection(db, "leads");
       let q;
 
-      if (user.role === 'admin') {
+      if (partnerIdFilter) {
+          q = query(leadsCollection, where("partnerId", "==", partnerIdFilter));
+      } else if (user.role === 'admin') {
         q = query(leadsCollection);
       } else if (user.role === 'seller') {
         const propertiesCollection = collection(db, "properties");
@@ -161,7 +166,7 @@ export default function ManageBookingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, partnerIdFilter]);
 
   const fetchTeamMembers = React.useCallback(async () => {
     if (!user || !canSendToPartner) return;
