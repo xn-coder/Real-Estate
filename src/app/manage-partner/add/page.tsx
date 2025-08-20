@@ -221,6 +221,21 @@ export default function AddPartnerPage() {
         const prefix = 'P' + values.role.substring(0, 2).toUpperCase();
         const userId = generateUserId(prefix);
 
+        const uploadFile = async (file: any) => {
+            if (!file || typeof file === 'string') return file || null;
+            const fileId = generateUserId("FILE");
+            const fileUrl = await fileToDataUrl(file);
+            await setDoc(doc(db, "files", fileId), { data: fileUrl });
+            return fileId;
+        };
+
+        const [profileImageId, businessLogoId, aadharFileId, panFileId] = await Promise.all([
+            uploadFile(values.profileImage),
+            uploadFile(values.businessLogo),
+            uploadFile(values.aadharFile),
+            uploadFile(values.panFile),
+        ]);
+
         const partnerDataBase = {
             id: userId,
             name: values.fullName,
@@ -231,7 +246,7 @@ export default function AddPartnerPage() {
             password: hashedPassword,
             role: values.role,
             status: 'active' as 'active',
-            profileImage: values.profileImage ? (typeof values.profileImage === 'string' ? values.profileImage : await fileToDataUrl(values.profileImage)) : '',
+            profileImageId,
             dob: new Date(values.dob),
             gender: values.gender,
             qualification: values.qualification,
@@ -240,15 +255,15 @@ export default function AddPartnerPage() {
             state: values.state,
             pincode: values.pincode,
             businessName: values.businessName,
-            businessLogo: values.businessLogo ? (typeof values.businessLogo === 'string' ? values.businessLogo : await fileToDataUrl(values.businessLogo)) : '',
+            businessLogoId,
             businessType: values.businessType,
             gstn: values.gstn,
             businessAge: values.businessAge,
             areaCovered: values.areaCovered,
             aadharNumber: values.aadharNumber,
-            aadharFile: values.aadharFile ? await fileToDataUrl(values.aadharFile) : '',
+            aadharFileId,
             panNumber: values.panNumber,
-            panFile: values.panFile ? await fileToDataUrl(values.panFile) : '',
+            panFileId,
             teamLeadId: null,
             createdAt: Timestamp.now(),
         };

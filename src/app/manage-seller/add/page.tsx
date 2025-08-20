@@ -147,6 +147,21 @@ export default function AddSellerPage() {
       const [firstName, ...lastNameParts] = values.fullName.split(' ');
       const lastName = lastNameParts.join(' ');
 
+      const uploadFile = async (file: any) => {
+        if (!file || typeof file === 'string') return file || null;
+        const fileId = generateUserId("FILE");
+        const fileUrl = await fileToDataUrl(file);
+        await setDoc(doc(db, "files", fileId), { data: fileUrl });
+        return fileId;
+      };
+
+      const [businessLogoId, aadharFileId, panFileId, reraCertificateId] = await Promise.all([
+        uploadFile(values.businessLogo),
+        uploadFile(values.aadharFile),
+        uploadFile(values.panFile),
+        uploadFile(values.reraCertificate),
+      ]);
+
       await setDoc(doc(db, "users", userId), {
         id: userId,
         name: values.fullName,
@@ -163,12 +178,12 @@ export default function AddSellerPage() {
         businessName: values.businessName,
         businessType: values.businessType,
         gstn: values.gstn,
-        businessLogo: values.businessLogo ? await fileToDataUrl(values.businessLogo) : '',
+        businessLogoId,
         aadharNumber: values.aadharNumber,
         panNumber: values.panNumber,
-        aadharFile: values.aadharFile ? await fileToDataUrl(values.aadharFile) : '',
-        panFile: values.panFile ? await fileToDataUrl(values.panFile) : '',
-        reraCertificate: values.reraCertificate ? await fileToDataUrl(values.reraCertificate) : '',
+        aadharFileId,
+        panFileId,
+        reraCertificateId,
         role: 'seller',
         status: 'pending'
       })

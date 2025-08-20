@@ -13,7 +13,8 @@ export type User = {
   whatsappNumber?: string;
   role: string
   status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended' | 'pending_verification' | DealStatus;
-  profileImage?: string;
+  profileImageId?: string;
+  profileImage?: string; // For display only
   dob?: Date;
   gender?: "male" | "female" | "other";
   qualification?: string;
@@ -22,16 +23,20 @@ export type User = {
   state?: string;
   pincode?: string;
   businessName?: string;
-  businessLogo?: string;
+  businessLogoId?: string;
+  businessLogo?: string; // For display only
   businessType?: string;
   gstn?: string;
   businessAge?: number;
   areaCovered?: string;
   aadharNumber?: string;
-  aadharFile?: string;
+  aadharFileId?: string;
+  aadharFile?: string; // For display only
   panNumber?: string;
-  panFile?: string;
-  reraCertificate?: string;
+  panFileId?: string;
+  panFile?: string; // For display only
+  reraCertificateId?: string;
+  reraCertificate?: string; // For display only
   permissions?: string[];
   paymentStatus?: 'paid' | 'pending' | 'pending_approval' | 'not_required' | 'failed';
   paymentProof?: string;
