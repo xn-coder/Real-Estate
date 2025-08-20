@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -188,6 +189,11 @@ export default function AddSellerPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <Button variant="outline" asChild className="mb-4">
+            <Link href="/manage-seller">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Manage Seller
+            </Link>
+        </Button>
         <Card className="max-w-3xl mx-auto">
             <CardHeader>
               <CardTitle>Seller Registration</CardTitle>
