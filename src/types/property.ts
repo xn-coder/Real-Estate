@@ -7,6 +7,12 @@ type Slide = {
     image: string; // This will now store the file ID
 };
 
+export type EarningRuleValue = {
+    type: "reward_points" | "commission_percentage" | "flat_amount" | "per_sq_ft";
+    value: number;
+    totalSqFt?: number;
+}
+
 export type Property = {
     id: string;
     status: 'Pending Verification' | 'For Sale' | 'Under Contract' | 'Sold';
@@ -97,6 +103,16 @@ export type Property = {
     agencyName?: string;
     reraId?: string;
     contactTime: "Morning" | "Afternoon" | "Evening";
+    
+    // Earning Rules
+    earningRules?: {
+        affiliate?: EarningRuleValue;
+        super_affiliate?: EarningRuleValue;
+        associate?: EarningRuleValue;
+        channel?: EarningRuleValue;
+        franchisee?: EarningRuleValue;
+    };
+
 
     // Admin fields
     createdAt?: Date | Timestamp;
