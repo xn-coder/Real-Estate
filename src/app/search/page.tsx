@@ -5,7 +5,7 @@ import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { db } from "@/lib/firebase"
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore"
-import { Loader2, Search, Building, User, Users, Handshake, ChevronRight, BookOpen } from "lucide-react"
+import { Loader2, Search, Building, User, Users, Handshake, ChevronRight, BookOpen, ShoppingBag } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
@@ -14,7 +14,7 @@ type SearchResult = {
   id: string
   title: string
   description: string
-  type: 'Partner' | 'Seller' | 'Customer' | 'Property' | 'Lead' | 'Resource'
+  type: 'Partner' | 'Seller' | 'Customer' | 'Property' | 'Lead' | 'Resource' | 'Marketing Kit'
   href: string
   image?: string
 }
@@ -156,6 +156,27 @@ export default function SearchPage() {
         })
     ));
 
+    // Marketing Kit Search
+    const kitQuery = query(
+        collection(db, "marketing_kits"),
+        where('title', '>=', searchTerm),
+        where('title', '<=', searchTerm + '\uf8ff'),
+        limit(10)
+    );
+    searchPromises.push(getDocs(kitQuery).then(snapshot => 
+        snapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+                id: doc.id,
+                title: data.title,
+                description: `Type: ${data.type}`,
+                type: 'Marketing Kit',
+                href: `/marketing-kit`,
+                image: data.featureImage,
+            } as SearchResult
+        })
+    ));
+
 
     try {
         const allResultSets = await Promise.all(searchPromises);
@@ -197,6 +218,7 @@ export default function SearchPage() {
       Property: <Building className="h-5 w-5 text-muted-foreground" />,
       Lead: <User className="h-5 w-5 text-muted-foreground" />,
       Resource: <BookOpen className="h-5 w-5 text-muted-foreground" />,
+      'Marketing Kit': <ShoppingBag className="h-5 w-5 text-muted-foreground" />,
   }
 
   return (
