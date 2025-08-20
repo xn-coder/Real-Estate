@@ -40,6 +40,7 @@ import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
+import { useUser } from "@/hooks/use-user"
 
 const permissions = [
   { id: "manageLeads", label: "Manage Leads" },
@@ -92,7 +93,7 @@ type FeesForm = z.infer<typeof feesFormSchema>
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const router = useRouter()
+  const { user: currentUser } = useUser();
   const [users, setUsers] = React.useState<User[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -263,6 +264,10 @@ export default function SettingsPage() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
+      if (userId === currentUser?.id) {
+          toast({ variant: "destructive", title: "Action Forbidden", description: "You cannot delete your own account." });
+          return;
+      }
       await deleteDoc(doc(db, "users", userId));
       toast({
         title: "User Deleted",
