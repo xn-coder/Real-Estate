@@ -100,8 +100,9 @@ export default function SettingsPage() {
   const fetchUsers = React.useCallback(async () => {
     setIsLoading(true)
     try {
-      const usersCollection = collection(db, "users")
-      const userSnapshot = await getDocs(usersCollection)
+      const usersCollection = collection(db, "users");
+      const q = query(usersCollection, where("role", "==", "admin"));
+      const userSnapshot = await getDocs(q);
       const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User))
       setUsers(userList)
     } catch (error) {
@@ -287,7 +288,7 @@ export default function SettingsPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Partner Role</TableHead>
-                            <TableHead className="text-right">Fee ($)</TableHead>
+                            <TableHead className="text-right">Fee (₹)</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -316,7 +317,7 @@ export default function SettingsPage() {
             <div>
                 <CardTitle>Manage Access</CardTitle>
                 <CardDescription>
-                    Here is a list of all users with access to the platform.
+                    Here is a list of all users with admin access to the platform.
                 </CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
