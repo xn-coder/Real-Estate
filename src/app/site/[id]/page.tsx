@@ -130,14 +130,10 @@ const PartnerWebsitePage = () => {
         )
     }
 
-    const scrollTo = (id: string) => {
-        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-    }
-
     const navLinks = [
-        { label: 'Home', action: () => scrollTo('hero')},
-        { label: 'Catalog', action: () => scrollTo('catalog')},
-        { label: 'Contact Us', action: () => scrollTo('footer-contact')},
+        { label: 'Home', href: `/site/${partnerId}`},
+        { label: 'Catalog', href: `/site/${partnerId}/catalog`},
+        { label: 'Contact Us', href: `/site/${partnerId}/contact`},
     ];
 
     return (
@@ -146,7 +142,7 @@ const PartnerWebsitePage = () => {
             <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        <button onClick={() => scrollTo('hero')} className="flex items-center gap-4">
+                        <Link href={`/site/${partnerId}`} className="flex items-center gap-4">
                             <Avatar>
                                 <AvatarImage src={partnerLogo} alt={partnerName} />
                                 <AvatarFallback>
@@ -154,10 +150,10 @@ const PartnerWebsitePage = () => {
                                 </AvatarFallback>
                             </Avatar>
                             <span className="font-bold text-lg font-headline">{partnerName}</span>
-                        </button>
+                        </Link>
                         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
                             {navLinks.map(link => (
-                                <button key={link.label} onClick={link.action} className="hover:text-primary transition-colors">{link.label}</button>
+                                <Link key={link.label} href={link.href} className="hover:text-primary transition-colors">{link.label}</Link>
                             ))}
                         </nav>
                         <div className="md:hidden">
@@ -179,7 +175,7 @@ const PartnerWebsitePage = () => {
                                         </div>
                                         <nav className="flex flex-col gap-4 text-lg">
                                              {navLinks.map(link => (
-                                                <button key={link.label} onClick={() => { link.action(); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">{link.label}</button>
+                                                <Link key={link.label} href={link.href} onClick={() => setIsMobileMenuOpen(false)} className="text-left hover:text-primary transition-colors">{link.label}</Link>
                                              ))}
                                         </nav>
                                     </div>
@@ -258,16 +254,15 @@ const PartnerWebsitePage = () => {
                          <h2 className="text-3xl font-bold font-headline text-center mb-12">Our Featured Catalog</h2>
                          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {featuredProperties.length > 0 ? featuredProperties.map(property => (
-                                <div key={property.id} className="border rounded-lg overflow-hidden group">
+                                <Link href={`/listings/${property.id}`} key={property.id} className="border rounded-lg overflow-hidden group block">
                                     <div className="relative h-64 bg-muted">
                                         <Image src={property.featureImage || `https://placehold.co/600x400.png`} layout="fill" objectFit="cover" alt={property.catalogTitle} data-ai-hint="modern apartment"/>
                                     </div>
                                     <div className="p-6">
                                         <h3 className="text-xl font-bold mb-2">{property.catalogTitle}</h3>
                                         <p className="text-muted-foreground mb-4">{property.bedrooms} beds, {property.bathrooms} baths, {property.builtUpArea} {property.unitOfMeasurement}</p>
-                                        <Button variant="outline" className="w-full" asChild><Link href={`/listings/${property.id}`}>View Details</Link></Button>
                                     </div>
-                                </div>
+                                </Link>
                             )) : (
                                 <p className="col-span-full text-center text-muted-foreground">No featured properties available at the moment.</p>
                             )}
