@@ -176,12 +176,12 @@ export default function MarketingKitPage() {
     }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await uploadFile(values.featureImage, `marketing_kits/${generateUserId("KIT")}/feature_image`);
+        const featureImageUrl = await uploadFile(values.featureImage);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await uploadFile(file, `marketing_kits/${generateUserId("KIT")}/${file.name}`);
+                const fileUrl = await uploadFile(file);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
@@ -233,40 +233,51 @@ export default function MarketingKitPage() {
   const handleDownload = async (kit: Kit) => {
     setIsDownloading(kit.id);
     try {
-        const filesToDownload =
+      const filesToDownload =
         kit.files && kit.files.length > 0
-            ? kit.files
-            : kit.downloadUrl
-            ? [
-                {
-                    url: kit.downloadUrl,
-                    name: `${kit.title.replace(/\s+/g, "_")}.${kit.downloadUrl.split("?")[0].split(".").pop()}`,
-                    type: getFileType(kit.downloadUrl),
-                },
-                ]
-            : [];
-        
-        if (filesToDownload.length === 0) {
-            toast({ variant: "destructive", title: "No files", description: "This kit has no downloadable files." });
-            return;
+          ? kit.files
+          : kit.downloadUrl
+          ? [
+              {
+                url: kit.downloadUrl,
+                name: `${kit.title.replace(/\s+/g, '_')}.${kit.downloadUrl.split('?')[0].split('.').pop()}`,
+                type: getFileType(kit.downloadUrl),
+              },
+            ]
+          : [];
+  
+      if (filesToDownload.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'No files',
+          description: 'This kit has no downloadable files.',
+        });
+        return;
+      }
+  
+      // This loop attempts to download them one by one. Zipping them would be a better UX.
+      for (const file of filesToDownload) {
+        try {
+          const response = await fetch(file.url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch the file: ${file.name}`);
+          }
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error('Download error for file:', file.name, error);
+          toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}. Please try again.` });
         }
-
-        for (const file of filesToDownload) {
-            try {
-                // Create a temporary anchor element
-                const link = document.createElement("a");
-                link.href = file.url;
-                link.setAttribute("download", file.name); // This attribute suggests the filename to the browser.
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } catch (error) {
-                console.error('Download error for file:', file.name, error);
-                toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}. Please try again.` });
-            }
-        }
+      }
     } finally {
-        setIsDownloading(null);
+      setIsDownloading(null);
     }
   };
 
