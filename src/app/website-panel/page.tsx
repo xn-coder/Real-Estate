@@ -180,12 +180,18 @@ export default function ManageWebsitePage() {
     try {
       const processedSlides = await Promise.all(
         values.slides.map(async (slide) => {
-          let bannerImageUrl = slide.bannerImage
-          // Check if bannerImage is a File object, which means it's a new upload
-          if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
-            bannerImageUrl = await fileToDataUrl(bannerImageUrl)
-          }
+          let bannerImageUrl = slide.bannerImage;
 
+          // If bannerImage is a File object, it's a new upload.
+          if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
+            bannerImageUrl = await fileToDataUrl(bannerImageUrl);
+          }
+          // If bannerImage is null or undefined from a new empty slide, ensure it's a blank string.
+          else if (!bannerImageUrl) {
+            bannerImageUrl = '';
+          }
+          // Otherwise, it's an existing string URL, which is fine.
+          
           return {
             id: slide.id || generateUserId('SLD'),
             title: slide.title,
@@ -193,23 +199,23 @@ export default function ManageWebsitePage() {
             linkUrl: slide.linkUrl || '',
             showOnPartnerDashboard: slide.showOnPartnerDashboard,
             showOnPartnerWebsite: slide.showOnPartnerWebsite,
-          }
+          };
         })
-      )
+      );
 
-      await handleSave('slideshow', processedSlides)
-      toast({ title: 'Slideshow Updated' })
+      await handleSave('slideshow', processedSlides);
+      toast({ title: 'Slideshow Updated' });
 
-      closeSlideDialog()
+      closeSlideDialog();
     } catch (error) {
-      console.error('Error saving slide:', error)
+      console.error('Error saving slide:', error);
       toast({
         variant: 'destructive',
         title: 'Save Failed',
         description: 'Could not save slideshow.',
-      })
+      });
     }
-  }
+  };
   
   const openSlideDialog = () => {
       slideshowForm.reset({ slides: displayedData.slideshow || [] });
