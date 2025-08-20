@@ -114,19 +114,20 @@ export default function DeactivatedSellerPage() {
                 <TableHead>Seller Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Reason for Deactivation</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
             </TableRow>
             </TableHeader>
             <TableBody>
             {isLoading ? (
                 <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
                 </TableRow>
             ) : filteredSellers.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                         No deactivated sellers found.
                     </TableCell>
                 </TableRow>
@@ -135,6 +136,7 @@ export default function DeactivatedSellerPage() {
                 <TableCell className="font-medium">{seller.name}</TableCell>
                 <TableCell>{seller.email}</TableCell>
                 <TableCell>{seller.phone}</TableCell>
+                <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{seller.deactivationReason || 'N/A'}</TableCell>
                 <TableCell className="text-right">
                     <Button 
                         size="sm" 
