@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Eye, Building, User, Users, Search, CheckCircle, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, getDoc, Timestamp, updateDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, getDoc, Timestamp, updateDoc, writeBatch } from "firebase/firestore"
 import type { User as UserType } from "@/types/user"
 import type { Appointment } from "@/types/appointment"
 import type { Property } from "@/types/property"
@@ -116,11 +116,23 @@ export default function ManageVisitorPage() {
     }
   }, [user, toast]);
   
-  const handleUpdateStatus = async (appointmentId: string, status: 'Completed' | 'Rejected') => {
+  const handleUpdateStatus = async (appointmentId: string, leadId: string, status: 'Completed' | 'Rejected') => {
     setIsUpdating(true);
     try {
-        await updateDoc(doc(db, "appointments", appointmentId), { status });
-        toast({ title: "Success", description: `Visit has been ${status.toLowerCase()}.` });
+        const batch = writeBatch(db);
+        
+        const appointmentRef = doc(db, "appointments", appointmentId);
+        batch.update(appointmentRef, { status });
+
+        // If visit is approved, update lead status to 'Processing'
+        if (status === 'Completed' && leadId) {
+            const leadRef = doc(db, "leads", leadId);
+            batch.update(leadRef, { status: 'Processing' });
+        }
+        
+        await batch.commit();
+
+        toast({ title: "Success", description: `Visit has been ${status.toLowerCase()} and lead status updated.` });
         fetchConfirmedVisits();
     } catch (error) {
         toast({ variant: 'destructive', title: "Error", description: "Failed to update visit status." });
@@ -254,10 +266,10 @@ export default function ManageVisitorPage() {
                                         ) : <p>No proof uploaded.</p>}
                                     </div>
                                     <DialogFooter className="gap-2 sm:justify-between">
-                                        <Button variant="destructive" onClick={() => handleUpdateStatus(visit.id, 'Rejected')} disabled={isUpdating}>
+                                        <Button variant="destructive" onClick={() => handleUpdateStatus(visit.id, visit.appointment.leadId, 'Rejected')} disabled={isUpdating}>
                                             <XCircle className="mr-2 h-4 w-4" /> Reject
                                         </Button>
-                                        <Button onClick={() => handleUpdateStatus(visit.id, 'Completed')} disabled={isUpdating}>
+                                        <Button onClick={() => handleUpdateStatus(visit.id, visit.appointment.leadId, 'Completed')} disabled={isUpdating}>
                                             <CheckCircle className="mr-2 h-4 w-4" /> Approve
                                         </Button>
                                     </DialogFooter>

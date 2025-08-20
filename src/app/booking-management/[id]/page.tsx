@@ -272,16 +272,16 @@ export default function BookingDetailsPage() {
                                 type="file"
                                 multiple
                                 onChange={handleFileSelect}
-                                disabled={isCompleting}
+                                disabled={isCompleting || lead.status === 'Completed'}
                             />
                              {filesToUpload.length > 0 && (
                                 <div className="text-xs text-muted-foreground">
                                     {filesToUpload.length} file(s) selected.
                                 </div>
                             )}
-                           <Button className="w-full" onClick={handleUploadAndComplete} disabled={isCompleting}>
+                           <Button className="w-full" onClick={handleUploadAndComplete} disabled={isCompleting || lead.status === 'Completed'}>
                                 {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                {isUploading ? "Uploading..." : "Complete Deal"}
+                                {lead.status === 'Completed' ? "Deal Completed" : (isUploading ? "Uploading..." : "Complete Deal")}
                             </Button>
                         </CardContent>
                     </Card>

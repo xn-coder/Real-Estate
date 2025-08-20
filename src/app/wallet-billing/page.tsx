@@ -99,7 +99,7 @@ export default function WalletBillingPage() {
     { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
     ...(isAdmin || isSeller ? [
       { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
-      { name: "Payable List", href: "/wallet-billing/payable" },
+      { name: "Partner Earning", href: "/wallet-billing/payable" },
     ] : []),
     { name: "Payment History", href: "/wallet-billing/history" },
   ]
