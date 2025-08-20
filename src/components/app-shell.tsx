@@ -169,7 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <DropdownMenuItem asChild>
                               <Link href="/manage-website">
                                 <Globe className="mr-2 h-4 w-4" />
-                                <span>Manage Website</span>
+                                <span>Manage Business</span>
                               </Link>
                             </DropdownMenuItem>
                              <DropdownMenuItem asChild>

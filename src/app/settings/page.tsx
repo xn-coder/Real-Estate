@@ -28,7 +28,6 @@ import type { User } from "@/types/user"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import axios from "axios"
 import { useRouter } from "next/navigation"
 
 const permissions = [
@@ -71,13 +70,6 @@ const feesFormSchema = z.object({
 
 type FeesForm = z.infer<typeof feesFormSchema>
 
-const paymentTestSchema = z.object({
-    amount: z.coerce.number().min(1, { message: "Amount must be at least $1." }),
-})
-
-type PaymentTestForm = z.infer<typeof paymentTestSchema>
-
-
 export default function SettingsPage() {
   const { toast } = useToast()
   const router = useRouter()
@@ -88,7 +80,6 @@ export default function SettingsPage() {
   const [isFeesDialogOpen, setIsFeesDialogOpen] = React.useState(false)
   const [isUpdatingFees, setIsUpdatingFees] = React.useState(false)
   const [fees, setFees] = React.useState<FeesForm | null>(null)
-  const [isTestingPayment, setIsTestingPayment] = React.useState(false)
 
   const accessForm = useForm<AddAccessForm>({
     resolver: zodResolver(addAccessFormSchema),
@@ -103,13 +94,6 @@ export default function SettingsPage() {
 
   const feesForm = useForm<FeesForm>({
     resolver: zodResolver(feesFormSchema),
-  })
-
-  const paymentTestForm = useForm<PaymentTestForm>({
-    resolver: zodResolver(paymentTestSchema),
-    defaultValues: {
-        amount: 10,
-    }
   })
 
 
@@ -242,77 +226,12 @@ export default function SettingsPage() {
     }
   }
 
-  async function onPaymentTestSubmit(values: PaymentTestForm) {
-    setIsTestingPayment(true);
-    try {
-      const response = await axios.post('/api/payment/initiate', {
-        amount: values.amount,
-        merchantTransactionId: `TX_TEST_${Date.now()}`,
-        merchantUserId: 'MUID_TEST_USER',
-        redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/settings`,
-      });
-
-      if (response.data.success) {
-        router.push(response.data.data.instrumentResponse.redirectInfo.url);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Payment Test Failed",
-          description: response.data.message || "Could not connect to payment gateway.",
-        });
-      }
-    } catch (error) {
-      console.error("Payment test API error:", error);
-      toast({
-        variant: "destructive",
-        title: "Payment Test Error",
-        description: "An unexpected error occurred during the test.",
-      });
-    } finally {
-      setIsTestingPayment(false);
-    }
-  }
-
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight font-headline">Settings</h1>
       </div>
       
-       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardTitle>Payment Gateway Testing</CardTitle>
-                <CardDescription>Use this section to test the PhonePe payment gateway.</CardDescription>
-            </div>
-            <Landmark className="h-6 w-6 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-            <Form {...paymentTestForm}>
-                <form onSubmit={paymentTestForm.handleSubmit(onPaymentTestSubmit)} className="flex items-end gap-4">
-                    <FormField
-                        control={paymentTestForm.control}
-                        name="amount"
-                        render={({ field }) => (
-                            <FormItem className="flex-1">
-                                <FormLabel>Amount</FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="Enter amount" {...field} disabled={isTestingPayment} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button type="submit" disabled={isTestingPayment}>
-                        {isTestingPayment && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isTestingPayment ? "Processing..." : "Run Test Payment"}
-                    </Button>
-                </form>
-            </Form>
-        </CardContent>
-       </Card>
-
        <Card>
         <CardHeader className="flex flex-row items-center justify-between">
             <div>
