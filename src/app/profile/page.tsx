@@ -166,16 +166,18 @@ export default function ProfilePage() {
           await setDoc(doc(db, 'files', profileImageId), { data: values.profileImage });
       }
 
-      await updateDoc(userDocRef, {
+      const updateData = {
         name: `${values.firstName} ${values.lastName}`,
         firstName: values.firstName,
         lastName: values.lastName,
         phone: values.phone,
         profileImageId: profileImageId,
         dob: values.dob ? new Date(values.dob) : null,
-        gender: values.gender,
-        qualification: values.qualification,
-      })
+        gender: values.gender || null,
+        qualification: values.qualification || null,
+      };
+
+      await updateDoc(userDocRef, updateData)
       toast({
         title: "Profile Updated",
         description: "Your profile has been updated successfully.",
@@ -577,5 +579,3 @@ export default function ProfilePage() {
     </div>
   )
 }
-
-    
