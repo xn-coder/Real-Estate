@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
@@ -44,8 +45,11 @@ export default function ListingsPage() {
     const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
     const [cities, setCities] = React.useState<string[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [featuredIds, setFeaturedIds] = React.useState<string[]>([]);
+    const [recommendedIds, setRecommendedIds] = React.useState<string[]>([]);
     
     // Filter states
+    const [activeTab, setActiveTab] = React.useState("all");
     const [searchTerm, setSearchTerm] = React.useState("");
     const [propertyTypeFilter, setPropertyTypeFilter] = React.useState<string>("all");
     const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
@@ -53,6 +57,8 @@ export default function ListingsPage() {
     const [budget, setBudget] = React.useState<[number, number]>([0, 50000000]);
 
     const canAddProperties = user?.role === 'seller' || user?.role === 'admin';
+    const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+
 
     React.useEffect(() => {
         const fetchListingsAndTypes = async () => {
@@ -60,6 +66,15 @@ export default function ListingsPage() {
             try {
                 const typesSnapshot = await getDocs(collection(db, "property_types"));
                 setPropertyTypes(typesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PropertyType)));
+                
+                if (isPartner) {
+                    const defaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
+                    if (defaultsDoc.exists()) {
+                        const data = defaultsDoc.data();
+                        setFeaturedIds(data.partnerFeaturedCatalog || []);
+                        setRecommendedIds(data.recommendedCatalog || []);
+                    }
+                }
 
                 const q = query(collection(db, "properties"), where("status", "!=", "Pending Verification"));
                 const snapshot = await getDocs(q);
@@ -91,10 +106,14 @@ export default function ListingsPage() {
             }
         };
         fetchListingsAndTypes();
-    }, [toast]);
+    }, [toast, isPartner]);
     
     const filteredListings = React.useMemo(() => {
         return allListings.filter(listing => {
+            const tabMatch = activeTab === 'all' || 
+                             (activeTab === 'featured' && featuredIds.includes(listing.id)) ||
+                             (activeTab === 'recommended' && recommendedIds.includes(listing.id));
+                             
             const typeMatch = propertyTypeFilter === 'all' || listing.propertyTypeId === propertyTypeFilter;
             const categoryMatch = categoryFilter === 'all' || listing.propertyCategory === categoryFilter;
             const cityMatch = cityFilter === 'all' || listing.city === cityFilter;
@@ -106,9 +125,9 @@ export default function ListingsPage() {
                 listing.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 listing.id.toLowerCase().includes(searchTerm.toLowerCase());
 
-            return typeMatch && categoryMatch && cityMatch && budgetMatch && searchMatch;
+            return tabMatch && typeMatch && categoryMatch && cityMatch && budgetMatch && searchMatch;
         });
-    }, [allListings, searchTerm, propertyTypeFilter, categoryFilter, cityFilter, budget]);
+    }, [allListings, searchTerm, propertyTypeFilter, categoryFilter, cityFilter, budget, activeTab, featuredIds, recommendedIds]);
 
 
   return (
@@ -195,6 +214,16 @@ export default function ListingsPage() {
             </div>
         </CardContent>
        </Card>
+
+        {isPartner && (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList>
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="featured">Featured</TabsTrigger>
+                    <TabsTrigger value="recommended">Recommended</TabsTrigger>
+                </TabsList>
+            </Tabs>
+        )}
       
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -244,6 +273,3 @@ export default function ListingsPage() {
     </div>
   )
 }
-
-
-    
