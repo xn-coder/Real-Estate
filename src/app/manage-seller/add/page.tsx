@@ -45,7 +45,6 @@ const step2Schema = z.object({
     businessLogo: z.any().optional(),
     businessName: z.string().min(1, "Business name is required."),
     businessType: z.string().min(1, "Business type is required."),
-    gstn: z.string().optional(),
 })
 
 const step3Schema = z.object({
@@ -53,6 +52,7 @@ const step3Schema = z.object({
     aadharFile: z.any().refine(file => file, "Aadhar card is required."),
     panNumber: z.string().min(10, "Enter a valid PAN number."),
     panFile: z.any().refine(file => file, "PAN card is required."),
+    reraNumber: z.string().optional(),
     reraCertificate: z.any().optional(),
 })
 
@@ -89,9 +89,9 @@ export default function AddSellerPage() {
       pincode: "",
       businessName: "",
       businessType: "",
-      gstn: "",
       aadharNumber: "",
       panNumber: "",
+      reraNumber: "",
     },
     mode: "onChange",
   })
@@ -157,12 +157,12 @@ export default function AddSellerPage() {
         pincode: values.pincode,
         businessName: values.businessName,
         businessType: values.businessType,
-        gstn: values.gstn,
         businessLogo: businessLogoUrl,
         aadharNumber: values.aadharNumber,
         panNumber: values.panNumber,
         aadharFile: aadharFileUrl,
         panFile: panFileUrl,
+        reraNumber: values.reraNumber,
         reraCertificate: reraCertificateUrl,
         role: 'seller',
         status: 'pending'
@@ -204,21 +204,21 @@ export default function AddSellerPage() {
                 <form onSubmit={(e) => { e.preventDefault(); handleNextStep(); }} className="space-y-4">
                      {currentStep === 1 && (
                         <div className="space-y-4">
-                            <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem> <FormLabel>Full Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="you@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone Number</FormLabel> <FormControl><Input placeholder="(123) 456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             </div>
-                            <FormField control={form.control} name="dob" render={({ field }) => ( <FormItem> <FormLabel>Date of Birth</FormLabel> <FormControl><Input type="date" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Date of Birth</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="password" render={({ field }) => ( <FormItem> <FormLabel>Password</FormLabel> <FormControl><Input type="password" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                <FormField control={form.control} name="confirmPassword" render={({ field }) => ( <FormItem> <FormLabel>Confirm Password</FormLabel> <FormControl><Input type="password" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="password" render={({ field }) => ( <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                <FormField control={form.control} name="confirmPassword" render={({ field }) => ( <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             </div>
-                            <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Address</FormLabel> <FormControl><Textarea placeholder="123 Main St..." {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Address</FormLabel><FormControl><Textarea placeholder="123 Main St..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <div className="grid grid-cols-3 gap-4">
-                                <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>City</FormLabel> <FormControl><Input placeholder="New York" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                <FormField control={form.control} name="state" render={({ field }) => ( <FormItem> <FormLabel>State</FormLabel> <FormControl><Input placeholder="NY" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                <FormField control={form.control} name="pincode" render={({ field }) => ( <FormItem> <FormLabel>Pincode</FormLabel> <FormControl><Input placeholder="10001" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="New York" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                <FormField control={form.control} name="state" render={({ field }) => ( <FormItem><FormLabel>State</FormLabel><FormControl><Input placeholder="NY" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                <FormField control={form.control} name="pincode" render={({ field }) => ( <FormItem><FormLabel>Pincode</FormLabel><FormControl><Input placeholder="10001" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             </div>
                         </div>
                     )}
@@ -263,14 +263,13 @@ export default function AddSellerPage() {
                                     </FormItem>
                                 )}
                             />
-                             <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem> <FormLabel>Business Name</FormLabel> <FormControl><Input placeholder="e.g., Acme Real Estate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem> <FormLabel>Business Type</FormLabel> <FormControl><Input placeholder="e.g., Real Estate Agency" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="gstn" render={({ field }) => ( <FormItem> <FormLabel>GSTN (Optional)</FormLabel> <FormControl><Input placeholder="Your GST Number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                             <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input placeholder="e.g., Acme Real Estate" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem><FormLabel>Business Type</FormLabel><FormControl><Input placeholder="e.g., Real Estate Agency" {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
                     )}
                     {currentStep === 3 && (
                          <div className="space-y-4">
-                            <FormField control={form.control} name="aadharNumber" render={({ field }) => ( <FormItem> <FormLabel>Aadhar Card Number</FormLabel> <FormControl><Input placeholder="XXXX XXXX XXXX" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="aadharNumber" render={({ field }) => ( <FormItem><FormLabel>Aadhar Card Number</FormLabel><FormControl><Input placeholder="XXXX XXXX XXXX" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={form.control} name="aadharFile" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Upload Aadhar Card (PDF/Image)</FormLabel>
@@ -280,7 +279,7 @@ export default function AddSellerPage() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField control={form.control} name="panNumber" render={({ field }) => ( <FormItem> <FormLabel>PAN Card Number</FormLabel> <FormControl><Input placeholder="ABCDE1234F" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="panNumber" render={({ field }) => ( <FormItem><FormLabel>PAN Card Number</FormLabel><FormControl><Input placeholder="ABCDE1234F" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={form.control} name="panFile" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Upload PAN Card (PDF/Image)</FormLabel>
@@ -290,6 +289,7 @@ export default function AddSellerPage() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
+                             <FormField control={form.control} name="reraNumber" render={({ field }) => ( <FormItem> <FormLabel>RERA Number (Optional)</FormLabel> <FormControl><Input placeholder="Your RERA registration number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="reraCertificate" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>RERA Certificate (Optional)</FormLabel>
