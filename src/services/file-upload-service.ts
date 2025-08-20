@@ -12,11 +12,12 @@ export async function uploadFile(file: File, path: string): Promise<string> {
 
   try {
     const fileId = generateUserId("FILE");
-    const fileRef = ref(storage, `${path}/${fileId}-${file.name}`);
+    // Using a simpler, flatter path structure for uploads.
+    const storageRef = ref(storage, `uploads/${fileId}-${file.name}`);
     
-    await uploadBytes(fileRef, file);
+    await uploadBytes(storageRef, file);
     
-    const downloadURL = await getDownloadURL(fileRef);
+    const downloadURL = await getDownloadURL(storageRef);
     
     return downloadURL;
   } catch (error) {
