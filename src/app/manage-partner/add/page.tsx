@@ -10,6 +10,7 @@ import { MoreHorizontal, PlusCircle, Loader2, Upload, CalendarIcon, User, ArrowL
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -467,7 +468,7 @@ export default function AddPartnerPage() {
                             />
                              <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem> <FormLabel>Business Name</FormLabel> <FormControl><Input placeholder="e.g., Acme Real Estate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem> <FormLabel>Business Type</FormLabel> <FormControl><Input placeholder="e.g., Real Estate Agency" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="role" render={({ field }) => ( <FormItem> <FormLabel>Partner Category</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select a partner category"/></SelectTrigger></FormControl> <SelectContent> {Object.entries(partnerRoles).map(([key, value]) => ( <SelectItem key={key} value={key}>{value}</SelectItem> ))} </SelectContent> </Select> {selectedRole && fees && registrationFee > 0 && <FormDescription>Registration Fee: ${fees[selectedRole].toLocaleString()}</FormDescription>} <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="role" render={({ field }) => ( <FormItem> <FormLabel>Partner Category</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select a partner category"/></SelectTrigger></FormControl> <SelectContent> {Object.entries(partnerRoles).map(([key, value]) => ( <SelectItem key={key} value={key}>{value}</SelectItem> ))} </SelectContent> </Select> {selectedRole && fees && registrationFee > 0 && <FormDescription>Registration Fee: ₹{fees[selectedRole].toLocaleString()}</FormDescription>} <FormMessage /> </FormItem> )} />
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name="businessAge" render={({ field }) => ( <FormItem> <FormLabel>Age of Business (Years)</FormLabel> <FormControl><Input type="number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 <FormField control={form.control} name="areaCovered" render={({ field }) => ( <FormItem> <FormLabel>Area Covered</FormLabel> <FormControl><Input placeholder="e.g., Downtown, Suburbs" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -506,7 +507,7 @@ export default function AddPartnerPage() {
                                     <p className="text-muted-foreground">To finalize your registration, please pay the partner fee.</p>
                                     <Card>
                                         <CardContent className="p-6">
-                                            <div className="text-4xl font-bold">${registrationFee?.toLocaleString()}</div>
+                                            <div className="text-4xl font-bold">₹{registrationFee?.toLocaleString()}</div>
                                             <p className="text-sm text-muted-foreground mt-1">One-time Registration Fee</p>
                                         </CardContent>
                                     </Card>
@@ -557,7 +558,7 @@ export default function AddPartnerPage() {
                             >
                                 {(paymentStatus === 'processing' || isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {isPaymentEnabled && registrationFee > 0
-                                    ? (isSubmitting ? 'Processing...' : `Pay $${registrationFee}`)
+                                    ? (isSubmitting ? 'Processing...' : `Pay ₹${registrationFee}`)
                                     : (isSubmitting ? 'Submitting...' : 'Finish & Submit for Review')
                                 }
                             </Button>
