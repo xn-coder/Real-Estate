@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, orderBy, doc, updateDoc, setDoc } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, doc, updateDoc, setDoc, getDoc } from "firebase/firestore"
 import type { Property, EarningRuleValue } from "@/types/property"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
@@ -292,4 +292,3 @@ export default function PartnerEarningPage() {
         </div>
     )
 }
-
