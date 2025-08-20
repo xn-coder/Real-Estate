@@ -70,7 +70,10 @@ export default function FeaturedPropertiesPage() {
             const defaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
             if (defaultsDoc.exists()) {
                 const data = defaultsDoc.data();
-                const getPropsByIds = (ids: string[] = []) => propsData.filter(p => ids.includes(p.id));
+                const getPropsByIds = (ids: unknown) => {
+                    if (!Array.isArray(ids)) return [];
+                    return propsData.filter(p => ids.includes(p.id));
+                };
                 
                 setFeaturedProperties({
                     defaultCatalog: getPropsByIds(data.featuredCatalog),
