@@ -198,6 +198,8 @@ export default function MarketingKitPage() {
             propertyId: values.propertyId || null,
             featureImage: featureImageUrl,
             files: filesData,
+            previewUrl: featureImageUrl,
+            downloadUrl: featureImageUrl
         });
 
         setIsSubmitting(false);
@@ -226,51 +228,6 @@ export default function MarketingKitPage() {
     }
 }
 
- const embedProfileWithCanvas = (baseImageUri: string, businessName: string, phone: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return reject(new Error('Canvas context not available'));
-
-        const baseImage = new window.Image();
-        baseImage.crossOrigin = "Anonymous";
-        
-        baseImage.onload = () => {
-            canvas.width = baseImage.width;
-            canvas.height = baseImage.height;
-            ctx.drawImage(baseImage, 0, 0);
-
-            // Watermark styling
-            const padding = canvas.width * 0.02;
-            const barHeight = canvas.height * 0.08;
-            const barY = canvas.height - barHeight;
-            const fontSize = barHeight * 0.4;
-            
-            // Draw semi-transparent blueish background
-            ctx.fillStyle = 'rgba(22, 163, 175, 0.7)'; // Teal-ish blue, 70% opacity
-            ctx.fillRect(0, barY, canvas.width, barHeight);
-
-            // Set text style
-            ctx.fillStyle = 'white';
-            ctx.font = `bold ${fontSize}px Arial`;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            
-            // Draw business name
-            ctx.fillText(businessName, padding, barY + barHeight / 2);
-            
-            // Draw phone number
-            ctx.textAlign = 'right';
-            ctx.fillText(phone, canvas.width - padding, barY + barHeight / 2);
-            
-            resolve(canvas.toDataURL('image/png'));
-        };
-        
-        baseImage.onerror = () => reject(new Error('Failed to load base image.'));
-        baseImage.src = baseImageUri;
-    });
-};
-
   const handleDownload = async (kit: Kit) => {
     if (!user) {
         toast({ variant: 'destructive', title: 'Login Required' });
@@ -288,51 +245,15 @@ export default function MarketingKitPage() {
 
     setIsDownloading(kit.id);
 
-    const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
-
     for (const file of kit.files) {
         try {
-            let fileUrl = file.url;
-            let fileName = file.name;
-
-            // Determine branding info
-            let brandName: string;
-            let brandPhone: string;
-            
-            if (isPartner && user.website?.businessProfile?.businessName && user.phone) {
-                brandName = user.website.businessProfile.businessName;
-                brandPhone = user.phone;
-            } else {
-                brandName = defaultBusinessInfo?.name || 'DealFlow';
-                brandPhone = defaultBusinessInfo?.phone || '';
-            }
-
-            // Apply branding to images
-            if (file.type === 'image' && brandName && brandPhone) {
-                 try {
-                    const brandedImageUri = await embedProfileWithCanvas(file.url, brandName, brandPhone);
-                    fileUrl = brandedImageUri;
-                    const extension = file.name.split('.').pop();
-                    fileName = `${file.name.replace(`.${extension}`, '')}_branded.png`;
-                } catch (e) {
-                    console.error("Failed to embed profile on image:", e);
-                    toast({ variant: 'destructive', title: 'Image Branding Failed', description: 'Could not personalize image.' });
-                }
-            }
-            
-            // Fetch the file as a blob to force download
-            const response = await fetch(fileUrl);
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            
             const link = document.createElement("a");
-            link.href = blobUrl;
-            link.download = fileName;
+            link.href = file.url;
+            link.setAttribute("download", file.name);
+            link.setAttribute("target", "_blank");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            window.URL.revokeObjectURL(blobUrl);
-
         } catch (error) {
             console.error('Download error for file:', file.name, error);
             toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}.` });
@@ -534,5 +455,3 @@ export default function MarketingKitPage() {
     </div>
   )
 }
-
-    
