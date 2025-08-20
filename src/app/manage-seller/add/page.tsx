@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import * as React from "react"
@@ -27,19 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
+import { uploadFile } from "@/services/file-upload-service"
 
 const step1Schema = z.object({
   fullName: z.string().min(1, { message: "Full name is required." }),
@@ -146,21 +133,14 @@ export default function AddSellerPage() {
 
       const [firstName, ...lastNameParts] = values.fullName.split(' ');
       const lastName = lastNameParts.join(' ');
-
-      const uploadFile = async (file: any) => {
-        if (!file || typeof file === 'string') return file || null;
-        const fileId = generateUserId("FILE");
-        const fileUrl = await fileToDataUrl(file);
-        await setDoc(doc(db, "files", fileId), { data: fileUrl });
-        return fileId;
-      };
-
-      const [businessLogoId, aadharFileId, panFileId, reraCertificateId] = await Promise.all([
-        uploadFile(values.businessLogo),
-        uploadFile(values.aadharFile),
-        uploadFile(values.panFile),
-        uploadFile(values.reraCertificate),
+      
+      const [businessLogoUrl, aadharFileUrl, panFileUrl, reraCertificateUrl] = await Promise.all([
+          values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo`) : Promise.resolve(null),
+          uploadFile(values.aadharFile, `users/${userId}/aadharFile`),
+          uploadFile(values.panFile, `users/${userId}/panFile`),
+          values.reraCertificate ? uploadFile(values.reraCertificate, `users/${userId}/reraCertificate`) : Promise.resolve(null),
       ]);
+
 
       await setDoc(doc(db, "users", userId), {
         id: userId,
@@ -178,12 +158,12 @@ export default function AddSellerPage() {
         businessName: values.businessName,
         businessType: values.businessType,
         gstn: values.gstn,
-        businessLogoId,
+        businessLogo: businessLogoUrl,
         aadharNumber: values.aadharNumber,
         panNumber: values.panNumber,
-        aadharFileId,
-        panFileId,
-        reraCertificateId,
+        aadharFile: aadharFileUrl,
+        panFile: panFileUrl,
+        reraCertificate: reraCertificateUrl,
         role: 'seller',
         status: 'pending'
       })

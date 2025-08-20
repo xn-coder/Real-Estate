@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, BadgeCheck, FileText, Briefcase } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -29,20 +29,7 @@ import { format } from 'date-fns'
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 import { Label } from "@/components/ui/label"
-import { generateUserId } from "@/lib/utils"
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
+import { uploadFile } from "@/services/file-upload-service"
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
@@ -148,8 +135,7 @@ export default function ProfilePage() {
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: "profileImage" | "businessLogo", formInstance: typeof profileForm | typeof businessForm) => {
     const file = event.target.files?.[0];
     if (file) {
-      const base64String = await fileToDataUrl(file);
-      formInstance.setValue(fieldName, base64String, { shouldValidate: true });
+      formInstance.setValue(fieldName, file, { shouldValidate: true });
     }
   };
 
@@ -160,10 +146,9 @@ export default function ProfilePage() {
     try {
       const userDocRef = doc(db, "users", user.id);
       
-      let profileImageId = user.profileImageId;
-      if (values.profileImage && typeof values.profileImage === 'string' && values.profileImage.startsWith('data:image')) {
-          profileImageId = user.profileImageId || generateUserId('FILE');
-          await setDoc(doc(db, 'files', profileImageId), { data: values.profileImage });
+      let profileImageUrl = user.profileImage;
+      if (values.profileImage && values.profileImage instanceof File) {
+          profileImageUrl = await uploadFile(values.profileImage, `users/${user.id}/profileImage`);
       }
 
       const updateData = {
@@ -171,7 +156,7 @@ export default function ProfilePage() {
         firstName: values.firstName,
         lastName: values.lastName,
         phone: values.phone,
-        profileImageId: profileImageId,
+        profileImage: profileImageUrl,
         dob: values.dob ? new Date(values.dob) : null,
         gender: values.gender || null,
         qualification: values.qualification || null,
@@ -202,15 +187,14 @@ export default function ProfilePage() {
     try {
         const userDocRef = doc(db, "users", user.id);
 
-        let businessLogoId = user.businessLogoId;
-        if (values.businessLogo && typeof values.businessLogo === 'string' && values.businessLogo.startsWith('data:image')) {
-            businessLogoId = user.businessLogoId || generateUserId('FILE');
-            await setDoc(doc(db, 'files', businessLogoId), { data: values.businessLogo });
+        let businessLogoUrl = user.businessLogo;
+        if (values.businessLogo && values.businessLogo instanceof File) {
+            businessLogoUrl = await uploadFile(values.businessLogo, `users/${user.id}/businessLogo`);
         }
 
         await updateDoc(userDocRef, {
             businessName: values.businessName,
-            businessLogoId: businessLogoId,
+            businessLogo: businessLogoUrl,
         });
         toast({
             title: "Business Profile Updated",
@@ -332,7 +316,13 @@ export default function ProfilePage() {
             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
               <div className="flex items-center gap-6">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={profileForm.watch("profileImage")} alt="Profile" data-ai-hint="user avatar" />
+                  <AvatarImage src={
+                      profileForm.watch("profileImage") 
+                        ? (typeof profileForm.watch("profileImage") === 'string' 
+                            ? profileForm.watch("profileImage") 
+                            : URL.createObjectURL(profileForm.watch("profileImage"))) 
+                        : user?.profileImage
+                    } alt="Profile" data-ai-hint="user avatar" />
                   <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="grid gap-2">
@@ -425,7 +415,11 @@ export default function ProfilePage() {
                                     <FormLabel>Business Logo</FormLabel>
                                      <div className="flex items-center gap-6">
                                         <Avatar className="h-16 w-16">
-                                            <AvatarImage src={businessForm.watch("businessLogo")} />
+                                            <AvatarImage src={
+                                                field.value 
+                                                ? (typeof field.value === 'string' ? field.value : URL.createObjectURL(field.value))
+                                                : user?.businessLogo
+                                            } />
                                             <AvatarFallback>Logo</AvatarFallback>
                                         </Avatar>
                                         <div className="grid gap-2">

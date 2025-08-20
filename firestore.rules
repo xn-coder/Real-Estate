@@ -1,155 +1,147 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isSeller() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller';
+    }
+    function isPartner() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
+    }
 
-    // By default, deny all reads and writes.
+    // Default deny all
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // USERS collection
-    // Allow users to read their own data.
-    // Allow admins to read any user's data.
-    // Allow authenticated users to create their own user document (sign-up).
-    // Allow users to update their own data.
-    // Allow admins to delete users.
+    // Users collection
     match /users/{userId} {
-      allow read: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow delete: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-
-      // DOCUMENTS subcollection
-      // Only the user or an admin can manage their documents.
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+      
+      // Documents subcollection
       match /documents/{docId} {
-        allow read, write: if request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
-
-    // Authenticated users can read most top-level collections.
-    // Write rules are more specific.
-    function isAuthenticated() {
-      return request.auth != null;
+    
+    // Wallets collection
+    match /wallets/{userId} {
+        allow read: if isOwner(userId) || isAdmin();
+        // Writes are only allowed through specific transactions managed by backend logic/rules
+        allow write: if isAdmin();
     }
     
-    function isAdmin() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    function isSeller() {
-        return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller';
-    }
-
-    // PROPERTIES: Publicly readable, only admins/sellers can manage.
-    match /properties/{propertyId} {
-      allow read: if true;
-      allow create, update: if isAdmin() || isSeller();
-      allow delete: if isAdmin();
-    }
-    
-    // FILES: Used for storing images/docs. Accessible if you can access the parent document.
-    // This is an example; a more robust solution would check ownership of the referencing document.
-    // For now, allow authenticated reads/writes.
-     match /files/{fileId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    // LEADS: Authenticated users can create. Admins/Sellers/Partners can read based on their scope.
-    match /leads/{leadId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
-    }
-    
-    // APPOINTMENTS: Users can create/manage their own.
-    match /appointments/{appointmentId} {
-      allow read: if isAuthenticated();
-      allow create: if request.auth.uid == request.resource.data.partnerId || request.auth.uid == request.resource.data.customerId;
-      allow update: if isAdmin() || request.auth.uid == resource.data.partnerId;
-    }
-
-    // INQUIRIES from partner websites
-    match /inquiries/{inquiryId} {
-        allow read: if isAuthenticated() && (isAdmin() || resource.data.partnerId == request.auth.uid);
-        allow create: if true; // Public can create inquiries
-    }
-
-    // REQUIREMENTS posted by customers
-    match /requirements/{reqId} {
-        allow read: if isAuthenticated();
-        allow create: if request.auth.uid == request.resource.data.ownerId;
-        allow update, delete: if isAdmin() || request.auth.uid == resource.data.ownerId;
-    }
-
-    // RESOURCE CENTER: Publicly readable, managed by admins/sellers.
-    match /resources/{resourceId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin() || isSeller();
-    }
-    
-    // MARKETING KITS: Publicly readable, managed by admins/sellers.
-    match /marketing_kits/{kitId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin() || isSeller();
-    }
-    
-    // PROPERTY TYPES: Publicly readable, managed by admin.
-    match /property_types/{typeId} {
-        allow read: if true;
-        allow create, update, delete: if isAdmin();
-    }
-
-    // SUPPORT TICKETS: Users can manage their own, admins can manage all.
-    match /support_tickets/{ticketId} {
-      allow read: if isAdmin() || request.auth.uid == resource.data.userId;
-      allow create: if request.auth.uid == request.resource.data.userId;
-      allow update: if isAdmin();
-    }
-
-    // WALLETS: Users can read their own, only admins can write.
-    match /wallets/{walletId} {
-      allow read: if request.auth.uid == walletId || isAdmin();
-      allow write: if isAdmin();
-    }
-
-    // WALLET TRANSACTIONS: Read-only for involved parties and admins.
-    match /wallet_transactions/{transactionId} {
-      allow read: if isAuthenticated();
-      allow create: if isAdmin();
-    }
-    
-    // REWARD TRANSACTIONS: Read-only for involved parties and admins.
     match /reward_transactions/{transactionId} {
-        allow read: if isAuthenticated();
+        allow read: if isSignedIn();
         allow create: if isAdmin() || isSeller();
     }
     
-    // REWARD OFFERS: Publicly readable, managed by admins.
-    match /reward_offers/{offerId} {
-        allow read: if true;
-        allow create, update, delete: if isAdmin();
-    }
-    
-     // RECEIVABLES / PAYABLES: Managed by admins and sellers
-    match /receivables/{recId} {
-        allow read, write: if isAdmin() || isSeller();
-    }
-     match /payables/{payId} {
-        allow read, write: if isAdmin() || isSeller();
-    }
-    
-    // WITHDRAWAL REQUESTS: Users create their own, admins manage them.
-    match /withdrawal_requests/{reqId} {
-        allow read: if isAuthenticated();
-        allow create: if request.auth.uid == request.resource.data.userId;
+     match /withdrawal_requests/{requestId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
         allow update: if isAdmin() || isSeller();
     }
+    
+    match /receivables/{receivableId} {
+        allow read: if isSignedIn();
+        allow create, update: if isAdmin() || isSeller();
+    }
+    
+    match /payables/{payableId} {
+        allow read: if isSignedIn();
+        allow create, update: if isAdmin() || isSeller();
+    }
 
-    // APP SETTINGS: Read-only for authenticated users, writable only by admins.
-    match /app_settings/{settingId} {
+
+    // Properties can be read by anyone, but only created/updated by sellers/admins
+    match /properties/{propertyId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isSignedIn() && (isSeller() || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Leads can be created by partners, but only read by involved parties
+    match /leads/{leadId} {
+        allow create: if isPartner();
+        allow read, update: if isSignedIn(); // Simplified for now
+    }
+
+    // Appointments
+    match /appointments/{appointmentId} {
+        allow read: if isSignedIn();
+        allow create: if isPartner();
+        allow update: if isSeller() || isAdmin() || isPartner();
+    }
+
+    // Inquiries from partner websites
+    match /inquiries/{inquiryId} {
+        allow create: if true; // Publicly accessible form
+        allow read: if isSignedIn();
+    }
+
+    // Settings, resources, and marketing kits
+    match /app_settings/{settingId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+    
+    match /resources/{resourceId} {
+        allow read: if true;
+        allow write: if isAdmin() || isSeller();
+        allow delete: if isAdmin();
+    }
+
+    match /property_types/{typeId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
+    match /marketing_kits/{kitId} {
+        allow read: if true;
+        allow write: if isAdmin() || isSeller();
+    }
+    
+    match /support_tickets/{ticketId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if isAdmin();
+    }
+
+    match /requirements/{reqId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+    }
+    
+    match /files/{fileId} {
+        allow read: if true;
+        allow write: if isSignedIn(); // Allow any authenticated user to write files
+    }
+  }
+}
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public read access to all files
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    // Allow writes only for authenticated users
+    match /uploads/{userId}/{fileName} {
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

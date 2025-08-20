@@ -34,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import axios from 'axios';
+import { uploadFile } from "@/services/file-upload-service"
 
 const partnerRoles = {
   'affiliate': 'Affiliate Partner',
@@ -110,21 +111,6 @@ const combinedSchema = (
 
 
 type AddPartnerForm = z.infer<typeof combinedSchema>;
-
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
 
 export default function AddPartnerPage() {
   const { toast } = useToast()
@@ -218,19 +204,11 @@ export default function AddPartnerPage() {
         const prefix = 'P' + values.role.substring(0, 2).toUpperCase();
         const userId = generateUserId(prefix);
 
-        const uploadFile = async (file: any) => {
-            if (!file || typeof file === 'string') return file || null;
-            const fileId = generateUserId("FILE");
-            const fileUrl = await fileToDataUrl(file);
-            await setDoc(doc(db, "files", fileId), { data: fileUrl });
-            return fileId;
-        };
-
-        const [profileImageId, businessLogoId, aadharFileId, panFileId] = await Promise.all([
-            uploadFile(values.profileImage),
-            uploadFile(values.businessLogo),
-            uploadFile(values.aadharFile),
-            uploadFile(values.panFile),
+        const [profileImageUrl, businessLogoUrl, aadharFileUrl, panFileUrl] = await Promise.all([
+            values.profileImage ? uploadFile(values.profileImage, `users/${userId}/profileImage`) : Promise.resolve(null),
+            values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo`) : Promise.resolve(null),
+            uploadFile(values.aadharFile, `users/${userId}/aadharFile`),
+            uploadFile(values.panFile, `users/${userId}/panFile`),
         ]);
 
         const partnerDataBase = {
@@ -243,7 +221,7 @@ export default function AddPartnerPage() {
             password: hashedPassword,
             role: values.role,
             status: 'active' as 'active',
-            profileImageId,
+            profileImage: profileImageUrl,
             dob: new Date(values.dob),
             gender: values.gender,
             qualification: values.qualification,
@@ -252,14 +230,14 @@ export default function AddPartnerPage() {
             state: values.state,
             pincode: values.pincode,
             businessName: values.businessName,
-            businessLogoId,
+            businessLogo: businessLogoUrl,
             businessType: values.businessType,
             businessAge: values.businessAge,
             areaCovered: values.areaCovered,
             aadharNumber: values.aadharNumber,
-            aadharFileId,
+            aadharFile: aadharFileUrl,
             panNumber: values.panNumber,
-            panFileId,
+            panFile: panFileUrl,
             teamLeadId: null,
             createdAt: Timestamp.now(),
         };
@@ -272,7 +250,7 @@ export default function AddPartnerPage() {
             await handlePayment(registrationFee, userId);
         } else if (!isPaymentEnabled && registrationFee > 0) {
              const paymentData = values as z.infer<typeof addPartnerFormStep4ManualSchema>;
-             const paymentProofUrl = paymentData.paymentProof ? await fileToDataUrl(paymentData.paymentProof) : '';
+             const paymentProofUrl = paymentData.paymentProof ? await uploadFile(paymentData.paymentProof, `users/${userId}/paymentProof`) : '';
             await setDoc(doc(db, "users", userId), {
                 ...partnerDataBase,
                 paymentStatus: 'pending_approval',
