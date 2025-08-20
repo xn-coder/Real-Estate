@@ -10,7 +10,7 @@ import {
   CardDescription
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Building, CheckCircle, ChevronRight, Loader2, PlusCircle, Hourglass, Eye, Pencil, Trash2, Tag, Home } from "lucide-react"
+import { Building, CheckCircle, ChevronRight, Loader2, PlusCircle, Hourglass, Eye, Pencil, Trash2, Tag, Home, Star } from "lucide-react"
 import Link from "next/link"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore"
@@ -65,6 +65,7 @@ export default function ListingsDashboardPage() {
     { name: "My Properties", href: "/listings/my-properties", icon: Home },
     { name: "Admin View Properties", href: "/listings/admin-list", icon: Eye },
     { name: "Pending Properties", href: "/listings/pending", icon: Hourglass },
+    { name: "Featured Properties", href: "/listings/featured", icon: Star },
     { name: "Manage Property Types", href: "/listings/property-types", icon: Tag },
   ]
 
