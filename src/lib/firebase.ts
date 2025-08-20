@@ -5,12 +5,12 @@ import { getFirestore, deleteDoc } from "firebase/firestore";
 
 // TODO: Add your Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAFW27edxQsC5eMPPvqH2bKgd3om-tgqiI",
-  authDomain: "estatelink-yqp55.firebaseapp.com",
-  projectId: "estatelink-yqp55",
-  storageBucket: "estatelink-yqp55.appspot.com",
-  messagingSenderId: "372342628141",
-  appId: "1:372342628141:web:b963beca8576fbe4197da4"
+  apiKey: "AIzaSyASbwM0HkSjJfZZyISMQHKwqGS0lRbMvBg",
+  authDomain: "real-estate-eb358.firebaseapp.com",
+  projectId: "real-estate-eb358",
+  storageBucket: "real-estate-eb358.firebasestorage.app",
+  messagingSenderId: "31101036060",
+  appId: "1:31101036060:web:3206304ce0ec5b28bfa1d9"
 };
 
 // Initialize Firebase

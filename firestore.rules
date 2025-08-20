@@ -1,0 +1,156 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if a user has a specific role
+    function hasRole(role) {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+    
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return hasRole('admin');
+    }
+    
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users can be read publicly (for profiles), but only owners or admins can write.
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true; // Allows user registration
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+
+      // Documents subcollection: Only the owner can manage their documents.
+      match /documents/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // App settings can only be read and written by admins.
+    match /app_settings/{settingId} {
+        allow read, write: if isAdmin();
+    }
+    
+    // Files can be read by anyone, but write is restricted (handled via backend logic).
+    match /files/{fileId} {
+        allow read: if true;
+        allow write: if isSignedIn(); // Allow authenticated users to upload
+    }
+
+    // Properties can be read by anyone.
+    // Write access for admins or sellers (who are the owners based on email).
+    match /properties/{propertyId} {
+        allow read: if true;
+        allow create: if hasRole('admin') || hasRole('seller');
+        allow update, delete: if isAdmin() || (hasRole('seller') && resource.data.email == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email);
+    }
+    
+    // Property types can be read by anyone, written by admins.
+    match /property_types/{typeId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
+    // Leads can be created by authenticated users. Read/Update by involved parties or admin.
+    match /leads/{leadId} {
+        allow create: if isSignedIn();
+        allow read, update: if isAdmin() || isOwner(resource.data.partnerId) || isOwner(resource.data.customerId) || (hasRole('seller') && get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.email == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email);
+        allow delete: if isAdmin();
+    }
+
+    // Appointments are managed by the involved parties or admin.
+    match /appointments/{appointmentId} {
+        allow create: if isSignedIn();
+        allow read, update: if isAdmin() || isOwner(resource.data.partnerId) || isOwner(resource.data.customerId);
+        allow delete: if isAdmin();
+    }
+    
+    // Wallets are private to the user and admin.
+    match /wallets/{userId} {
+        allow read: if isOwner(userId) || isAdmin() || hasRole('seller');
+        allow write: if isAdmin(); // Only admin can update wallets directly
+    }
+
+    // Withdrawal requests can be created by the user, read by user/admin/seller, updated by admin/seller.
+    match /withdrawal_requests/{requestId} {
+        allow create: if isOwner(request.resource.data.userId);
+        allow read: if isOwner(resource.data.userId) || isAdmin() || hasRole('seller');
+        allow update: if isAdmin() || hasRole('seller');
+    }
+
+    // Reward offers can be read by anyone, written by admin.
+    match /reward_offers/{offerId} {
+        allow read: if true;
+        allow write: if isAdmin();
+    }
+
+    // Reward transactions are private to the involved parties or admin.
+    match /reward_transactions/{transactionId} {
+        allow read: if isAdmin() || isOwner(resource.data.fromId) || isOwner(resource.data.toId);
+        allow create: if isOwner(request.resource.data.fromId)
+    }
+
+    // Inquiries are readable by the partner they were sent to.
+    match /inquiries/{inquiryId} {
+        allow read: if isOwner(resource.data.partnerId);
+        allow create: if true; // Anyone can send an inquiry from the public site.
+    }
+
+    // Resources are public to read, only admins can write.
+    match /resources/{resourceId} {
+        allow read: if true;
+        allow write: if isAdmin() || hasRole('seller');
+    }
+
+    // Support tickets are private to the user who created them and admins.
+    match /support_tickets/{ticketId} {
+        allow read: if isOwner(resource.data.userId) || isAdmin();
+        allow create: if isOwner(request.resource.data.userId);
+        allow update: if isAdmin();
+    }
+    
+    // Requirements can be created by any user, read by admins/sellers.
+    match /requirements/{reqId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin() || hasRole('seller');
+    }
+    
+    // Payables are visible to admins and the involved seller.
+    match /payables/{payableId} {
+        allow read: if isAdmin() || (hasRole('seller') && resource.data.sellerId == request.auth.uid);
+        allow write: if isAdmin();
+    }
+    
+    // Receivables are visible to admins and the involved seller.
+     match /receivables/{receivableId} {
+        allow read: if isAdmin() || (hasRole('seller') && resource.data.sellerId == request.auth.uid);
+        allow write: if isAdmin() || hasRole('seller');
+    }
+     
+    // Messages can be created by authenticated users and read by the recipient.
+    match /messages/{messageId} {
+      allow create: if isSignedIn();
+      // Read if user is the recipient, or part of the recipient group (e.g. ALL_PARTNERS)
+      allow read: if isOwner(resource.data.recipientId) || (
+        resource.data.recipientId == "ALL_PARTNERS" && hasRole('partner') ||
+        resource.data.recipientId == "ALL_SELLERS" && hasRole('seller') ||
+        resource.data.recipientId == "ALL_ADMINS" && hasRole('admin')
+      );
+    }
+  }
+}
