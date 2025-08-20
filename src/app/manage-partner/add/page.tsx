@@ -10,7 +10,6 @@ import { MoreHorizontal, PlusCircle, Loader2, Upload, CalendarIcon, User, ArrowL
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -69,7 +68,6 @@ const addPartnerFormStep2Schema = z.object({
     role: z.enum(Object.keys(partnerRoles) as [PartnerRole, ...PartnerRole[]], {
         required_error: "Please select a partner category.",
     }),
-    gstn: z.string().optional(),
     businessAge: z.coerce.number().min(0, "Age must be a positive number."),
     areaCovered: z.string().min(1, "Area covered is required."),
 })
@@ -153,7 +151,6 @@ export default function AddPartnerPage() {
       pincode: "",
       businessName: "",
       businessType: "",
-      gstn: "",
       businessAge: 0,
       areaCovered: "",
       aadharNumber: "",
@@ -257,7 +254,6 @@ export default function AddPartnerPage() {
             businessName: values.businessName,
             businessLogoId,
             businessType: values.businessType,
-            gstn: values.gstn,
             businessAge: values.businessAge,
             areaCovered: values.areaCovered,
             aadharNumber: values.aadharNumber,
@@ -494,7 +490,6 @@ export default function AddPartnerPage() {
                              <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem> <FormLabel>Business Name</FormLabel> <FormControl><Input placeholder="e.g., Acme Real Estate" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem> <FormLabel>Business Type</FormLabel> <FormControl><Input placeholder="e.g., Real Estate Agency" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <FormField control={form.control} name="role" render={({ field }) => ( <FormItem> <FormLabel>Partner Category</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select a partner category"/></SelectTrigger></FormControl> <SelectContent> {Object.entries(partnerRoles).map(([key, value]) => ( <SelectItem key={key} value={key}>{value}</SelectItem> ))} </SelectContent> </Select> {selectedRole && fees && registrationFee > 0 && <FormDescription>Registration Fee: ${fees[selectedRole].toLocaleString()}</FormDescription>} <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="gstn" render={({ field }) => ( <FormItem> <FormLabel>GSTN (Optional)</FormLabel> <FormControl><Input placeholder="Your GST Number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name="businessAge" render={({ field }) => ( <FormItem> <FormLabel>Age of Business (Years)</FormLabel> <FormControl><Input type="number" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 <FormField control={form.control} name="areaCovered" render={({ field }) => ( <FormItem> <FormLabel>Area Covered</FormLabel> <FormControl><Input placeholder="e.g., Downtown, Suburbs" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
