@@ -202,7 +202,13 @@ export default function MarketingKitPage() {
 
         setIsSubmitting(false);
         setIsDialogOpen(false);
-        form.reset();
+        form.reset({
+            title: "",
+            kitType: "poster",
+            featureImage: undefined,
+            files: undefined,
+            propertyId: "",
+        });
         setSelectedProperty(null);
         toast({
             title: "Marketing Kit Created",
@@ -528,3 +534,5 @@ export default function MarketingKitPage() {
     </div>
   )
 }
+
+    
