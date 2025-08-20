@@ -304,14 +304,7 @@ const PartnerDashboard = () => {
                     return Promise.all(props.map(async p => {
                         if (!p.exists()) return null;
                         const data = p.data() as Property;
-                        let featureImageUrl = 'https://placehold.co/400x225.png';
-                        if (data.featureImageId) {
-                            const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                            if (fileDoc.exists()) {
-                                featureImageUrl = fileDoc.data()?.data;
-                            }
-                        }
-                        return { ...data, id: p.id, featureImage: featureImageUrl };
+                        return { ...data, id: p.id };
                     }));
                 };
                 

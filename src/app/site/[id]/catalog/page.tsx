@@ -62,17 +62,7 @@ const PartnerCatalogPage = () => {
                 
                 const propsQuery = query(collection(db, "properties"), where("status", "==", "For Sale"));
                 const propsSnapshot = await getDocs(propsQuery);
-                const propsData = await Promise.all(propsSnapshot.docs.map(async (pDoc) => {
-                    const data = pDoc.data() as Property;
-                    let featureImageUrl = 'https://placehold.co/600x400.png';
-                    if (data.featureImageId) {
-                        const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                        if (fileDoc.exists()) {
-                            featureImageUrl = fileDoc.data()?.data;
-                        }
-                    }
-                    return { ...data, id: pDoc.id, featureImage: featureImageUrl };
-                }));
+                const propsData = propsSnapshot.docs.map(pDoc => ({ ...pDoc.data(), id: pDoc.id } as Property));
                 setAllProperties(propsData);
 
                 const typesSnapshot = await getDocs(collection(db, "property_types"));

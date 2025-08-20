@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -205,11 +206,18 @@ export default function AddPartnerPage() {
         const prefix = 'P' + values.role.substring(0, 2).toUpperCase();
         const userId = generateUserId(prefix);
 
+        const uploadImage = async (file: File, path: string) => {
+            if (!file) return null;
+            const formData = new FormData();
+            formData.append('file', file);
+            return uploadFile(formData);
+        }
+
         const [profileImageUrl, businessLogoUrl, aadharFileUrl, panFileUrl] = await Promise.all([
-            values.profileImage ? uploadFile(values.profileImage, `users/${userId}/profileImage.jpg`) : Promise.resolve(null),
-            values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo.jpg`) : Promise.resolve(null),
-            uploadFile(values.aadharFile, `users/${userId}/aadharFile.pdf`),
-            uploadFile(values.panFile, `users/${userId}/panFile.pdf`),
+            uploadImage(values.profileImage, `users/${userId}/profileImage.jpg`),
+            uploadImage(values.businessLogo, `users/${userId}/businessLogo.jpg`),
+            uploadImage(values.aadharFile, `users/${userId}/aadharFile.pdf`),
+            uploadImage(values.panFile, `users/${userId}/panFile.pdf`),
         ]);
 
         const partnerDataBase = {
@@ -251,7 +259,12 @@ export default function AddPartnerPage() {
             await handlePayment(registrationFee, userId);
         } else if (!isPaymentEnabled && registrationFee > 0) {
              const paymentData = values as z.infer<typeof addPartnerFormStep4ManualSchema>;
-             const paymentProofUrl = paymentData.paymentProof ? await uploadFile(paymentData.paymentProof, `users/${userId}/paymentProof.pdf`) : '';
+             let paymentProofUrl = '';
+             if (paymentData.paymentProof) {
+                const formData = new FormData();
+                formData.append('file', paymentData.paymentProof);
+                paymentProofUrl = await uploadFile(formData);
+             }
             await setDoc(doc(db, "users", userId), {
                 ...partnerDataBase,
                 paymentStatus: 'pending_approval',

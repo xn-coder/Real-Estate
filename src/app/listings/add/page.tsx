@@ -317,11 +317,15 @@ export default function AddPropertyPage() {
         try {
             const propertyId = propertyCode || generateUserId("PROP");
 
-            const featureImageUrl = await uploadFile(values.featureImage);
+            const featureImageFormData = new FormData();
+            featureImageFormData.append('file', values.featureImage);
+            const featureImageUrl = await uploadFile(featureImageFormData);
             
             const slidesWithUrls = await Promise.all(
                 values.slides.map(async (slide) => {
-                    const slideImageUrl = await uploadFile(slide.image);
+                    const slideImageFormData = new FormData();
+                    slideImageFormData.append('file', slide.image);
+                    const slideImageUrl = await uploadFile(slideImageFormData);
                     return {
                         title: slide.title,
                         image: slideImageUrl,

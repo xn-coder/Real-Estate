@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import Image from "next/image"
-import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, doc, getDoc, collectionGroup } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import type { Property } from "@/types/property"
@@ -45,25 +45,16 @@ export default function MyPropertiesPage() {
                 }
                 
                 // Fetch all properties associated with those leads
-                const propertiesRef = collection(db, "properties");
-                const propertiesQuery = query(propertiesRef, where("id", "in", propertyIds));
+                const propertiesQuery = query(collection(db, "properties"), where("id", "in", propertyIds));
                 const propertiesSnapshot = await getDocs(propertiesQuery);
                 
-                const propertiesData = await Promise.all(propertiesSnapshot.docs.map(async (docData) => {
+                const propertiesData = propertiesSnapshot.docs.map((docData) => {
                     const data = docData.data() as Property;
-                    let featureImageUrl = 'https://placehold.co/400x225.png';
-                    if (data.featureImageId) {
-                        const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                        if (fileDoc.exists()) {
-                            featureImageUrl = fileDoc.data()?.data;
-                        }
-                    }
                     return { 
                         ...data,
                         id: docData.id,
-                        featureImage: featureImageUrl,
                     };
-                }));
+                });
                 setProperties(propertiesData);
                 
             } catch (error) {

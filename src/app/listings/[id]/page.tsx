@@ -89,7 +89,6 @@ export default function PropertyDetailsPage() {
 
     const [property, setProperty] = React.useState<Property | null>(null)
     const [propertyType, setPropertyType] = React.useState<PropertyType | null>(null);
-    const [imageUrls, setImageUrls] = React.useState<string[]>([])
     const [enquiryCount, setEnquiryCount] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(true)
     const [isSubmittingEnquiry, setIsSubmittingEnquiry] = React.useState(false);
@@ -309,19 +308,6 @@ export default function PropertyDetailsPage() {
                     if (propTypeSnap.exists()) {
                         setPropertyType(propTypeSnap.data() as PropertyType);
                     }
-
-                    const fetchedImageUrls = [];
-                    if (data.featureImage) {
-                        fetchedImageUrls.push(data.featureImage);
-                    }
-                    if (data.slides) {
-                        for (const slide of data.slides) {
-                            if (slide.image) {
-                                fetchedImageUrls.push(slide.image);
-                            }
-                        }
-                    }
-                    setImageUrls(fetchedImageUrls);
                 } else {
                     console.error("No such document!");
                 }
@@ -350,6 +336,8 @@ export default function PropertyDetailsPage() {
         )
     }
     
+    const imageUrls = [property.featureImage, ...(property.slides || []).map(s => s.image)].filter(Boolean);
+
     const detailPill = (Icon: React.ElementType, text: React.ReactNode) => (
       <div className="flex items-center gap-2 text-sm bg-muted text-muted-foreground p-2 rounded-md">
         <Icon className="h-4 w-4" />

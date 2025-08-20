@@ -286,14 +286,18 @@ export default function EditPropertyPage() {
             
             let featureImageUrl = values.featureImage;
             if (values.featureImage && typeof values.featureImage !== 'string') {
-                featureImageUrl = await uploadFile(values.featureImage);
+                const formData = new FormData();
+                formData.append('file', values.featureImage);
+                featureImageUrl = await uploadFile(formData);
             }
             
             const slidesWithUrls = await Promise.all(
                 values.slides.map(async (slide) => {
                     let slideImageUrl = slide.image;
                     if (slide.image && typeof slide.image !== 'string') {
-                        slideImageUrl = await uploadFile(slide.image);
+                        const formData = new FormData();
+                        formData.append('file', slide.image);
+                        slideImageUrl = await uploadFile(formData);
                     }
                     return {
                         title: slide.title,

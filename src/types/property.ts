@@ -25,7 +25,7 @@ export type Property = {
     propertyTypeId: string;
     propertyAge: "New" | "<1 year" | "1 - 5 years" | "5 - 10 years" | "10+ years";
     reraApproved: boolean;
-    featureImage: string; // Changed from featureImageId to store URL
+    featureImage: string;
     catalogType: "New Project" | "Project" | "Resales" | "Rental" | "Other";
 
     // Step 2

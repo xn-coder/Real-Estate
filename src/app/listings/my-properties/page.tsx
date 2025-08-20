@@ -49,22 +49,14 @@ export default function MyListingsPage() {
             try {
                 const q = query(collection(db, "properties"), where("email", "==", user.email));
                 const snapshot = await getDocs(q);
-                const listingsData = await Promise.all(snapshot.docs.map(async (docData) => {
+                const listingsData = snapshot.docs.map((docData) => {
                     const data = docData.data() as Property;
-                    let featureImageUrl = 'https://placehold.co/400x225.png';
-                    if (data.featureImageId) {
-                        const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                        if (fileDoc.exists()) {
-                            featureImageUrl = fileDoc.data()?.data;
-                        }
-                    }
                     return { 
                         ...data,
                         id: docData.id,
                         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
-                        featureImage: featureImageUrl,
                     };
-                }));
+                });
                 setListings(listingsData);
             } catch (error) {
                 console.error("Error fetching listings:", error);

@@ -69,17 +69,7 @@ const PartnerWebsitePage = () => {
                     // Firestore 'in' queries are limited to 10 items. If more are needed, chunking is required.
                     const propertiesQuery = query(collection(db, "properties"), where("id", "in", catalogIds.slice(0, 10)));
                     const propertiesSnapshot = await getDocs(propertiesQuery);
-                    const propsData = await Promise.all(propertiesSnapshot.docs.map(async (pDoc) => {
-                        const data = pDoc.data() as Property;
-                        let featureImageUrl = 'https://placehold.co/600x400.png';
-                        if (data.featureImageId) {
-                            const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                            if (fileDoc.exists()) {
-                                featureImageUrl = fileDoc.data()?.data;
-                            }
-                        }
-                        return { ...data, id: pDoc.id, featureImage: featureImageUrl };
-                    }));
+                    const propsData = propertiesSnapshot.docs.map(pDoc => ({ ...pDoc.data(), id: pDoc.id } as Property));
                     setFeaturedProperties(propsData);
                 }
 

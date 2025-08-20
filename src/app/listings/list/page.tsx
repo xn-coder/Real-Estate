@@ -79,23 +79,15 @@ export default function ListingsPage() {
                 const q = query(collection(db, "properties"), where("status", "!=", "Pending Verification"));
                 const snapshot = await getDocs(q);
                 const uniqueCities = new Set<string>();
-                const listingsData = await Promise.all(snapshot.docs.map(async (docData) => {
+                const listingsData = snapshot.docs.map((docData) => {
                     const data = docData.data() as Property;
                     if(data.city) uniqueCities.add(data.city);
-                    let featureImageUrl = 'https://placehold.co/400x225.png';
-                    if (data.featureImageId) {
-                        const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                        if (fileDoc.exists()) {
-                            featureImageUrl = fileDoc.data()?.data;
-                        }
-                    }
                     return {
                         ...data,
                         id: docData.id,
                         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
-                        featureImage: featureImageUrl,
                     };
-                }));
+                });
                 setAllListings(listingsData);
                 setCities(Array.from(uniqueCities));
             } catch (error) {
