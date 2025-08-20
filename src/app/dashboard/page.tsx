@@ -349,7 +349,7 @@ const PartnerDashboard = () => {
                 opts={{ loop: true }}
             >
                 <CarouselContent>
-                    {slides.map(slide => (
+                    {Array.isArray(slides) && slides.map(slide => (
                          <CarouselItem key={slide.id}>
                              <a href={slide.linkUrl || '#'} target={slide.linkUrl ? '_blank' : '_self'} rel="noopener noreferrer">
                                 <div className="aspect-[16/7] relative rounded-lg overflow-hidden">
