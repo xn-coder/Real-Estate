@@ -368,10 +368,38 @@ const PartnerDashboard = () => {
             </Carousel>
             
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Card><CardHeader><CardTitle>New Leads</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats.newLeads}</div></CardContent></Card>
-                <Card><CardHeader><CardTitle>Total Visits</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalVisits}</div></CardContent></Card>
-                <Card><CardHeader><CardTitle>Customers</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats.customers}</div></CardContent></Card>
-                <Card><CardHeader><CardTitle>Reward Points</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats.rewardPoints}</div></CardContent></Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">New Leads</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.newLeads}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Visits</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.totalVisits}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Customers</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.customers}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Reward Points</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{stats.rewardPoints}</div>
+                    </CardContent>
+                </Card>
             </div>
             
             <div>
