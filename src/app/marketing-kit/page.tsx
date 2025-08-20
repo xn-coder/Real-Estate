@@ -174,12 +174,12 @@ export default function MarketingKitPage() {
     }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await uploadFile(values.featureImage, `marketing_kits/${generateUserId("FILE")}`);
+        const featureImageUrl = await uploadFile(values.featureImage);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await uploadFile(file, `marketing_kits/${generateUserId("FILE")}`);
+                const fileUrl = await uploadFile(file);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
@@ -285,40 +285,52 @@ export default function MarketingKitPage() {
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
 
     for (const file of kit.files) {
-        let fileUrl = file.url;
-        let fileName = file.name;
+        try {
+            let fileUrl = file.url;
+            let fileName = file.name;
 
-        // Determine branding info
-        let brandName: string;
-        let brandPhone: string;
-        
-        if (isPartner && user.website?.businessProfile?.businessName && user.phone) {
-            brandName = user.website.businessProfile.businessName;
-            brandPhone = user.phone;
-        } else {
-            brandName = defaultBusinessInfo?.name || 'DealFlow';
-            brandPhone = defaultBusinessInfo?.phone || '';
-        }
-
-        // Apply branding to images
-        if (file.type === 'image' && brandName && brandPhone) {
-            try {
-                const brandedImageUri = await embedProfileWithCanvas(file.url, brandName, brandPhone);
-                fileUrl = brandedImageUri;
-                const extension = file.name.split('.').pop();
-                fileName = `${file.name.replace(`.${extension}`, '')}_branded.png`;
-            } catch (e) {
-                console.error("Failed to embed profile on image:", e);
-                toast({ variant: 'destructive', title: 'Image Branding Failed', description: 'Could not personalize image.' });
+            // Determine branding info
+            let brandName: string;
+            let brandPhone: string;
+            
+            if (isPartner && user.website?.businessProfile?.businessName && user.phone) {
+                brandName = user.website.businessProfile.businessName;
+                brandPhone = user.phone;
+            } else {
+                brandName = defaultBusinessInfo?.name || 'DealFlow';
+                brandPhone = defaultBusinessInfo?.phone || '';
             }
-        }
 
-        const link = document.createElement("a");
-        link.href = fileUrl;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+            // Apply branding to images
+            if (file.type === 'image' && brandName && brandPhone) {
+                 try {
+                    const brandedImageUri = await embedProfileWithCanvas(file.url, brandName, brandPhone);
+                    fileUrl = brandedImageUri;
+                    const extension = file.name.split('.').pop();
+                    fileName = `${file.name.replace(`.${extension}`, '')}_branded.png`;
+                } catch (e) {
+                    console.error("Failed to embed profile on image:", e);
+                    toast({ variant: 'destructive', title: 'Image Branding Failed', description: 'Could not personalize image.' });
+                }
+            }
+            
+            // Fetch the file as a blob to force download
+            const response = await fetch(fileUrl);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+
+        } catch (error) {
+            console.error('Download error for file:', file.name, error);
+            toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}.` });
+        }
     }
     setIsDownloading(null);
   };
@@ -516,5 +528,3 @@ export default function MarketingKitPage() {
     </div>
   )
 }
-
-    
