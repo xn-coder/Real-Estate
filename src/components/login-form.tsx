@@ -14,7 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+import { Input } from "./ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -165,9 +165,6 @@ export function LoginForm() {
     <div>
         <div className="text-center mb-6">
             <h1 className="text-3xl font-bold font-headline">Welcome Back!</h1>
-            <p className="text-muted-foreground">
-              Enter your credentials to access your dashboard.
-            </p>
         </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
