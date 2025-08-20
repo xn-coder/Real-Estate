@@ -9,9 +9,10 @@ import { useToast } from "@/hooks/use-toast"
 import type { Resource } from "@/types/resource"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, ArrowRight } from "lucide-react"
+import { Loader2, ArrowLeft, ArrowRight, Search } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { Input } from "@/components/ui/input"
 
 const typeDisplayNames: Record<string, string> = {
   article: 'Articles',
@@ -28,6 +29,7 @@ export default function ResourceListPage() {
   
   const [resources, setResources] = React.useState<Resource[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
+  const [searchTerm, setSearchTerm] = React.useState("")
 
   const fetchResources = React.useCallback(async () => {
     if (!resourceType) return;
@@ -60,15 +62,34 @@ export default function ResourceListPage() {
     fetchResources()
   }, [fetchResources])
 
+  const filteredResources = React.useMemo(() => {
+    return resources.filter(resource =>
+      resource.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [resources, searchTerm]);
+
+
   const title = resourceType ? typeDisplayNames[resourceType] || 'Resources' : 'Resources';
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-3xl font-bold tracking-tight font-headline">{title}</h1>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">{title}</h1>
+        </div>
+        <div className="relative w-full md:w-auto md:max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+                type="search"
+                placeholder="Search by title..."
+                className="pl-8 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
       </div>
 
        {isLoading ? (
@@ -77,13 +98,13 @@ export default function ResourceListPage() {
                 <Card key={i}><div className="bg-muted rounded-lg h-80 animate-pulse"></div></Card>
             ))}
         </div>
-      ) : resources.length === 0 ? (
+      ) : filteredResources.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
             <p>No resources found for this category.</p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {resources.map((resource) => (
+            {filteredResources.map((resource) => (
             <Card key={resource.id} className="flex flex-col">
                 <CardHeader className="p-0">
                 <Image
