@@ -134,13 +134,19 @@ const PartnerWebsitePage = () => {
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
     }
 
+    const navLinks = [
+        { label: 'Home', action: () => scrollTo('hero')},
+        { label: 'Catalog', action: () => scrollTo('catalog')},
+        { label: 'Contact Us', action: () => scrollTo('footer-contact')},
+    ];
+
     return (
         <div className="bg-background text-foreground font-body">
             {/* Header / Navbar */}
             <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
-                        <div className="flex items-center gap-4">
+                        <button onClick={() => scrollTo('hero')} className="flex items-center gap-4">
                             <Avatar>
                                 <AvatarImage src={partnerLogo} alt={partnerName} />
                                 <AvatarFallback>
@@ -148,11 +154,11 @@ const PartnerWebsitePage = () => {
                                 </AvatarFallback>
                             </Avatar>
                             <span className="font-bold text-lg font-headline">{partnerName}</span>
-                        </div>
+                        </button>
                         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-                            <button onClick={() => scrollTo('catalog')} className="hover:text-primary transition-colors">Catalog</button>
-                            <Link href={`/site/${partner.id}/card`} className="hover:text-primary transition-colors">Digital Card</Link>
-                            <button onClick={() => scrollTo('contact')} className="hover:text-primary transition-colors">Contact Us</button>
+                            {navLinks.map(link => (
+                                <button key={link.label} onClick={link.action} className="hover:text-primary transition-colors">{link.label}</button>
+                            ))}
                         </nav>
                         <div className="md:hidden">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -172,9 +178,9 @@ const PartnerWebsitePage = () => {
                                             </Button>
                                         </div>
                                         <nav className="flex flex-col gap-4 text-lg">
-                                             <button onClick={() => { scrollTo('catalog'); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">Catalog</button>
-                                             <Link href={`/site/${partner.id}/card`} onClick={() => setIsMobileMenuOpen(false)} className="text-left hover:text-primary transition-colors">Digital Card</Link>
-                                             <button onClick={() => { scrollTo('contact'); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">Contact Us</button>
+                                             {navLinks.map(link => (
+                                                <button key={link.label} onClick={() => { link.action(); setIsMobileMenuOpen(false); }} className="text-left hover:text-primary transition-colors">{link.label}</button>
+                                             ))}
                                         </nav>
                                     </div>
                                 </SheetContent>
@@ -187,7 +193,7 @@ const PartnerWebsitePage = () => {
             {/* Main Content */}
             <main>
                 {/* Hero Section */}
-                 <section className="relative bg-muted/40">
+                 <section id="hero" className="relative bg-muted/40">
                     {slideshow.length > 0 ? (
                         <Carousel 
                             className="w-full" 
@@ -245,17 +251,6 @@ const PartnerWebsitePage = () => {
                     )}
                 </section>
 
-                {/* About Section */}
-                <section id="about" className="py-12 md:py-20 bg-muted/50">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="max-w-3xl mx-auto text-center">
-                            <h2 className="text-3xl font-bold font-headline mb-4">About Us</h2>
-                            <p className="text-muted-foreground">
-                                {aboutLegal?.aboutText || 'Information about the business will be displayed here.'}
-                            </p>
-                        </div>
-                    </div>
-                </section>
 
                 {/* Catalog Section */}
                 <section id="catalog" className="py-12 md:py-20">
@@ -279,86 +274,38 @@ const PartnerWebsitePage = () => {
                          </div>
                     </div>
                 </section>
-
-                {/* Enquiry Form Section */}
-                <section id="enquiry" className="py-12 md:py-20 bg-muted/50">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="max-w-2xl mx-auto">
-                            <h2 className="text-3xl font-bold font-headline text-center mb-4">Enquire Now</h2>
-                            <p className="text-muted-foreground text-center mb-8">
-                                Have questions or want to get started? Fill out the form below and we'll get in touch with you shortly.
-                            </p>
-                            <form className="space-y-4 border rounded-lg p-8 bg-card">
-                                <Input placeholder="Your Name" />
-                                <Input type="email" placeholder="Your Email" />
-                                <Input type="tel" placeholder="Your Phone Number" />
-                                <Textarea placeholder="Your Message" />
-                                <Button type="submit" className="w-full">Submit Enquiry</Button>
-                            </form>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Contact Section */}
-                <section id="contact" className="py-12 md:py-20">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <h2 className="text-3xl font-bold font-headline text-center mb-12">Get In Touch</h2>
-                        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12">
-                            <div className="space-y-6">
-                                <div className="flex items-start gap-4">
-                                    <Mail className="h-6 w-6 text-primary mt-1" />
-                                    <div>
-                                        <h4 className="font-semibold">Email</h4>
-                                        <a href={`mailto:${contactDetails.email}`} className="text-muted-foreground hover:text-primary">{contactDetails.email}</a>
-                                    </div>
-                                </div>
-                                <div className="flex items-start gap-4">
-                                    <Phone className="h-6 w-6 text-primary mt-1" />
-                                    <div>
-                                        <h4 className="font-semibold">Phone</h4>
-                                        <a href={`tel:${contactDetails.phone}`} className="text-muted-foreground hover:text-primary">{contactDetails.phone}</a>
-                                    </div>
-                                </div>
-                                 <div className="flex items-start gap-4">
-                                    <MapPin className="h-6 w-6 text-primary mt-1" />
-                                    <div>
-                                        <h4 className="font-semibold">Address</h4>
-                                        <p className="text-muted-foreground">{`${contactDetails.address}, ${contactDetails.city}, ${contactDetails.state} - ${contactDetails.pincode}`}</p>
-                                    </div>
-                                </div>
-                            </div>
-                             <div className="space-y-6">
-                                <h4 className="font-semibold">Follow Us</h4>
-                                <div className="flex gap-4">
-                                    {socialComponents.map(({ Icon, href }, index) => (
-                                        <a key={index} href={href || '#'} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
-                                            <Icon className="h-6 w-6" />
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
             </main>
 
             {/* Footer */}
-            <footer className="bg-gray-800 text-white">
+            <footer id="footer-contact" className="bg-gray-800 text-white">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
                         <div>
                             <h4 className="font-bold text-lg mb-2">{partnerName}</h4>
-                            <p className="text-sm text-gray-400">
-                                {aboutLegal?.aboutText?.substring(0, 100) || 'Your trusted real estate partner.'}...
-                            </p>
+                             <div className="space-y-2 text-gray-400 text-sm">
+                                <div className="flex items-center gap-2 justify-center md:justify-start">
+                                    <Mail className="h-4 w-4" />
+                                    <a href={`mailto:${contactDetails.email}`} className="hover:text-white">{contactDetails.email}</a>
+                                </div>
+                                <div className="flex items-center gap-2 justify-center md:justify-start">
+                                    <Phone className="h-4 w-4" />
+                                    <a href={`tel:${contactDetails.phone}`} className="hover:text-white">{contactDetails.phone}</a>
+                                </div>
+                                <div className="flex items-start gap-2 justify-center md:justify-start">
+                                    <MapPin className="h-4 w-4 mt-1 flex-shrink-0" />
+                                    <p>{`${contactDetails.address}, ${contactDetails.city}, ${contactDetails.state} - ${contactDetails.pincode}`}</p>
+                                </div>
+                             </div>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-lg mb-2">Quick Links</h4>
-                             <ul className="space-y-1 text-sm">
-                                <li><button onClick={() => scrollTo('catalog')} className="text-gray-400 hover:text-white">Catalog</button></li>
-                                <li><Link href={`/site/${partner.id}/card`} className="text-gray-400 hover:text-white">Digital Card</Link></li>
-                                <li><button onClick={() => scrollTo('contact')} className="text-gray-400 hover:text-white">Contact Us</button></li>
-                            </ul>
+                         <div>
+                            <h4 className="font-bold text-lg mb-2">Follow Us</h4>
+                            <div className="flex gap-4 justify-center md:justify-start">
+                                {socialComponents.map(({ Icon, href }, index) => (
+                                    <a key={index} href={href || '#'} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
+                                        <Icon className="h-6 w-6" />
+                                    </a>
+                                ))}
+                            </div>
                         </div>
                          <div>
                             <h4 className="font-bold text-lg mb-2">Legal</h4>
