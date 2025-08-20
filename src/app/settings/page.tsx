@@ -17,10 +17,21 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, doc, setDoc, query, where, updateDoc, getDoc } from "firebase/firestore"
+import { collection, getDocs, doc, setDoc, query, where, updateDoc, getDoc, deleteDoc } from "firebase/firestore"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Loader2, PlusCircle, MoreHorizontal, Pencil, Landmark } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -49,7 +60,16 @@ const addAccessFormSchema = z.object({
   }),
 })
 
+const editAccessFormSchema = z.object({
+  permissions: z.array(z.string()).refine(value => value.some(item => item), {
+    message: "You have to select at least one permission.",
+  }),
+})
+
+
 type AddAccessForm = z.infer<typeof addAccessFormSchema>
+type EditAccessForm = z.infer<typeof editAccessFormSchema>
+
 
 const partnerRoles = {
   'affiliate': 'Affiliate Partner',
@@ -76,12 +96,15 @@ export default function SettingsPage() {
   const [users, setUsers] = React.useState<User[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false)
+  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
+  const [editingUser, setEditingUser] = React.useState<User | null>(null);
+
   const [isFeesDialogOpen, setIsFeesDialogOpen] = React.useState(false)
   const [isUpdatingFees, setIsUpdatingFees] = React.useState(false)
   const [fees, setFees] = React.useState<FeesForm | null>(null)
 
-  const accessForm = useForm<AddAccessForm>({
+  const addAccessForm = useForm<AddAccessForm>({
     resolver: zodResolver(addAccessFormSchema),
     defaultValues: {
       firstName: "",
@@ -91,6 +114,13 @@ export default function SettingsPage() {
       permissions: [],
     },
   })
+
+  const editAccessForm = useForm<EditAccessForm>({
+    resolver: zodResolver(editAccessFormSchema),
+    defaultValues: {
+      permissions: [],
+    },
+  });
 
   const feesForm = useForm<FeesForm>({
     resolver: zodResolver(feesFormSchema),
@@ -189,8 +219,8 @@ export default function SettingsPage() {
             title: "User Created",
             description: "New admin user has been created successfully.",
         })
-        accessForm.reset()
-        setIsDialogOpen(false)
+        addAccessForm.reset()
+        setIsAddDialogOpen(false)
         fetchUsers() // Refresh user list
     } catch (error) {
          console.error("Error creating user:", error)
@@ -203,6 +233,57 @@ export default function SettingsPage() {
         setIsSubmitting(false)
     }
   }
+
+  async function onUpdatePermissions(values: EditAccessForm) {
+    if (!editingUser) return;
+    setIsSubmitting(true);
+    try {
+      const userDocRef = doc(db, "users", editingUser.id);
+      await updateDoc(userDocRef, {
+        permissions: values.permissions,
+      });
+      toast({
+        title: "Permissions Updated",
+        description: `Permissions for ${editingUser.name} have been updated.`,
+      });
+      setIsEditDialogOpen(false);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (error) {
+       console.error("Error updating permissions:", error);
+       toast({
+        variant: "destructive",
+        title: "Update Error",
+        description: "Failed to update user permissions.",
+      });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteDoc(doc(db, "users", userId));
+      toast({
+        title: "User Deleted",
+        description: "The admin user has been successfully deleted.",
+      });
+      fetchUsers();
+    } catch (error) {
+       console.error("Error deleting user:", error);
+       toast({
+        variant: "destructive",
+        title: "Delete Error",
+        description: "Failed to delete user.",
+      });
+    }
+  };
+
+  const openEditDialog = (user: User) => {
+    setEditingUser(user);
+    editAccessForm.reset({ permissions: user.permissions || [] });
+    setIsEditDialogOpen(true);
+  };
 
   async function onFeesSubmit(values: FeesForm) {
     setIsUpdatingFees(true)
@@ -320,7 +401,7 @@ export default function SettingsPage() {
                     Here is a list of all users with admin access to the platform.
                 </CardDescription>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Access
@@ -333,11 +414,11 @@ export default function SettingsPage() {
                     Create a new admin account with limited access features.
                   </DialogDescription>
                 </DialogHeader>
-                <Form {...accessForm}>
-                  <form onSubmit={accessForm.handleSubmit(onAccessSubmit)} className="space-y-4">
+                <Form {...addAccessForm}>
+                  <form onSubmit={addAccessForm.handleSubmit(onAccessSubmit)} className="space-y-4">
                      <div className="grid grid-cols-2 gap-4">
                         <FormField
-                            control={accessForm.control}
+                            control={addAccessForm.control}
                             name="firstName"
                             render={({ field }) => (
                                 <FormItem>
@@ -350,7 +431,7 @@ export default function SettingsPage() {
                             )}
                         />
                         <FormField
-                            control={accessForm.control}
+                            control={addAccessForm.control}
                             name="lastName"
                             render={({ field }) => (
                                 <FormItem>
@@ -364,7 +445,7 @@ export default function SettingsPage() {
                         />
                     </div>
                     <FormField
-                      control={accessForm.control}
+                      control={addAccessForm.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
@@ -377,7 +458,7 @@ export default function SettingsPage() {
                       )}
                     />
                     <FormField
-                      control={accessForm.control}
+                      control={addAccessForm.control}
                       name="password"
                       render={({ field }) => (
                         <FormItem>
@@ -390,7 +471,7 @@ export default function SettingsPage() {
                       )}
                     />
                     <FormField
-                      control={accessForm.control}
+                      control={addAccessForm.control}
                       name="permissions"
                       render={() => (
                         <FormItem>
@@ -401,7 +482,7 @@ export default function SettingsPage() {
                             {permissions.map((item) => (
                               <FormField
                                 key={item.id}
-                                control={accessForm.control}
+                                control={addAccessForm.control}
                                 name="permissions"
                                 render={({ field }) => {
                                   return (
@@ -473,7 +554,7 @@ export default function SettingsPage() {
                     <TableCell>
                       <Badge variant="outline" className="capitalize">{user.role}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -482,8 +563,24 @@ export default function SettingsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Edit Permissions</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">Delete User</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                            Edit Permissions
+                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" className="w-full justify-start text-sm text-destructive font-normal relative select-none items-center rounded-sm px-2 py-1.5 outline-none transition-colors hover:bg-accent focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50">Delete User</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>This will permanently delete the admin user and cannot be undone.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -494,6 +591,58 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+      
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Edit Permissions for {editingUser?.name}</DialogTitle>
+            </DialogHeader>
+            <Form {...editAccessForm}>
+                <form onSubmit={editAccessForm.handleSubmit(onUpdatePermissions)} className="space-y-4">
+                     <FormField
+                      control={editAccessForm.control}
+                      name="permissions"
+                      render={() => (
+                        <FormItem>
+                          <div className="space-y-2">
+                            {permissions.map((item) => (
+                              <FormField
+                                key={item.id}
+                                control={editAccessForm.control}
+                                name="permissions"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(item.id)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...field.value, item.id])
+                                            : field.onChange(field.value?.filter((value) => value !== item.id))
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">{item.label}</FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <DialogFooter>
+                        <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
