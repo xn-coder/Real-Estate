@@ -288,6 +288,7 @@ export default function ProfilePage() {
 
   const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
   const isBusinessUser = user?.role === 'admin' || user?.role === 'seller';
+  const isCustomer = user?.role === 'customer';
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -353,7 +354,7 @@ export default function ProfilePage() {
               </div>
               <FormField control={profileForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} disabled /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={profileForm.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="(123) 456-7890" {...field} disabled={isUpdating} /></FormControl><FormMessage /></FormItem>)} />
-              {isPartner && (
+              {!isCustomer && (
                 <>
                 <div className="grid grid-cols-2 gap-4">
                     <FormField control={profileForm.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Date of Birth</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
