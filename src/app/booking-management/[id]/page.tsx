@@ -97,7 +97,7 @@ export default function BookingDetailsPage() {
     }
     
     const handleUploadAndComplete = async () => {
-        if (!details || !details.lead || !details.customer) {
+        if (!details || !details.lead || !details.customer || !details.property) {
             toast({ variant: "destructive", title: "Error", description: "Missing booking details to complete the deal." });
             return;
         }
@@ -137,6 +137,10 @@ export default function BookingDetailsPage() {
             // Update customer status to active
             const customerRef = doc(db, "users", customerId);
             batch.update(customerRef, { status: 'active' });
+
+            // Update property status to 'Sold'
+            const propertyRef = doc(db, "properties", details.property.id);
+            batch.update(propertyRef, { status: 'Sold' });
 
             await batch.commit();
             

@@ -116,7 +116,7 @@ export default function ManageVisitorPage() {
     }
   }, [user, toast]);
   
-  const handleUpdateStatus = async (appointmentId: string, leadId: string, status: 'Completed' | 'Rejected') => {
+  const handleUpdateStatus = async (appointmentId: string, leadId: string, propertyId: string, status: 'Completed' | 'Rejected') => {
     setIsUpdating(true);
     try {
         const batch = writeBatch(db);
@@ -124,15 +124,18 @@ export default function ManageVisitorPage() {
         const appointmentRef = doc(db, "appointments", appointmentId);
         batch.update(appointmentRef, { status });
 
-        // If visit is approved, update lead status to 'Processing'
         if (status === 'Completed' && leadId) {
             const leadRef = doc(db, "leads", leadId);
             batch.update(leadRef, { status: 'Processing' });
+            
+            // Also update property status to 'Under Contract'
+            const propertyRef = doc(db, "properties", propertyId);
+            batch.update(propertyRef, { status: 'Under Contract' });
         }
         
         await batch.commit();
 
-        toast({ title: "Success", description: `Visit has been ${status.toLowerCase()} and lead status updated.` });
+        toast({ title: "Success", description: `Visit has been ${status.toLowerCase()} and related statuses updated.` });
         fetchConfirmedVisits();
     } catch (error) {
         toast({ variant: 'destructive', title: "Error", description: "Failed to update visit status." });
@@ -266,10 +269,10 @@ export default function ManageVisitorPage() {
                                         ) : <p>No proof uploaded.</p>}
                                     </div>
                                     <DialogFooter className="gap-2 sm:justify-between">
-                                        <Button variant="destructive" onClick={() => handleUpdateStatus(visit.id, visit.appointment.leadId, 'Rejected')} disabled={isUpdating}>
+                                        <Button variant="destructive" onClick={() => handleUpdateStatus(visit.id, visit.appointment.leadId, visit.appointment.propertyId, 'Rejected')} disabled={isUpdating}>
                                             <XCircle className="mr-2 h-4 w-4" /> Reject
                                         </Button>
-                                        <Button onClick={() => handleUpdateStatus(visit.id, visit.appointment.leadId, 'Completed')} disabled={isUpdating}>
+                                        <Button onClick={() => handleUpdateStatus(visit.id, visit.appointment.leadId, visit.appointment.propertyId, 'Completed')} disabled={isUpdating}>
                                             <CheckCircle className="mr-2 h-4 w-4" /> Approve
                                         </Button>
                                     </DialogFooter>
