@@ -158,6 +158,7 @@ export default function ManageWebsitePage() {
             businessProfile: partnerWebsiteData.businessProfile || defaults.businessProfile,
             slideshow: partnerWebsiteData.slideshow || defaults.slideshow || [],
             featuredCatalog: partnerWebsiteData.featuredCatalog || defaults.featuredCatalog || [],
+            contactDetails: partnerWebsiteData.contactDetails || user,
             aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal || { aboutText: '' },
             socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' },
         };
@@ -179,13 +180,13 @@ export default function ManageWebsitePage() {
         }
 
         contactDetailsForm.reset({ 
-            name: user.name, 
-            phone: user.phone, 
-            email: user.email, 
-            address: user.address || '', 
-            city: user.city || '', 
-            state: user.state || '', 
-            pincode: user.pincode || '' 
+            name: finalData.contactDetails?.name || user.name, 
+            phone: finalData.contactDetails?.phone || user.phone, 
+            email: finalData.contactDetails?.email || user.email, 
+            address: finalData.contactDetails?.address || user.address || '', 
+            city: finalData.contactDetails?.city || user.city || '', 
+            state: finalData.contactDetails?.state || user.state || '', 
+            pincode: finalData.contactDetails?.pincode || user.pincode || '' 
         });
 
         aboutLegalForm.reset(finalData.aboutLegal);
@@ -229,6 +230,7 @@ export default function ManageWebsitePage() {
       await updateDoc(userDocRef, dataToUpdate)
 
       await fetchUser() // Refresh user data
+      await loadData();
       toast({ title: "Success", description: `${section.replace(/([A-Z])/g, ' $1')} updated successfully.` })
 
     } catch (error) {
@@ -259,7 +261,7 @@ export default function ManageWebsitePage() {
         await handleSave('slideshow', processedSlides);
         toast({ title: "Slideshow Updated" });
         
-        await fetchUser();
+        await loadData();
         closeSlideDialog();
 
     } catch (error) {
@@ -370,7 +372,7 @@ export default function ManageWebsitePage() {
             {featuredProperties.length > 0 ? (
                 featuredProperties.map(prop => (
                     <div key={prop.id} className="flex items-center gap-4 p-2 border rounded-md">
-                        <Image src={prop.featureImage || 'https://placehold.co/120x68.png'} alt={prop.catalogTitle} width={120} height={68} className="rounded-md object-cover bg-muted" />
+                        <Image src={prop.featureImage || 'https://placehold.co/120x68.png'} alt={prop.catalogTitle} width={100} height={56} className="rounded-md object-cover bg-muted" />
                         <div className="flex-1">
                             <p className="font-semibold">{prop.catalogTitle}</p>
                             <p className="text-sm text-muted-foreground">{prop.city}, {prop.state}</p>
@@ -582,10 +584,10 @@ export default function ManageWebsitePage() {
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><strong>Name:</strong> {user.name}</p>
-            <p><strong>Phone:</strong> {user.phone}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Address:</strong> {`${user.address}, ${user.city}, ${user.state} - ${user.pincode}`}</p>
+            <p><strong>Name:</strong> {displayedData.contactDetails?.name}</p>
+            <p><strong>Phone:</strong> {displayedData.contactDetails?.phone}</p>
+            <p><strong>Email:</strong> {displayedData.contactDetails?.email}</p>
+            <p><strong>Address:</strong> {`${displayedData.contactDetails?.address}, ${displayedData.contactDetails?.city}, ${displayedData.contactDetails?.state} - ${displayedData.contactDetails?.pincode}`}</p>
           </CardContent>
         </Card>
 
