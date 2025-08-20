@@ -68,6 +68,7 @@ const partnerRoles = {
 export default function PartnerEarningPage() {
     const { toast } = useToast()
     const [properties, setProperties] = React.useState<Property[]>([])
+    const [defaultRules, setDefaultRules] = React.useState<Property['earningRules']>({});
     const [isLoading, setIsLoading] = React.useState(true)
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -87,6 +88,12 @@ export default function PartnerEarningPage() {
             const propertiesSnapshot = await getDocs(query(collection(db, "properties"), orderBy("catalogTitle")));
             const propsList = propertiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
             setProperties(propsList);
+
+            const globalDefaultsDocRef = doc(db, 'app_settings', 'default_earning_rules');
+            const docSnap = await getDoc(globalDefaultsDocRef);
+            if (docSnap.exists()) {
+                setDefaultRules(docSnap.data().earningRules || {});
+            }
 
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -109,9 +116,7 @@ export default function PartnerEarningPage() {
             });
         } else {
             setSelectedProperty(null);
-            // Fetch and set global defaults if they exist
-             const globalDefaultsDocRef = doc(db, 'app_settings', 'default_earning_rules');
-             getDoc(globalDefaultsDocRef).then(docSnap => {
+            getDoc(doc(db, 'app_settings', 'default_earning_rules')).then(docSnap => {
                 if (docSnap.exists()) {
                     form.reset({
                         propertyId: '',
@@ -141,7 +146,7 @@ export default function PartnerEarningPage() {
             setIsDialogOpen(false);
             form.reset();
             setSelectedProperty(null);
-            if(selectedProperty) fetchData(); // Only refetch if a property was edited
+            fetchData();
         } catch (error) {
             console.error("Error setting earning rule:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not set the earning rule.' });
@@ -258,7 +263,7 @@ export default function PartnerEarningPage() {
              <Card>
                 <CardHeader>
                     <CardTitle>Per-Property Earning Rules</CardTitle>
-                    <CardDescription>Earning rules set for each property. These will override the global defaults.</CardDescription>
+                    <CardDescription>Earning rules set for each property. Rules not set here will use the global defaults.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -278,7 +283,7 @@ export default function PartnerEarningPage() {
                                 {Object.keys(partnerRoles).map(role => (
                                     <div key={role} className="text-sm">
                                         <p className="font-semibold">{partnerRoles[role as keyof typeof partnerRoles]}</p>
-                                        <p className="text-muted-foreground">{formatValue(property.earningRules?.[role as keyof typeof property.earningRules])}</p>
+                                        <p className="text-muted-foreground">{formatValue(property.earningRules?.[role as keyof typeof property.earningRules] || defaultRules?.[role as keyof typeof defaultRules])}</p>
                                     </div>
                                 ))}
                                 </div>
