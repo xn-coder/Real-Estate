@@ -188,7 +188,7 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="......." {...field} disabled={isLoading} />
+                  <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
