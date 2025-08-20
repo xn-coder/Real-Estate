@@ -4,9 +4,9 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion, ChevronRight, Eye } from "lucide-react"
+import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, ArrowLeft, Building, Briefcase, FileText, Landmark, MessageSquare, UserX, Phone, Mail, UserRound, BarChart, DollarSign, Star, MapPin, AtSign, Smartphone, Users, FileQuestion, ChevronRight, Eye, CheckCircle, XCircle } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, updateDoc, collection, query, getDocs, Timestamp } from "firebase/firestore"
+import { doc, getDoc, updateDoc, collection, query, getDocs, Timestamp, deleteDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { User } from "@/types/user"
@@ -47,6 +47,7 @@ export default function PartnerProfilePage() {
   const [documents, setDocuments] = React.useState<UserDocument[]>([]);
   const [isLoading, setIsLoading] = React.useState(true)
   const [isLoadingDocs, setIsLoadingDocs] = React.useState(true);
+  const [isUpdating, setIsUpdating] = React.useState(false);
 
   const fetchPartnerData = React.useCallback(async () => {
     if (!partnerId) return;
@@ -101,6 +102,53 @@ export default function PartnerProfilePage() {
         fetchPartnerData()
     }
   }, [fetchPartnerData, adminUser])
+  
+  const handleApprove = async () => {
+    if (!partnerId) return;
+    setIsUpdating(true);
+    try {
+        await updateDoc(doc(db, "users", partnerId), {
+            status: 'active',
+        });
+        toast({
+            title: "Partner Approved",
+            description: "The partner account has been successfully activated.",
+        });
+        fetchPartnerData(); // Refresh data
+    } catch (error) {
+        console.error("Error approving partner:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to approve partner.",
+        });
+    } finally {
+        setIsUpdating(false);
+    }
+  };
+
+  const handleReject = async () => {
+      if (!partnerId) return;
+      setIsUpdating(true);
+      try {
+          await deleteDoc(doc(db, "users", partnerId));
+          toast({
+              title: "Partner Rejected",
+              description: "The partner registration has been rejected and removed.",
+          });
+          router.push('/manage-partner/activation');
+      } catch (error) {
+          console.error("Error rejecting partner:", error);
+          toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to reject partner.",
+          });
+      } finally {
+          setIsUpdating(false);
+      }
+  };
+
 
   if (isLoading) {
     return (
@@ -128,11 +176,25 @@ export default function PartnerProfilePage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-        <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Profile</h1>
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" onClick={() => router.back()}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Profile</h1>
+            </div>
+            {adminUser?.role === 'admin' && partner.status === 'pending_approval' && (
+                 <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={handleApprove} disabled={isUpdating}>
+                        {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                        Approve
+                    </Button>
+                    <Button variant="destructive" onClick={handleReject} disabled={isUpdating}>
+                        {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                        Reject
+                    </Button>
+                </div>
+            )}
         </div>
 
         <Card>

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, CheckCircle, XCircle, Eye, MessageSquare, Search, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
+import { collection, getDocs, query, where, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import type { User as PartnerUser } from "@/types/user"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -32,9 +32,9 @@ const roleNameMapping: Record<string, string> = {
 export default function PartnerActivationPage() {
   const { toast } = useToast()
   const router = useRouter();
-  const [allReactivatedPartners, setAllReactivatedPartners] = React.useState<PartnerUser[]>([])
+  const [pendingPartners, setPendingPartners] = React.useState<PartnerUser[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [isUpdating, setIsUpdating] = React.useState(false)
+  const [isUpdating, setIsUpdating] = React.useState<string | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const fetchPartners = React.useCallback(async () => {
@@ -42,17 +42,17 @@ export default function PartnerActivationPage() {
     try {
       const usersCollection = collection(db, "users")
       
-      const reactivatedQuery = query(usersCollection, where("status", "==", "active"), where("reactivationReason", "!=", null))
-      const reactivatedSnapshot = await getDocs(reactivatedQuery)
-      const reactivatedList = reactivatedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
-      setAllReactivatedPartners(reactivatedList)
+      const pendingQuery = query(usersCollection, where("status", "==", "pending_approval"))
+      const pendingSnapshot = await getDocs(pendingQuery)
+      const pendingList = pendingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PartnerUser))
+      setPendingPartners(pendingList)
 
     } catch (error) {
       console.error("Error fetching partners:", error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to fetch reactivated partners.",
+        description: "Failed to fetch partners for activation.",
       })
     } finally {
       setIsLoading(false)
@@ -64,36 +64,56 @@ export default function PartnerActivationPage() {
   }, [fetchPartners])
   
   const filteredPartners = React.useMemo(() => {
-    return allReactivatedPartners.filter(partner => 
+    return pendingPartners.filter(partner => 
         partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         partner.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [allReactivatedPartners, searchTerm]);
+  }, [pendingPartners, searchTerm]);
 
 
-  const handleDeactivate = async (partnerId: string) => {
-    setIsUpdating(true);
+  const handleApprove = async (partnerId: string) => {
+    setIsUpdating(partnerId);
      try {
         const partnerDocRef = doc(db, "users", partnerId);
         await updateDoc(partnerDocRef, {
-            status: 'inactive',
-            reactivationReason: null, // Clear reactivation reason upon deactivation
-            deactivationReason: 'Deactivated from activation panel.'
+            status: 'active',
+            paymentStatus: 'paid', // Assuming manual approval means payment is confirmed
         });
         toast({
-            title: "Partner Deactivated",
-            description: "The partner has been moved to the deactivated list.",
+            title: "Partner Approved",
+            description: "The partner account has been activated.",
         });
         fetchPartners();
     } catch (error) {
-        console.error("Error deactivating partner:", error);
+        console.error("Error approving partner:", error);
         toast({
             variant: "destructive",
             title: "Error",
-            description: "Failed to deactivate partner.",
+            description: "Failed to approve partner.",
         });
     } finally {
-        setIsUpdating(false);
+        setIsUpdating(null);
+    }
+  }
+
+   const handleReject = async (partnerId: string) => {
+    setIsUpdating(partnerId);
+     try {
+        await deleteDoc(doc(db, "users", partnerId));
+        toast({
+            title: "Partner Rejected",
+            description: "The partner registration has been rejected and removed.",
+        });
+        fetchPartners();
+    } catch (error) {
+        console.error("Error rejecting partner:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to reject partner.",
+        });
+    } finally {
+        setIsUpdating(null);
     }
   }
 
@@ -105,21 +125,22 @@ export default function PartnerActivationPage() {
             <TableRow>
               <TableHead>Partner Name</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Reactivation Reason</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : partners.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                        No recently reactivated partners.
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        No partners are currently pending activation.
                     </TableCell>
                 </TableRow>
             ) : partners.map((partner) => (
@@ -128,19 +149,18 @@ export default function PartnerActivationPage() {
                 <TableCell>
                   <Badge variant="outline">{roleNameMapping[partner.role] || partner.role}</Badge>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                  {partner.reactivationReason}
-                </TableCell>
-                <TableCell>
-                   <div className="flex gap-2">
+                <TableCell>{partner.email}</TableCell>
+                <TableCell>{partner.phone}</TableCell>
+                <TableCell className="text-right">
+                   <div className="flex gap-2 justify-end">
                       <Button size="sm" variant="outline" onClick={() => router.push(`/manage-partner/${partner.id}`)}>
                           <Eye className="mr-2 h-4 w-4" /> View
                       </Button>
-                      <Button size="sm" variant="outline" disabled={isUpdating}>
-                          <MessageSquare className="mr-2 h-4 w-4" /> Message
+                      <Button size="sm" onClick={() => handleApprove(partner.id)} disabled={!!isUpdating}>
+                          {isUpdating === partner.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="h-4 w-4" />}
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDeactivate(partner.id)} disabled={isUpdating}>
-                          <XCircle className="mr-2 h-4 w-4" /> Deactivate
+                       <Button size="sm" variant="destructive" onClick={() => handleReject(partner.id)} disabled={!!isUpdating}>
+                          {isUpdating === partner.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="h-4 w-4" />}
                       </Button>
                    </div>
                 </TableCell>
@@ -160,7 +180,7 @@ export default function PartnerActivationPage() {
                     <ArrowLeft className="h-4 w-4" />
                 </Link>
             </Button>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Reactivated Partners</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Partner Activation</h1>
         </div>
       </div>
        <div className="flex items-center justify-between gap-4">

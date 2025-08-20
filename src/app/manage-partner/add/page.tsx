@@ -220,7 +220,7 @@ export default function AddPartnerPage() {
             phone: values.phone,
             password: hashedPassword,
             role: values.role,
-            status: 'active' as 'active',
+            status: 'pending_approval' as 'pending_approval',
             profileImage: profileImageUrl,
             dob: new Date(values.dob),
             gender: values.gender,
@@ -261,14 +261,14 @@ export default function AddPartnerPage() {
                 title: "Registration Submitted",
                 description: "Your registration is under review and will be approved shortly.",
             });
-            router.push("/manage-partner");
+            router.push("/manage-partner/activation");
         } else {
             await setDoc(doc(db, "users", userId), { ...partnerDataBase, paymentStatus: 'not_required' });
             toast({
-                title: "Partner Created",
-                description: "New partner account has been created successfully.",
+                title: "Partner Registration Submitted",
+                description: "Your registration is under review and will be approved shortly.",
             });
-            router.push("/manage-partner");
+            router.push("/manage-partner/activation");
         }
 
     } catch (error) {
