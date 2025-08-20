@@ -70,13 +70,15 @@ export default function PostRewardOfferPage() {
     const onSubmit = async (values: RewardOfferFormValues) => {
         setIsSubmitting(true);
         try {
+            const imageFileId = generateUserId("FILE");
             const imageUrl = await fileToDataUrl(values.image);
-            const offerId = generateUserId("REWARD");
+            await setDoc(doc(db, "files", imageFileId), { data: imageUrl });
 
+            const offerId = generateUserId("REWARD");
             await setDoc(doc(db, "reward_offers", offerId), {
                 id: offerId,
                 title: values.title,
-                image: imageUrl,
+                imageId: imageFileId,
                 points: values.points,
                 details: values.details,
             });

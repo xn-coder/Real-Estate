@@ -59,7 +59,8 @@ export type Payable = {
 export type RewardOffer = {
     id: string;
     title: string;
-    image: string;
+    imageId: string;
+    image?: string; // For display after fetching
     points: number;
     details: string;
 };
