@@ -232,8 +232,8 @@ export default function MarketingKitPage() {
 
   const handleDownload = async (kit: Kit) => {
     if (!user) {
-        toast({ variant: 'destructive', title: 'Login Required' });
-        return;
+      toast({ variant: 'destructive', title: 'Login Required' });
+      return;
     }
     
     if (kit.files.length === 0) {
@@ -244,26 +244,25 @@ export default function MarketingKitPage() {
       });
       return;
     }
-
+  
     setIsDownloading(kit.id);
-
+  
     for (const file of kit.files) {
-        try {
-            const response = await fetch(file.url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute("download", file.name);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('Download error for file:', file.name, error);
-            toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}. This may be a CORS issue.` });
-        }
+      try {
+        const response = await fetch(file.url, { mode: 'no-cors' });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", file.name);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Download error for file:', file.name, error);
+        toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}. Please try again.` });
+      }
     }
     setIsDownloading(null);
   };
