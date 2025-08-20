@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, orderBy, doc, updateDoc } from "firebase/firestore"
+import { collection, getDocs, query, orderBy, doc, updateDoc, setDoc } from "firebase/firestore"
 import type { Property, EarningRuleValue } from "@/types/property"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
@@ -44,7 +44,7 @@ const earningRuleValueSchema = z.object({
 });
 
 const earningRuleSchema = z.object({
-    propertyId: z.string().min(1, "A property must be selected."),
+    propertyId: z.string().optional(),
     earningRules: z.object({
       affiliate: earningRuleValueSchema.optional(),
       super_affiliate: earningRuleValueSchema.optional(),
@@ -72,7 +72,6 @@ export default function PartnerEarningPage() {
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
 
-    const [propertySearchTerm, setPropertySearchTerm] = React.useState("");
     const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null);
 
     const form = useForm<EarningRuleFormValues>({
@@ -110,44 +109,39 @@ export default function PartnerEarningPage() {
             });
         } else {
             setSelectedProperty(null);
-            form.reset({
-                propertyId: '',
-                earningRules: {},
-            });
+            // Fetch and set global defaults if they exist
+             const globalDefaultsDocRef = doc(db, 'app_settings', 'default_earning_rules');
+             getDoc(globalDefaultsDocRef).then(docSnap => {
+                if (docSnap.exists()) {
+                    form.reset({
+                        propertyId: '',
+                        earningRules: docSnap.data().earningRules || {},
+                    });
+                } else {
+                    form.reset({
+                        propertyId: '',
+                        earningRules: {},
+                    });
+                }
+             });
         }
         setIsDialogOpen(true);
     }
 
-    const filteredProperties = React.useMemo(() => {
-        if (!propertySearchTerm) return [];
-        return properties.filter(p =>
-            p.catalogTitle.toLowerCase().includes(propertySearchTerm.toLowerCase())
-        );
-    }, [properties, propertySearchTerm]);
-
-    const handleSelectProperty = (property: Property) => {
-        setSelectedProperty(property);
-        form.reset({
-            propertyId: property.id,
-            earningRules: property.earningRules || {},
-        });
-        setPropertySearchTerm("");
-    }
-
     const onSubmit = async (values: EarningRuleFormValues) => {
-        if (!selectedProperty) return;
         setIsSubmitting(true);
         try {
-            const propertyRef = doc(db, "properties", selectedProperty.id);
-            await updateDoc(propertyRef, {
-                earningRules: values.earningRules,
-            });
+            const docRef = selectedProperty 
+                ? doc(db, "properties", selectedProperty.id)
+                : doc(db, "app_settings", "default_earning_rules");
+            
+            await setDoc(docRef, { earningRules: values.earningRules }, { merge: true });
 
-            toast({ title: "Success", description: "Default earning rules have been updated for the property." });
+            toast({ title: "Success", description: "Earning rules have been updated successfully." });
             setIsDialogOpen(false);
             form.reset();
             setSelectedProperty(null);
-            fetchData();
+            if(selectedProperty) fetchData(); // Only refetch if a property was edited
         } catch (error) {
             console.error("Error setting earning rule:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not set the earning rule.' });
@@ -157,12 +151,12 @@ export default function PartnerEarningPage() {
     }
     
     const formatValue = (rule?: EarningRuleValue) => {
-        if(!rule) return 'Not Set';
+        if(!rule || !rule.type) return 'Not Set';
         switch(rule.type) {
             case 'reward_points': return `${rule.value.toLocaleString()} points`;
             case 'commission_percentage': return `${rule.value}%`;
             case 'flat_amount': return `₹${rule.value.toLocaleString()}`;
-            case 'per_sq_ft': return `₹${rule.value}/sq.ft for ${rule.totalSqFt} sq.ft. (Total: ₹${(rule.value * (rule.totalSqFt || 0)).toLocaleString()})`;
+            case 'per_sq_ft': return `₹${rule.value}/sq.ft for ${rule.totalSqFt || 0} sq.ft. (Total: ₹${(rule.value * (rule.totalSqFt || 0)).toLocaleString()})`;
             default: return 'N/A';
         }
     };
@@ -240,50 +234,17 @@ export default function PartnerEarningPage() {
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl max-h-[90vh]">
                         <DialogHeader>
-                            <DialogTitle>Set Default Earning Rules for a Property</DialogTitle>
+                            <DialogTitle>{selectedProperty ? `Edit Earning Rules for ${selectedProperty.catalogTitle}` : "Set Default Earning Rules"}</DialogTitle>
                         </DialogHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                               <FormField
-                                    control={form.control}
-                                    name="propertyId"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Property</FormLabel>
-                                            <FormControl>
-                                                {selectedProperty ? (
-                                                    <div className="flex items-center gap-4 p-2 border rounded-md">
-                                                        <p className="font-medium flex-1">{selectedProperty.catalogTitle}</p>
-                                                        <Button variant="ghost" size="sm" onClick={() => { setSelectedProperty(null); form.setValue("propertyId", ""); }}>Change</Button>
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <Input placeholder="Search for a property..." value={propertySearchTerm} onChange={e => setPropertySearchTerm(e.target.value)} />
-                                                        {propertySearchTerm && (
-                                                            <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
-                                                                {isLoading ? <p className="p-2 text-sm text-muted-foreground">Loading...</p> : 
-                                                                    filteredProperties.map(p => (
-                                                                        <div key={p.id} onClick={() => handleSelectProperty(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
-                                                                            {p.catalogTitle}
-                                                                        </div>
-                                                                    ))
-                                                                }
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                               />
                                <div className="max-h-[55vh] overflow-y-auto space-y-4 p-2">
                                 {(Object.keys(partnerRoles) as Array<keyof typeof partnerRoles>).map(role => (
                                     <EarningRuleFormFields key={role} role={role} />
                                 ))}
                                </div>
                                 <DialogFooter>
-                                    <Button type="submit" disabled={isSubmitting || !selectedProperty}>
+                                    <Button type="submit" disabled={isSubmitting}>
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         Save Rules
                                     </Button>
@@ -296,8 +257,8 @@ export default function PartnerEarningPage() {
             
              <Card>
                 <CardHeader>
-                    <CardTitle>Default Earning Rules</CardTitle>
-                    <CardDescription>Default earning rules set for each property.</CardDescription>
+                    <CardTitle>Per-Property Earning Rules</CardTitle>
+                    <CardDescription>Earning rules set for each property. These will override the global defaults.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -331,3 +292,4 @@ export default function PartnerEarningPage() {
         </div>
     )
 }
+
