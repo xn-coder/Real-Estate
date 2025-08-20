@@ -72,6 +72,8 @@ type Kit = {
   ownerId?: string;
   propertyId?: string;
   propertyTitle?: string;
+  previewUrl?: string;
+  downloadUrl?: string;
 };
 
 const getFileType = (fileName: string): KitFile['type'] => {
@@ -136,7 +138,7 @@ export default function MarketingKitPage() {
             });
         }
 
-        const kitsList = await Promise.all(kitsSnapshot.docs.map(async docData => {
+        const kitsList = await Promise.all(kitsSnapshot.docs.map(async (docData) => {
             const data = docData.data() as Omit<Kit, 'propertyTitle'>;
             let propertyTitle: string | undefined;
             if (data.propertyId) {
@@ -199,7 +201,7 @@ export default function MarketingKitPage() {
             featureImage: featureImageUrl,
             files: filesData,
             previewUrl: featureImageUrl,
-            downloadUrl: featureImageUrl
+            downloadUrl: filesData[0]?.url || featureImageUrl, // Use first file as download or fallback to feature image
         });
 
         setIsSubmitting(false);
@@ -247,16 +249,20 @@ export default function MarketingKitPage() {
 
     for (const file of kit.files) {
         try {
+            const response = await fetch(file.url);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.href = file.url;
+            link.href = url;
             link.setAttribute("download", file.name);
-            link.setAttribute("target", "_blank");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Download error for file:', file.name, error);
-            toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}.` });
+            toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}. This may be a CORS issue.` });
         }
     }
     setIsDownloading(null);
