@@ -43,6 +43,7 @@ import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Property } from "@/types/property"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { uploadFile } from "@/services/file-upload-service"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure", "video"], {
@@ -82,43 +83,10 @@ const getFileType = (fileName: string): KitFile['type'] => {
 };
 
 
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
-const initialKits: Kit[] = [
-    {
-      id: 'kit1',
-      title: 'Modern Villa Showcase',
-      type: 'Brochure',
-      featureImage: 'https://placehold.co/600x400.png',
-      files: [{ name: 'brochure.pdf', url: 'https://placehold.co/600x400.png', type: 'pdf' }],
-    },
-    {
-      id: 'kit2',
-      title: 'Downtown Apartment Posters',
-      type: 'Poster',
-      featureImage: 'https://placehold.co/600x400.png',
-      files: [{ name: 'poster.jpg', url: 'https://placehold.co/600x400.png', type: 'image' }],
-    },
-    {
-      id: 'kit3',
-      title: 'Suburban Family Homes',
-      type: 'Brochure',
-      featureImage: 'https://placehold.co/600x400.png',
-      files: [{ name: 'family_homes.pdf', url: 'https://placehold.co/600x400.png', type: 'pdf' }],
-    },
-  ];
-
 export default function MarketingKitPage() {
   const { toast } = useToast()
   const { user } = useUser();
-  const [kits, setKits] = React.useState<Kit[]>(initialKits)
+  const [kits, setKits] = React.useState<Kit[]>([])
   const [allProperties, setAllProperties] = React.useState<Property[]>([])
   const [defaultBusinessInfo, setDefaultBusinessInfo] = React.useState<{name: string, phone: string} | null>(null);
   const [isLoadingKits, setIsLoadingKits] = React.useState(true)
@@ -178,18 +146,13 @@ export default function MarketingKitPage() {
             return { ...data, propertyTitle };
         }));
       
-      if (!isSeller && kitsList.length === 0) {
-        setKits(initialKits);
-      } else {
         setKits(kitsList)
-      }
     } catch (error) {
       console.error("Error fetching kits:", error)
-      if (!isSeller) setKits(initialKits);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to fetch marketing kits. Showing sample data.",
+        description: "Failed to fetch marketing kits.",
       })
     } finally {
       setIsLoadingKits(false)
@@ -205,14 +168,18 @@ export default function MarketingKitPage() {
 
   async function onSubmit(values: MarketingKitForm) {
     if (!user) return;
+    if (!values.featureImage) {
+        form.setError("featureImage", { message: "A feature image is required." });
+        return;
+    }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await fileToDataUrl(values.featureImage as File);
+        const featureImageUrl = await uploadFile(values.featureImage, `marketing_kits/${generateUserId("FILE")}`);
 
         const filesData: KitFile[] = [];
-        if (values.files) {
+        if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await fileToDataUrl(file);
+                const fileUrl = await uploadFile(file, `marketing_kits/${generateUserId("FILE")}`);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
@@ -549,3 +516,5 @@ export default function MarketingKitPage() {
     </div>
   )
 }
+
+    
