@@ -60,6 +60,7 @@ import {
   Banknote,
   Gift,
   FilePlus,
+  Mail,
 } from 'lucide-react'
 import { useUser } from '@/hooks/use-user'
 
@@ -103,6 +104,7 @@ const partnerNavItems: NavItem[] = [
   { href: '/listings/list', icon: Building, label: 'Properties' },
   { href: '/leads', icon: UserRound, label: 'Manage Leads' },
   { href: '/manage-customer', icon: Smile, label: 'Manage Customer' },
+  { href: '/website-enquiries', icon: Mail, label: 'Website Enquiries' },
   { href: '/schedule', icon: Calendar, label: 'Location Visit Schedule' },
   { href: '/booking-management', icon: CheckSquare, label: 'Booking Management' },
   { href: '/document-management', icon: FileText, label: 'Document Management' },
