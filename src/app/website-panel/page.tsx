@@ -22,8 +22,10 @@ import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from "next/image"
 import { Textarea } from "@/components/ui/textarea"
+import Link from "next/link"
+import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, setDoc, getDocs, collection, query, where } from "firebase/firestore"
+import { doc, updateDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { User } from "@/types/user"
 import type { Property } from "@/types/property"
@@ -45,7 +47,6 @@ const slideshowItemSchema = z.object({
 const slideshowSchema = z.object({
     slides: z.array(slideshowItemSchema)
 });
-
 
 const contactDetailsSchema = z.object({
   name: z.string().min(1, "Contact name is required"),
@@ -71,10 +72,6 @@ const socialLinksSchema = z.object({
   linkedin: z.string().url().optional().or(z.literal('')),
 })
 
-const featuredCatalogSchema = z.object({
-    featuredCatalog: z.array(z.string()).max(3, "You can select a maximum of 3 properties."),
-})
-
 const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         if (!file) {
@@ -88,29 +85,16 @@ const fileToDataUrl = (file: File): Promise<string> => {
     });
 };
 
-type WebsiteData = {
-    businessProfile?: z.infer<typeof businessProfileSchema>;
-    slideshow?: z.infer<typeof slideshowItemSchema>[];
-    contactDetails?: z.infer<typeof contactDetailsSchema>;
-    aboutLegal?: z.infer<typeof aboutLegalSchema>;
-    socialLinks?: z.infer<typeof socialLinksSchema>;
-    featuredCatalog?: string[];
-}
 
-
-export default function WebsitePanelPage() {
+export default function ManageWebsitePage() {
   const { toast } = useToast()
+  const { user, isLoading: isUserLoading, fetchUser } = useUser()
   const [isSlideDialogOpen, setIsSlideDialogOpen] = React.useState(false);
-  const [isCatalogDialogOpen, setIsCatalogDialogOpen] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [websiteData, setWebsiteData] = React.useState<WebsiteData>({});
-  const [allProperties, setAllProperties] = React.useState<Property[]>([]);
-  const [featuredProperties, setFeaturedProperties] = React.useState<Property[]>([]);
-
-
+  const [isDataLoading, setIsDataLoading] = React.useState(true);
+  const [displayedData, setDisplayedData] = React.useState<Partial<User['website']>>({});
+  
   const businessProfileForm = useForm<z.infer<typeof businessProfileSchema>>({
     resolver: zodResolver(businessProfileSchema),
-    defaultValues: { businessName: '', businessLogo: '' },
   });
   
   const slideshowForm = useForm<z.infer<typeof slideshowSchema>>({
@@ -122,107 +106,98 @@ export default function WebsitePanelPage() {
     control: slideshowForm.control,
     name: "slides"
   });
-  
-  const featuredCatalogForm = useForm<z.infer<typeof featuredCatalogSchema>>({
-    resolver: zodResolver(featuredCatalogSchema),
-    defaultValues: { featuredCatalog: [] },
-  });
 
   const contactDetailsForm = useForm<z.infer<typeof contactDetailsSchema>>({
     resolver: zodResolver(contactDetailsSchema),
-    defaultValues: { name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' },
   });
   const aboutLegalForm = useForm<z.infer<typeof aboutLegalSchema>>({
     resolver: zodResolver(aboutLegalSchema),
-    defaultValues: { aboutText: '', termsLink: '', privacyLink: '', disclaimerLink: '' },
   });
   const socialLinksForm = useForm<z.infer<typeof socialLinksSchema>>({
     resolver: zodResolver(socialLinksSchema),
-    defaultValues: { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' },
   });
-  
-  const fetchWebsiteData = React.useCallback(async () => {
-    setIsLoading(true);
+
+  const loadData = React.useCallback(async () => {
+    if (!user) return;
+    setIsDataLoading(true);
     try {
-        const docRef = doc(db, "app_settings", "website_defaults");
-        const docSnap = await getDoc(docRef);
+        const websiteDefaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
+        const defaults = websiteDefaultsDoc.exists() ? websiteDefaultsDoc.data() : {};
 
-        const propsQuery = query(collection(db, "properties"), where("status", "==", "For Sale"));
-        const propsSnapshot = await getDocs(propsQuery);
-        const propsData = await Promise.all(propsSnapshot.docs.map(async (pDoc) => {
-            const data = pDoc.data() as Property;
-            let featureImageUrl = 'https://placehold.co/600x400.png';
-            if (data.featureImageId) {
-                const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
-                if (fileDoc.exists()) {
-                    featureImageUrl = fileDoc.data()?.data;
-                }
-            }
-            return { ...data, id: pDoc.id, featureImage: featureImageUrl };
-        }));
-        setAllProperties(propsData);
+        const partnerWebsiteData = user.website || {};
 
-        if (docSnap.exists()) {
-            const data = docSnap.data() as WebsiteData;
-            
-            let slidesArray: z.infer<typeof slideshowItemSchema>[] = [];
-            if (data.slideshow) {
-                if (Array.isArray(data.slideshow)) {
-                    slidesArray = data.slideshow;
-                } else if (typeof data.slideshow === 'object') {
-                    slidesArray = Object.values(data.slideshow);
-                }
-            }
-            
-            const processedData = { ...data, slideshow: slidesArray };
-            
-            setWebsiteData(processedData);
-            businessProfileForm.reset(processedData.businessProfile || { businessName: '', businessLogo: '' });
-            slideshowForm.reset({ slides: processedData.slideshow || [] });
-            featuredCatalogForm.reset({ featuredCatalog: processedData.featuredCatalog || [] });
-            contactDetailsForm.reset(processedData.contactDetails || { name: '', phone: '', email: '', address: '', city: '', state: '', pincode: '' });
-            aboutLegalForm.reset(processedData.aboutLegal || { aboutText: '', termsLink: '', privacyLink: '', disclaimerLink: '' });
-            socialLinksForm.reset(processedData.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
+        const finalData = {
+            slideshow: partnerWebsiteData.slideshow || defaults.slideshow || [],
+            featuredCatalog: partnerWebsiteData.featuredCatalog || defaults.featuredCatalog || [],
+            aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal || { aboutText: '' },
+            socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' },
+        };
+        setDisplayedData(finalData);
+
+        businessProfileForm.reset({ businessName: user.name, businessLogo: user.businessLogo || '' });
         
-            if (processedData.featuredCatalog && processedData.featuredCatalog.length > 0) {
-                setFeaturedProperties(propsData.filter(p => processedData.featuredCatalog?.includes(p.id)));
-            } else {
-                setFeaturedProperties([]);
-            }
-        }
+        slideshowForm.reset({ slides: finalData.slideshow });
+
+        contactDetailsForm.reset({ 
+            name: user.name, 
+            phone: user.phone, 
+            email: user.email, 
+            address: user.address || '', 
+            city: user.city || '', 
+            state: user.state || '', 
+            pincode: user.pincode || '' 
+        });
+
+        aboutLegalForm.reset(finalData.aboutLegal);
+        socialLinksForm.reset(finalData.socialLinks);
+
     } catch (error) {
-        console.error("Error fetching website defaults:", error);
-        toast({ variant: "destructive", title: "Error", description: "Could not fetch website settings." });
+        console.error("Error loading website data:", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to load website data." });
     } finally {
-        setIsLoading(false);
+        setIsDataLoading(false);
     }
-  }, [businessProfileForm, slideshowForm, featuredCatalogForm, contactDetailsForm, aboutLegalForm, socialLinksForm, toast]);
+  }, [user, businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm, toast]);
+
 
   React.useEffect(() => {
-    fetchWebsiteData();
-  }, [fetchWebsiteData]);
+    if (user) {
+        loadData();
+    }
+  }, [user, loadData])
 
-  const handleSave = async (section: keyof WebsiteData, values: any) => {
+  const handleSave = async (section: string, values: any) => {
+    if (!user) return
+    const userDocRef = doc(db, "users", user.id)
+
     try {
-      let dataToSave = { ...values };
-
-      if (section === 'businessProfile' && dataToSave.businessLogo && typeof dataToSave.businessLogo !== 'string') {
-        dataToSave.businessLogo = await fileToDataUrl(dataToSave.businessLogo);
-      }
+      const dataToUpdate: any = {};
       
-      const docRef = doc(db, "app_settings", "website_defaults");
-      await setDoc(docRef, { [section]: dataToSave }, { merge: true });
+      if (section === 'businessProfile') {
+          let logoUrl = values.businessLogo;
+          if(logoUrl && typeof logoUrl !== 'string') {
+              logoUrl = await fileToDataUrl(logoUrl);
+          }
+          dataToUpdate.name = values.businessName;
+          dataToUpdate.businessLogo = logoUrl;
+      } else {
+          dataToUpdate[`website.${section}`] = values;
+      }
 
-      toast({ title: "Success", description: `${section.replace(/([A-Z])/g, ' $1')} updated successfully.` });
-      await fetchWebsiteData();
+      await updateDoc(userDocRef, dataToUpdate)
+
+      await fetchUser() // Refresh user data
+      toast({ title: "Success", description: `${section.replace(/([A-Z])/g, ' $1')} updated successfully.` })
 
     } catch (error) {
-      console.error("Error updating settings:", error)
+      console.error("Error updating user:", error)
       toast({ variant: "destructive", title: "Update Failed", description: "There was an error saving your changes." })
     }
   }
 
   const handleSlideSubmit = async (values: z.infer<typeof slideshowSchema>) => {
+    if (!user) return;
+
     try {
         const processedSlides = await Promise.all(
             values.slides.map(async (slide) => {
@@ -239,8 +214,10 @@ export default function WebsitePanelPage() {
             })
         );
         
-        await handleSave('slideshow', processedSlides );
+        await handleSave('slideshow', processedSlides);
         toast({ title: "Slideshow Updated" });
+        
+        await fetchUser();
         closeSlideDialog();
 
     } catch (error) {
@@ -250,26 +227,22 @@ export default function WebsitePanelPage() {
   }
   
   const openSlideDialog = () => {
-      slideshowForm.reset({ slides: websiteData.slideshow || [] });
+      slideshowForm.reset({ slides: displayedData.slideshow || [] });
       setIsSlideDialogOpen(true);
   }
-  const closeSlideDialog = () => setIsSlideDialogOpen(false);
-  
-  const openCatalogDialog = () => {
-    featuredCatalogForm.reset({ featuredCatalog: websiteData.featuredCatalog || [] });
-    setIsCatalogDialogOpen(true);
+
+  const closeSlideDialog = () => {
+      setIsSlideDialogOpen(false);
   }
-  const closeCatalogDialog = () => setIsCatalogDialogOpen(false);
-
-
+  
   const renderSocialLink = (label: string, url: string | undefined, Icon: React.ElementType) => (
     <div className="flex items-center gap-3">
         <Icon className="h-5 w-5 text-muted-foreground" />
         <span className="flex-1 truncate">{url || 'Not set'}</span>
     </div>
-  );
+  )
 
-  if (isLoading) {
+  if (isUserLoading || isDataLoading) {
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -277,10 +250,19 @@ export default function WebsitePanelPage() {
     )
   }
 
+  if (!user) {
+    return (
+        <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 flex items-center justify-center">
+            <p>Could not load user data.</p>
+        </div>
+    )
+  }
+
+
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Website Panel</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Website</h1>
       </div>
       <div className="space-y-6">
 
@@ -289,75 +271,55 @@ export default function WebsitePanelPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <Building className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Default Business Profile</CardTitle>
+              <CardTitle>Business Profile</CardTitle>
             </div>
-            <Dialog>
-            <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
-            <DialogContent>
-                <DialogHeader><DialogTitle>Edit Default Business Profile</DialogTitle></DialogHeader>
-                <Form {...businessProfileForm}>
-                <form onSubmit={businessProfileForm.handleSubmit((values) => handleSave('businessProfile', values))} className="space-y-4">
-                    <FormField control={businessProfileForm.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={businessProfileForm.control} name="businessLogo" render={({ field: { onChange, value, ...rest} }) => ( <FormItem><FormLabel>Business Logo</FormLabel>
-                    <div className="flex items-center gap-4">
-                        <Avatar className="h-20 w-20"><AvatarImage src={typeof value === 'string' ? value : (value ? URL.createObjectURL(value) : '')} /><AvatarFallback>Logo</AvatarFallback></Avatar>
-                        <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
-                    </div>
-                    <FormMessage /></FormItem> )} />
-                    <DialogFooter><Button type="submit" disabled={businessProfileForm.formState.isSubmitting}>{businessProfileForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
-                </form>
-                </Form>
-            </DialogContent>
-            </Dialog>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" asChild>
+                    <a href={`/site/${user.id}`} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Preview
+                    </a>
+                </Button>
+                <Dialog>
+                <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Edit Business Profile</DialogTitle></DialogHeader>
+                    <Form {...businessProfileForm}>
+                    <form onSubmit={businessProfileForm.handleSubmit((values) => handleSave('businessProfile', values))} className="space-y-4">
+                        <FormField control={businessProfileForm.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={businessProfileForm.control} name="businessLogo" render={({ field: { onChange, value, ...rest} }) => ( <FormItem><FormLabel>Business Logo</FormLabel>
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-20 w-20"><AvatarImage src={typeof value === 'string' ? value : (value ? URL.createObjectURL(value) : '')} /><AvatarFallback>Logo</AvatarFallback></Avatar>
+                            <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
+                        </div>
+                        <FormMessage /></FormItem> )} />
+                        <DialogFooter><Button type="submit" disabled={businessProfileForm.formState.isSubmitting}>{businessProfileForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
+                    </form>
+                    </Form>
+                </DialogContent>
+                </Dialog>
+            </div>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
-            <Avatar className="h-20 w-20"><AvatarImage src={websiteData.businessProfile?.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
-            <p className="text-lg font-semibold">{websiteData.businessProfile?.businessName || "Default Business Name"}</p>
+            <Avatar className="h-20 w-20"><AvatarImage src={user.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
+            <p className="text-lg font-semibold">{user.name}</p>
           </CardContent>
         </Card>
-        
-        {/* Featured Catalog Card */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Featured Catalog</CardTitle>
-            </div>
-             <Button size="sm" onClick={openCatalogDialog}>
-                <Pencil className="mr-2 h-4 w-4" /> Edit Catalog
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {featuredProperties.length > 0 ? (
-                featuredProperties.map(prop => (
-                    <div key={prop.id} className="flex items-center gap-4 p-2 border rounded-md">
-                        <Image src={prop.featureImage || 'https://placehold.co/120x68.png'} alt={prop.catalogTitle} width={120} height={68} className="rounded-md object-cover bg-muted" />
-                        <div className="flex-1">
-                            <p className="font-semibold">{prop.catalogTitle}</p>
-                            <p className="text-sm text-muted-foreground">{prop.city}, {prop.state}</p>
-                        </div>
-                    </div>
-                ))
-            ) : (
-                <p className="text-muted-foreground text-sm text-center py-4">No featured properties selected.</p>
-            )}
-          </CardContent>
-        </Card>
-        
+
         {/* Slideshow Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <ImageIcon className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Default Slideshow</CardTitle>
+              <CardTitle>Slideshow</CardTitle>
             </div>
              <Button size="sm" onClick={openSlideDialog}>
                 <Pencil className="mr-2 h-4 w-4" /> Edit Slideshow
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {websiteData.slideshow && websiteData.slideshow.length > 0 ? (
-                websiteData.slideshow.map(slide => (
+            {displayedData.slideshow && displayedData.slideshow.length > 0 ? (
+                displayedData.slideshow.map(slide => (
                     <div key={slide.id} className="flex items-center gap-4 p-2 border rounded-md">
                         <Image src={slide.bannerImage} alt={slide.title} width={120} height={68} className="rounded-md object-cover bg-muted" />
                         <div className="flex-1">
@@ -371,13 +333,13 @@ export default function WebsitePanelPage() {
             )}
           </CardContent>
         </Card>
-        
+
         {/* Slideshow Dialog */}
         <Dialog open={isSlideDialogOpen} onOpenChange={closeSlideDialog}>
             <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-                <DialogTitle>Edit Default Slideshow</DialogTitle>
-                <DialogDescription>Manage the default slideshow for partner websites.</DialogDescription>
+                <DialogTitle>Edit Slideshow</DialogTitle>
+                <DialogDescription>Manage your public website's slideshow images, titles, and links.</DialogDescription>
             </DialogHeader>
                 <Form {...slideshowForm}>
                 <form onSubmit={slideshowForm.handleSubmit(handleSlideSubmit)} className="space-y-6">
@@ -448,72 +410,18 @@ export default function WebsitePanelPage() {
             </Form>
             </DialogContent>
         </Dialog>
-        
-        {/* Featured Catalog Dialog */}
-        <Dialog open={isCatalogDialogOpen} onOpenChange={closeCatalogDialog}>
-            <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Edit Featured Catalog</DialogTitle>
-                    <DialogDescription>Select up to 3 properties to feature on partner websites.</DialogDescription>
-                </DialogHeader>
-                <Form {...featuredCatalogForm}>
-                    <form onSubmit={featuredCatalogForm.handleSubmit((values) => handleSave('featuredCatalog', values.featuredCatalog))} className="space-y-6">
-                        <FormField
-                            control={featuredCatalogForm.control}
-                            name="featuredCatalog"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="max-h-80 overflow-y-auto space-y-2 border p-2 rounded-md">
-                                        {allProperties.map((item) => (
-                                            <div
-                                                key={item.id}
-                                                className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
-                                            >
-                                                <Checkbox
-                                                    checked={field.value?.includes(item.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        const currentValues = field.value || [];
-                                                        if (checked) {
-                                                            if (currentValues.length < 3) {
-                                                                field.onChange([...currentValues, item.id]);
-                                                            } else {
-                                                                toast({ variant: "destructive", title: "Limit Reached", description: "You can only select up to 3 properties." });
-                                                            }
-                                                        } else {
-                                                            field.onChange(currentValues.filter((value) => value !== item.id));
-                                                        }
-                                                    }}
-                                                />
-                                                <FormLabel className="font-normal w-full cursor-pointer">
-                                                    {item.catalogTitle}
-                                                </FormLabel>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={closeCatalogDialog}>Cancel</Button>
-                            <Button type="submit" disabled={featuredCatalogForm.formState.isSubmitting}>{featuredCatalogForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Changes</Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
 
         {/* Contact Details Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <Contact className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Default Contact Details</CardTitle>
+              <CardTitle>Contact Details</CardTitle>
             </div>
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
               <DialogContent>
-                <DialogHeader><DialogTitle>Edit Default Contact Details</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>Edit Contact Details</DialogTitle></DialogHeader>
                  <Form {...contactDetailsForm}>
                   <form onSubmit={contactDetailsForm.handleSubmit((values) => handleSave('contactDetails', values))} className="space-y-4">
                     <FormField control={contactDetailsForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Contact Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -532,10 +440,10 @@ export default function WebsitePanelPage() {
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-             <p><strong>Name:</strong> {websiteData.contactDetails?.name || 'Not set'}</p>
-            <p><strong>Phone:</strong> {websiteData.contactDetails?.phone || 'Not set'}</p>
-            <p><strong>Email:</strong> {websiteData.contactDetails?.email || 'Not set'}</p>
-            <p><strong>Address:</strong> {`${websiteData.contactDetails?.address || ''}, ${websiteData.contactDetails?.city || ''}, ${websiteData.contactDetails?.state || ''} - ${websiteData.contactDetails?.pincode || ''}`}</p>
+            <p><strong>Name:</strong> {user.name}</p>
+            <p><strong>Phone:</strong> {user.phone}</p>
+            <p><strong>Email:</strong> {user.email}</p>
+            <p><strong>Address:</strong> {`${user.address}, ${user.city}, ${user.state} - ${user.pincode}`}</p>
           </CardContent>
         </Card>
 
@@ -544,7 +452,7 @@ export default function WebsitePanelPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <Info className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Default About & Legal</CardTitle>
+              <CardTitle>About & Legal</CardTitle>
             </div>
              <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
@@ -553,9 +461,9 @@ export default function WebsitePanelPage() {
                  <Form {...aboutLegalForm}>
                   <form onSubmit={aboutLegalForm.handleSubmit((values) => handleSave('aboutLegal', values))} className="space-y-4">
                     <FormField control={aboutLegalForm.control} name="aboutText" render={({ field }) => ( <FormItem><FormLabel>About Text</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={aboutLegalForm.control} name="termsLink" render={({ field }) => ( <FormItem><FormLabel>Terms & Conditions Link</FormLabel><FormControl><Input placeholder="https://example.com/terms" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={aboutLegalForm.control} name="privacyLink" render={({ field }) => ( <FormItem><FormLabel>Privacy Policy Link</FormLabel><FormControl><Input placeholder="https://example.com/privacy" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={aboutLegalForm.control} name="disclaimerLink" render={({ field }) => ( <FormItem><FormLabel>Disclaimer Link</FormLabel><FormControl><Input placeholder="https://example.com/disclaimer" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={aboutLegalForm.control} name="termsLink" render={({ field }) => ( <FormItem><FormLabel>Terms & Conditions Link</FormLabel><FormControl><Input placeholder="https://example.com/terms" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={aboutLegalForm.control} name="privacyLink" render={({ field }) => ( <FormItem><FormLabel>Privacy Policy Link</FormLabel><FormControl><Input placeholder="https://example.com/privacy" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={aboutLegalForm.control} name="disclaimerLink" render={({ field }) => ( <FormItem><FormLabel>Disclaimer Link</FormLabel><FormControl><Input placeholder="https://example.com/disclaimer" {...field} /></FormControl><FormMessage /></FormItem> )} />
                     <DialogFooter><Button type="submit" disabled={aboutLegalForm.formState.isSubmitting}>{aboutLegalForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
                   </form>
                 </Form>
@@ -565,20 +473,20 @@ export default function WebsitePanelPage() {
           <CardContent className="space-y-4">
             <div>
               <h4 className="font-semibold mb-1">About Us</h4>
-              <p className="text-sm text-muted-foreground">{websiteData.aboutLegal?.aboutText || 'Not set'}</p>
+              <p className="text-sm text-muted-foreground">{displayedData.aboutLegal?.aboutText || 'Not set'}</p>
             </div>
             <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Terms & Conditions: {websiteData.aboutLegal?.termsLink ? <a href={websiteData.aboutLegal.termsLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Terms & Conditions: {displayedData.aboutLegal?.termsLink ? <a href={displayedData.aboutLegal.termsLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Privacy Policy: {websiteData.aboutLegal?.privacyLink ? <a href={websiteData.aboutLegal.privacyLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Privacy Policy: {displayedData.aboutLegal?.privacyLink ? <a href={displayedData.aboutLegal.privacyLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
                  <div className="flex items-center gap-3 text-sm">
                     <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span>Disclaimer: {websiteData.aboutLegal?.disclaimerLink ? <a href={websiteData.aboutLegal.disclaimerLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
+                    <span>Disclaimer: {displayedData.aboutLegal?.disclaimerLink ? <a href={displayedData.aboutLegal.disclaimerLink as string} className="text-primary underline" target="_blank" rel="noopener noreferrer">View Link</a> : 'Not set'}</span>
                 </div>
             </div>
           </CardContent>
@@ -589,7 +497,7 @@ export default function WebsitePanelPage() {
           <CardHeader className="flex flex-row items-center justify-between">
              <div className="flex items-center gap-3">
               <Globe className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Default Social Links</CardTitle>
+              <CardTitle>Social Links</CardTitle>
             </div>
              <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
@@ -597,12 +505,12 @@ export default function WebsitePanelPage() {
                 <DialogHeader><DialogTitle>Edit Social Links</DialogTitle></DialogHeader>
                  <Form {...socialLinksForm}>
                   <form onSubmit={socialLinksForm.handleSubmit((values) => handleSave('socialLinks', values))} className="space-y-4">
-                    <FormField control={socialLinksForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel>Website URL</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel>Instagram URL</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>Facebook URL</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="twitter" render={({ field }) => ( <FormItem><FormLabel>Twitter URL</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={socialLinksForm.control} name="linkedin" render={({ field }) => ( <FormItem><FormLabel>LinkedIn URL</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel>Website URL</FormLabel><FormControl><Input placeholder="https://example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel>Instagram URL</FormLabel><FormControl><Input placeholder="https://instagram.com/..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>Facebook URL</FormLabel><FormControl><Input placeholder="https://facebook.com/..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube URL</FormLabel><FormControl><Input placeholder="https://youtube.com/..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="twitter" render={({ field }) => ( <FormItem><FormLabel>Twitter URL</FormLabel><FormControl><Input placeholder="https://twitter.com/..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={socialLinksForm.control} name="linkedin" render={({ field }) => ( <FormItem><FormLabel>LinkedIn URL</FormLabel><FormControl><Input placeholder="https://linkedin.com/..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                     <DialogFooter><Button type="submit" disabled={socialLinksForm.formState.isSubmitting}>{socialLinksForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
                   </form>
                 </Form>
@@ -610,12 +518,12 @@ export default function WebsitePanelPage() {
             </Dialog>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
-            {renderSocialLink('Website', websiteData.socialLinks?.website, Globe)}
-            {renderSocialLink('Instagram', websiteData.socialLinks?.instagram, Instagram)}
-            {renderSocialLink('Facebook', websiteData.socialLinks?.facebook, Facebook)}
-            {renderSocialLink('YouTube', websiteData.socialLinks?.youtube, Youtube)}
-            {renderSocialLink('Twitter', websiteData.socialLinks?.twitter, Twitter)}
-            {renderSocialLink('LinkedIn', websiteData.socialLinks?.linkedin, Linkedin)}
+            {renderSocialLink('Website', displayedData.socialLinks?.website, Globe)}
+            {renderSocialLink('Instagram', displayedData.socialLinks?.instagram, Instagram)}
+            {renderSocialLink('Facebook', displayedData.socialLinks?.facebook, Facebook)}
+            {renderSocialLink('YouTube', displayedData.socialLinks?.youtube, Youtube)}
+            {renderSocialLink('Twitter', displayedData.socialLinks?.twitter, Twitter)}
+            {renderSocialLink('LinkedIn', displayedData.socialLinks?.linkedin, Linkedin)}
           </CardContent>
         </Card>
       </div>

@@ -43,6 +43,8 @@ export default function FeaturedPropertiesPage() {
         recommendedCatalog: [],
     })
     const [editingCatalog, setEditingCatalog] = React.useState<CatalogType | null>(null);
+    const [propertySearchTerm, setPropertySearchTerm] = React.useState("");
+
 
     const form = useForm<FeaturedPropertiesForm>({
         resolver: zodResolver(featuredPropertiesSchema),
@@ -148,6 +150,14 @@ export default function FeaturedPropertiesPage() {
             </CardContent>
         </Card>
     );
+    
+    const filteredProperties = React.useMemo(() => {
+        return allProperties.filter(prop => 
+            prop.catalogTitle.toLowerCase().includes(propertySearchTerm.toLowerCase()) ||
+            prop.id.toLowerCase().includes(propertySearchTerm.toLowerCase())
+        );
+    }, [allProperties, propertySearchTerm]);
+
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -187,6 +197,15 @@ export default function FeaturedPropertiesPage() {
                         <DialogTitle>Edit Featured Properties</DialogTitle>
                         <DialogDescription>Select up to 6 properties to feature.</DialogDescription>
                     </DialogHeader>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name or code..."
+                            value={propertySearchTerm}
+                            onChange={(e) => setPropertySearchTerm(e.target.value)}
+                            className="pl-8"
+                        />
+                    </div>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleSave)} className="flex-1 flex flex-col gap-4 min-h-0">
                             <FormField
@@ -195,7 +214,7 @@ export default function FeaturedPropertiesPage() {
                                 render={({ field }) => (
                                     <FormItem className="flex-1 flex flex-col min-h-0">
                                         <div className="overflow-y-auto space-y-2 border p-2 rounded-md">
-                                            {allProperties.map((item) => (
+                                            {filteredProperties.map((item) => (
                                                 <div
                                                     key={item.id}
                                                     className="flex flex-row items-center space-x-3 space-y-0 p-2 hover:bg-muted rounded-md"
@@ -216,7 +235,8 @@ export default function FeaturedPropertiesPage() {
                                                         }}
                                                     />
                                                     <FormLabel className="font-normal w-full cursor-pointer">
-                                                        {item.catalogTitle}
+                                                        <p>{item.catalogTitle}</p>
+                                                        <p className="text-xs text-muted-foreground font-mono">{item.id}</p>
                                                     </FormLabel>
                                                 </div>
                                             ))}
