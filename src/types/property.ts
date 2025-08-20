@@ -2,9 +2,9 @@
 import type { Timestamp } from "firebase/firestore";
 
 type Slide = {
-    id: string;
+    id?: string;
     title: string;
-    image: string; // This will now store the file ID
+    image: string; // This will now store the URL from Firebase Storage
 };
 
 export type EarningRuleValue = {
@@ -25,7 +25,7 @@ export type Property = {
     propertyTypeId: string;
     propertyAge: "New" | "<1 year" | "1 - 5 years" | "5 - 10 years" | "10+ years";
     reraApproved: boolean;
-    featureImageId: string; // Changed from featureImage
+    featureImage: string; // Changed from featureImageId to store URL
     catalogType: "New Project" | "Project" | "Resales" | "Rental" | "Other";
 
     // Step 2
@@ -118,5 +118,5 @@ export type Property = {
     createdAt?: Date | Timestamp;
     views?: number;
     modificationNotes?: string;
-    featureImage?: string; // Keep for display purposes after fetching
+    ownerId?: string;
 };

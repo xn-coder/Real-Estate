@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -38,6 +39,7 @@ import { Switch } from "@/components/ui/switch"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import { Checkbox } from "@/components/ui/checkbox"
+import { uploadFile } from "@/services/file-upload-service"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -48,19 +50,6 @@ const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
     loading: () => <div className="h-[400px] w-full rounded-md bg-muted flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
 });
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 // Helper to clean data for Firestore
 const cleanDataForFirebase = (data: Record<string, any>) => {
@@ -258,33 +247,8 @@ export default function EditPropertyPage() {
 
                 const propertyData = propDocSnap.data() as Property;
                 
-                // Fetch image URLs
-                let featureImageUrl = '';
-                if(propertyData.featureImageId) {
-                    const featureImageDoc = await getDoc(doc(db, 'files', propertyData.featureImageId));
-                    featureImageUrl = featureImageDoc.exists() ? featureImageDoc.data()?.data : '';
-                }
-
-                const slidesWithUrls = await Promise.all(
-                    (propertyData.slides || []).map(async (slide) => {
-                        let slideImageUrl = '';
-                        if(slide.image) {
-                            const slideImageDoc = await getDoc(doc(db, 'files', slide.image));
-                            slideImageUrl = slideImageDoc.exists() ? slideImageDoc.data()?.data : '';
-                        }
-                        return {
-                            id: slide.image,
-                            title: slide.title,
-                            image: slideImageUrl,
-                        };
-                    })
-                );
-
-                // Set form values
                 form.reset({
                     ...propertyData,
-                    featureImage: featureImageUrl,
-                    slides: slidesWithUrls,
                 });
                 
             } catch (error) {
@@ -319,40 +283,30 @@ export default function EditPropertyPage() {
         setIsSubmitting(true);
         try {
             const propertyRef = doc(db, "properties", propertyId);
-            const originalProperty = (await getDoc(propertyRef)).data() as Property;
-
-            let featureImageId = originalProperty.featureImageId;
-            // Handle feature image update
+            
+            let featureImageUrl = values.featureImage;
             if (values.featureImage && typeof values.featureImage !== 'string') {
-                const newFeatureImageFileId = featureImageId || generateUserId("FILE");
-                const featureImageUrl = await fileToDataUrl(values.featureImage);
-                await setDoc(doc(db, "files", newFeatureImageFileId), { data: featureImageUrl });
-                featureImageId = newFeatureImageFileId;
+                featureImageUrl = await uploadFile(values.featureImage);
             }
             
-            // Handle slide images update
-            const slidesWithIds = await Promise.all(
+            const slidesWithUrls = await Promise.all(
                 values.slides.map(async (slide) => {
-                    let slideImageFileId = slide.id; // Existing ID
+                    let slideImageUrl = slide.image;
                     if (slide.image && typeof slide.image !== 'string') {
-                        slideImageFileId = slide.id || generateUserId("FILE");
-                        const slideImageUrl = await fileToDataUrl(slide.image);
-                        await setDoc(doc(db, "files", slideImageFileId), { data: slideImageUrl });
+                        slideImageUrl = await uploadFile(slide.image);
                     }
                     return {
                         title: slide.title,
-                        image: slideImageFileId,
+                        image: slideImageUrl,
                     };
                 })
             );
 
             const updatedData = {
                 ...values,
-                featureImageId: featureImageId,
-                slides: slidesWithIds,
+                featureImage: featureImageUrl,
+                slides: slidesWithUrls,
             };
-            // @ts-ignore
-            delete updatedData.featureImage;
 
             await updateDoc(propertyRef, cleanDataForFirebase(updatedData));
 

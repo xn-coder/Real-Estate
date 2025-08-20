@@ -38,6 +38,7 @@ import { Switch } from "@/components/ui/switch"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import { Checkbox } from "@/components/ui/checkbox"
+import { uploadFile } from "@/services/file-upload-service"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -48,19 +49,6 @@ const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
     loading: () => <div className="h-[400px] w-full rounded-md bg-muted flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/></div>
 });
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -329,20 +317,14 @@ export default function AddPropertyPage() {
         try {
             const propertyId = propertyCode || generateUserId("PROP");
 
-            // Handle feature image
-            const featureImageFileId = generateUserId("FILE");
-            const featureImageUrl = await fileToDataUrl(values.featureImage);
-            await setDoc(doc(db, "files", featureImageFileId), { data: featureImageUrl });
+            const featureImageUrl = await uploadFile(values.featureImage);
             
-            // Handle slide images
-            const slidesWithIds = await Promise.all(
+            const slidesWithUrls = await Promise.all(
                 values.slides.map(async (slide) => {
-                    const slideImageFileId = generateUserId("FILE");
-                    const slideImageUrl = await fileToDataUrl(slide.image);
-                    await setDoc(doc(db, "files", slideImageFileId), { data: slideImageUrl });
+                    const slideImageUrl = await uploadFile(slide.image);
                     return {
                         title: slide.title,
-                        image: slideImageFileId, // Store file ID instead of data URL
+                        image: slideImageUrl,
                     };
                 })
             );
@@ -351,11 +333,9 @@ export default function AddPropertyPage() {
                 ...values,
                 id: propertyId,
                 status: 'Pending Verification',
-                featureImageId: featureImageFileId,
-                slides: slidesWithIds,
+                featureImage: featureImageUrl,
+                slides: slidesWithUrls,
             };
-            // @ts-ignore
-            delete propertyData.featureImage; // Remove the large file data
 
             await setDoc(doc(db, "properties", propertyId), propertyData);
 

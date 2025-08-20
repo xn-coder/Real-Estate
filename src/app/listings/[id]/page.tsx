@@ -294,7 +294,6 @@ export default function PropertyDetailsPage() {
         const fetchProperty = async () => {
             setIsLoading(true);
             try {
-                // Fetch property and enquiries in parallel
                 const [docSnap, enquiriesSnap] = await Promise.all([
                     getDoc(doc(db, "properties", propertyId)),
                     getDocs(query(collection(db, "leads"), where("propertyId", "==", propertyId)))
@@ -306,19 +305,23 @@ export default function PropertyDetailsPage() {
                     const data = docSnap.data() as Property;
                     setProperty(data);
                     
-                    const [propTypeSnap, ...imagePromises] = await Promise.all([
-                        getDoc(doc(db, 'property_types', data.propertyTypeId)),
-                        ...(data.featureImageId ? [getDoc(doc(db, 'files', data.featureImageId))] : []),
-                        ...(data.slides ? data.slides.map(slide => slide.image ? getDoc(doc(db, 'files', slide.image)) : Promise.resolve(null)) : [])
-                    ]);
-
+                    const propTypeSnap = await getDoc(doc(db, 'property_types', data.propertyTypeId));
                     if (propTypeSnap.exists()) {
                         setPropertyType(propTypeSnap.data() as PropertyType);
                     }
 
-                    const urls = imagePromises.map(imgDoc => imgDoc?.exists() ? imgDoc.data()?.data : null).filter(Boolean);
-                    setImageUrls(urls as string[]);
-
+                    const fetchedImageUrls = [];
+                    if (data.featureImage) {
+                        fetchedImageUrls.push(data.featureImage);
+                    }
+                    if (data.slides) {
+                        for (const slide of data.slides) {
+                            if (slide.image) {
+                                fetchedImageUrls.push(slide.image);
+                            }
+                        }
+                    }
+                    setImageUrls(fetchedImageUrls);
                 } else {
                     console.error("No such document!");
                 }
