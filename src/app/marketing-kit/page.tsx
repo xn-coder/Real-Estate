@@ -322,12 +322,15 @@ export default function MarketingKitPage() {
         let fileName = file.name;
 
         // Determine branding info
-        let brandName = defaultBusinessInfo?.name || 'DealFlow';
-        let brandPhone = defaultBusinessInfo?.phone || '';
-
-        if (isPartner) {
-            brandName = user.businessName || defaultBusinessInfo?.name || user.name;
-            brandPhone = user.phone || defaultBusinessInfo?.phone || '';
+        let brandName: string;
+        let brandPhone: string;
+        
+        if (isPartner && user.businessName && user.phone) {
+            brandName = user.businessName;
+            brandPhone = user.phone;
+        } else {
+            brandName = defaultBusinessInfo?.name || 'DealFlow';
+            brandPhone = defaultBusinessInfo?.phone || '';
         }
 
         // Apply branding to images
@@ -546,5 +549,3 @@ export default function MarketingKitPage() {
     </div>
   )
 }
-
-    
