@@ -25,7 +25,7 @@ import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { doc, updateDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
+import { doc, updateDoc, getDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { User } from "@/types/user"
 import type { Property } from "@/types/property"
@@ -118,38 +118,19 @@ export default function ManageWebsitePage() {
   });
 
   const loadData = React.useCallback(async () => {
-    if (!user) return;
     setIsDataLoading(true);
     try {
         const websiteDefaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
         const defaults = websiteDefaultsDoc.exists() ? websiteDefaultsDoc.data() : {};
-
-        const partnerWebsiteData = user.website || {};
-
-        const finalData = {
-            slideshow: partnerWebsiteData.slideshow || defaults.slideshow || [],
-            featuredCatalog: partnerWebsiteData.featuredCatalog || defaults.featuredCatalog || [],
-            aboutLegal: partnerWebsiteData.aboutLegal || defaults.aboutLegal || { aboutText: '' },
-            socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' },
-        };
-        setDisplayedData(finalData);
-
-        businessProfileForm.reset({ businessName: user.name, businessLogo: user.businessLogo || '' });
         
-        slideshowForm.reset({ slides: finalData.slideshow });
+        // This page now ONLY manages the defaults
+        setDisplayedData(defaults);
 
-        contactDetailsForm.reset({ 
-            name: user.name, 
-            phone: user.phone, 
-            email: user.email, 
-            address: user.address || '', 
-            city: user.city || '', 
-            state: user.state || '', 
-            pincode: user.pincode || '' 
-        });
-
-        aboutLegalForm.reset(finalData.aboutLegal);
-        socialLinksForm.reset(finalData.socialLinks);
+        businessProfileForm.reset(defaults.businessProfile || {});
+        slideshowForm.reset({ slides: defaults.slideshow || [] });
+        contactDetailsForm.reset(defaults.contactDetails || {});
+        aboutLegalForm.reset(defaults.aboutLegal || { aboutText: '' });
+        socialLinksForm.reset(defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
 
     } catch (error) {
         console.error("Error loading website data:", error);
@@ -157,53 +138,54 @@ export default function ManageWebsitePage() {
     } finally {
         setIsDataLoading(false);
     }
-  }, [user, businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm, toast]);
+  }, [businessProfileForm, slideshowForm, contactDetailsForm, aboutLegalForm, socialLinksForm, toast]);
 
 
   React.useEffect(() => {
-    if (user) {
-        loadData();
-    }
-  }, [user, loadData])
+    loadData();
+  }, [loadData])
 
   const handleSave = async (section: string, values: any) => {
-    if (!user) return
-    const userDocRef = doc(db, "users", user.id)
+    const docRef = doc(db, "app_settings", "website_defaults");
 
     try {
-      const dataToUpdate: any = {};
+      let dataToUpdate: any = {};
       
       if (section === 'businessProfile') {
           let logoUrl = values.businessLogo;
-          if(logoUrl && typeof logoUrl !== 'string') {
+          if (logoUrl && typeof logoUrl !== 'string') {
               logoUrl = await fileToDataUrl(logoUrl);
           }
-          dataToUpdate.name = values.businessName;
-          dataToUpdate.businessLogo = logoUrl;
+          dataToUpdate = {
+              businessProfile: {
+                  businessName: values.businessName,
+                  businessLogo: logoUrl || displayedData.businessProfile?.businessLogo || '',
+              }
+          };
       } else {
-          dataToUpdate[`website.${section}`] = values;
+          dataToUpdate[section] = values;
       }
-
-      await updateDoc(userDocRef, dataToUpdate)
-
-      await fetchUser() // Refresh user data
-      toast({ title: "Success", description: `${section.replace(/([A-Z])/g, ' $1')} updated successfully.` })
+      
+      await setDoc(docRef, dataToUpdate, { merge: true });
+      await loadData();
+      toast({ title: "Success", description: `${section.replace(/([A-Z])/g, ' $1')} updated successfully.` });
 
     } catch (error) {
-      console.error("Error updating user:", error)
-      toast({ variant: "destructive", title: "Update Failed", description: "There was an error saving your changes." })
+      console.error("Error updating settings:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: "There was an error saving your changes." });
     }
   }
 
   const handleSlideSubmit = async (values: z.infer<typeof slideshowSchema>) => {
-    if (!user) return;
-
     try {
         const processedSlides = await Promise.all(
-            values.slides.map(async (slide) => {
+            values.slides.map(async (slide, index) => {
                 let bannerImageUrl = slide.bannerImage;
                 if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
                     bannerImageUrl = await fileToDataUrl(bannerImageUrl);
+                } else if (typeof bannerImageUrl !== 'string') {
+                    // Use existing image if a new one isn't provided
+                    bannerImageUrl = displayedData.slideshow?.[index]?.bannerImage || '';
                 }
                 return {
                     id: slide.id || generateUserId("SLD"),
@@ -217,7 +199,6 @@ export default function ManageWebsitePage() {
         await handleSave('slideshow', processedSlides);
         toast({ title: "Slideshow Updated" });
         
-        await fetchUser();
         closeSlideDialog();
 
     } catch (error) {
@@ -262,7 +243,7 @@ export default function ManageWebsitePage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Website</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Manage Default Website</h1>
       </div>
       <div className="space-y-6">
 
@@ -271,26 +252,20 @@ export default function ManageWebsitePage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
               <Building className="h-6 w-6 text-muted-foreground" />
-              <CardTitle>Business Profile</CardTitle>
+              <CardTitle>Default Business Profile</CardTitle>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" asChild>
-                    <a href={`/site/${user.id}`} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Preview
-                    </a>
-                </Button>
                 <Dialog>
                 <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Edit Business Profile</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>Edit Default Business Profile</DialogTitle></DialogHeader>
                     <Form {...businessProfileForm}>
                     <form onSubmit={businessProfileForm.handleSubmit((values) => handleSave('businessProfile', values))} className="space-y-4">
                         <FormField control={businessProfileForm.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                         <FormField control={businessProfileForm.control} name="businessLogo" render={({ field: { onChange, value, ...rest} }) => ( <FormItem><FormLabel>Business Logo</FormLabel>
                         <div className="flex items-center gap-4">
                             <Avatar className="h-20 w-20"><AvatarImage src={typeof value === 'string' ? value : (value ? URL.createObjectURL(value) : '')} /><AvatarFallback>Logo</AvatarFallback></Avatar>
-                            <FormControl><Input type="file" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
+                            <FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl>
                         </div>
                         <FormMessage /></FormItem> )} />
                         <DialogFooter><Button type="submit" disabled={businessProfileForm.formState.isSubmitting}>{businessProfileForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>} Save</Button></DialogFooter>
@@ -301,8 +276,8 @@ export default function ManageWebsitePage() {
             </div>
           </CardHeader>
           <CardContent className="flex items-center gap-4">
-            <Avatar className="h-20 w-20"><AvatarImage src={user.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
-            <p className="text-lg font-semibold">{user.name}</p>
+            <Avatar className="h-20 w-20"><AvatarImage src={displayedData.businessProfile?.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
+            <p className="text-lg font-semibold">{displayedData.businessProfile?.businessName}</p>
           </CardContent>
         </Card>
 
@@ -440,10 +415,10 @@ export default function ManageWebsitePage() {
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><strong>Name:</strong> {user.name}</p>
-            <p><strong>Phone:</strong> {user.phone}</p>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Address:</strong> {`${user.address}, ${user.city}, ${user.state} - ${user.pincode}`}</p>
+            <p><strong>Name:</strong> {displayedData.contactDetails?.name}</p>
+            <p><strong>Phone:</strong> {displayedData.contactDetails?.phone}</p>
+            <p><strong>Email:</strong> {displayedData.contactDetails?.email}</p>
+            <p><strong>Address:</strong> {`${displayedData.contactDetails?.address}, ${displayedData.contactDetails?.city}, ${displayedData.contactDetails?.state} - ${displayedData.contactDetails?.pincode}`}</p>
           </CardContent>
         </Card>
 
