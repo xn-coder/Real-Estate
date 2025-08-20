@@ -37,7 +37,7 @@ import { Loader2, PlusCircle, Upload, Paperclip, Download, Search, Building } fr
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, getDocs, doc, setDoc, query, where } from "firebase/firestore"
+import { collection, addDoc, getDocs, doc, setDoc, query, where, getDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -120,6 +120,7 @@ export default function MarketingKitPage() {
   const { user } = useUser();
   const [kits, setKits] = React.useState<Kit[]>(initialKits)
   const [allProperties, setAllProperties] = React.useState<Property[]>([])
+  const [defaultBusinessInfo, setDefaultBusinessInfo] = React.useState<{name: string, phone: string} | null>(null);
   const [isLoadingKits, setIsLoadingKits] = React.useState(true)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isDownloading, setIsDownloading] = React.useState<string | null>(null);
@@ -149,6 +150,7 @@ export default function MarketingKitPage() {
     try {
         const kitsCollection = collection(db, "marketing_kits");
         const propsCollection = collection(db, "properties");
+        const websiteDefaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
 
         const [kitsSnapshot, propsSnapshot] = await Promise.all([
             getDocs(isSeller ? query(kitsCollection, where("ownerId", "==", user.id)) : query(kitsCollection)),
@@ -157,6 +159,14 @@ export default function MarketingKitPage() {
         
         const propsList = propsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
         setAllProperties(propsList);
+
+        if(websiteDefaultsDoc.exists()){
+            const defaults = websiteDefaultsDoc.data();
+            setDefaultBusinessInfo({
+                name: defaults.contactDetails?.name || 'DealFlow',
+                phone: defaults.contactDetails?.phone || 'N/A'
+            });
+        }
 
         const kitsList = await Promise.all(kitsSnapshot.docs.map(async docData => {
             const data = docData.data() as Omit<Kit, 'propertyTitle'>;
@@ -305,16 +315,25 @@ export default function MarketingKitPage() {
 
     setIsDownloading(kit.id);
 
+    const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+
     for (const file of kit.files) {
         let fileUrl = file.url;
         let fileName = file.name;
 
-        // Check if the current user is a partner and has branding info
-        const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
+        // Determine branding info
+        let brandName = defaultBusinessInfo?.name || 'DealFlow';
+        let brandPhone = defaultBusinessInfo?.phone || '';
 
-        if (file.type === 'image' && isPartner && user.businessName && user.phone) {
+        if (isPartner) {
+            brandName = user.businessName || defaultBusinessInfo?.name || user.name;
+            brandPhone = user.phone || defaultBusinessInfo?.phone || '';
+        }
+
+        // Apply branding to images
+        if (file.type === 'image' && brandName && brandPhone) {
             try {
-                const brandedImageUri = await embedProfileWithCanvas(file.url, user.businessName, user.phone);
+                const brandedImageUri = await embedProfileWithCanvas(file.url, brandName, brandPhone);
                 fileUrl = brandedImageUri;
                 const extension = file.name.split('.').pop();
                 fileName = `${file.name.replace(`.${extension}`, '')}_branded.png`;
@@ -527,3 +546,5 @@ export default function MarketingKitPage() {
     </div>
   )
 }
+
+    
