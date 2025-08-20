@@ -205,10 +205,10 @@ export default function AddPartnerPage() {
         const userId = generateUserId(prefix);
 
         const [profileImageUrl, businessLogoUrl, aadharFileUrl, panFileUrl] = await Promise.all([
-            values.profileImage ? uploadFile(values.profileImage, `users/${userId}/profileImage`) : Promise.resolve(null),
-            values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo`) : Promise.resolve(null),
-            uploadFile(values.aadharFile, `users/${userId}/aadharFile`),
-            uploadFile(values.panFile, `users/${userId}/panFile`),
+            values.profileImage ? uploadFile(values.profileImage, `users/${userId}/profileImage.jpg`) : Promise.resolve(null),
+            values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo.jpg`) : Promise.resolve(null),
+            uploadFile(values.aadharFile, `users/${userId}/aadharFile.pdf`),
+            uploadFile(values.panFile, `users/${userId}/panFile.pdf`),
         ]);
 
         const partnerDataBase = {
@@ -250,7 +250,7 @@ export default function AddPartnerPage() {
             await handlePayment(registrationFee, userId);
         } else if (!isPaymentEnabled && registrationFee > 0) {
              const paymentData = values as z.infer<typeof addPartnerFormStep4ManualSchema>;
-             const paymentProofUrl = paymentData.paymentProof ? await uploadFile(paymentData.paymentProof, `users/${userId}/paymentProof`) : '';
+             const paymentProofUrl = paymentData.paymentProof ? await uploadFile(paymentData.paymentProof, `users/${userId}/paymentProof.pdf`) : '';
             await setDoc(doc(db, "users", userId), {
                 ...partnerDataBase,
                 paymentStatus: 'pending_approval',

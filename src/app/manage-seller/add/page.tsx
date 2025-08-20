@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, doc, setDoc, query, where } from "firebase/firestore"
+import { collection, getDocs, doc, setDoc, query, where, Timestamp } from "firebase/firestore"
 import bcrypt from "bcryptjs"
 import { generateUserId } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -135,10 +135,10 @@ export default function AddSellerPage() {
       const lastName = lastNameParts.join(' ');
       
       const [businessLogoUrl, aadharFileUrl, panFileUrl, reraCertificateUrl] = await Promise.all([
-          values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo`) : Promise.resolve(null),
-          uploadFile(values.aadharFile, `users/${userId}/aadharFile`),
-          uploadFile(values.panFile, `users/${userId}/panFile`),
-          values.reraCertificate ? uploadFile(values.reraCertificate, `users/${userId}/reraCertificate`) : Promise.resolve(null),
+          values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo.jpg`) : Promise.resolve(null),
+          uploadFile(values.aadharFile, `users/${userId}/aadharFile.pdf`),
+          uploadFile(values.panFile, `users/${userId}/panFile.pdf`),
+          values.reraCertificate ? uploadFile(values.reraCertificate, `users/${userId}/reraCertificate.pdf`) : Promise.resolve(null),
       ]);
 
 
@@ -150,7 +150,7 @@ export default function AddSellerPage() {
         email: values.email,
         phone: values.phone,
         password: hashedPassword,
-        dob: new Date(values.dob),
+        dob: Timestamp.fromDate(new Date(values.dob)),
         address: values.address,
         city: values.city,
         state: values.state,
