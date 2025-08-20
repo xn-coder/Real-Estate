@@ -5,17 +5,16 @@ import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { db } from "@/lib/firebase"
 import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore"
-import { Loader2, Search, Building, User, Users, Handshake, ChevronRight } from "lucide-react"
+import { Loader2, Search, Building, User, Users, Handshake, ChevronRight, BookOpen } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
-import { useDebounce } from 'use-debounce';
 
 type SearchResult = {
   id: string
   title: string
   description: string
-  type: 'Partner' | 'Seller' | 'Customer' | 'Property' | 'Lead'
+  type: 'Partner' | 'Seller' | 'Customer' | 'Property' | 'Lead' | 'Resource'
   href: string
   image?: string
 }
@@ -135,6 +134,27 @@ export default function SearchPage() {
             } as SearchResult
         })
     ));
+    
+    // Resource Search
+    const resourceQuery = query(
+        collection(db, "resources"),
+        where('title', '>=', searchTerm),
+        where('title', '<=', searchTerm + '\uf8ff'),
+        limit(10)
+    );
+    searchPromises.push(getDocs(resourceQuery).then(snapshot => 
+        snapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+                id: doc.id,
+                title: data.title,
+                description: `Type: ${data.contentType.charAt(0).toUpperCase() + data.contentType.slice(1)}`,
+                type: 'Resource',
+                href: `/support/resource/${doc.id}`,
+                image: data.featureImage,
+            } as SearchResult
+        })
+    ));
 
 
     try {
@@ -176,6 +196,7 @@ export default function SearchPage() {
       Customer: <Users className="h-5 w-5 text-muted-foreground" />,
       Property: <Building className="h-5 w-5 text-muted-foreground" />,
       Lead: <User className="h-5 w-5 text-muted-foreground" />,
+      Resource: <BookOpen className="h-5 w-5 text-muted-foreground" />,
   }
 
   return (
