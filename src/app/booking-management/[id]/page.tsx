@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
-import { doc, getDoc, updateDoc, writeBatch, setDoc, collection } from "firebase/firestore"
+import { doc, getDoc, updateDoc, writeBatch, setDoc, collection, query, where, getDocs, runTransaction } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Lead } from "@/types/lead"
 import type { Property } from "@/types/property"
@@ -111,38 +111,47 @@ export default function BookingDetailsPage() {
         setIsUploading(true);
 
         try {
-            const batch = writeBatch(db);
-            const customerId = details.customer.id;
-            const customerDocsRef = collection(db, `users/${customerId}/documents`);
+            await runTransaction(db, async (transaction) => {
+                const customerId = details.customer!.id;
+                const customerDocsRef = collection(db, `users/${customerId}/documents`);
 
-            for (const file of filesToUpload) {
-                const fileUrl = await fileToDataUrl(file);
-                const docId = generateUserId("DOC");
-                const newDocRef = doc(customerDocsRef, docId);
-                batch.set(newDocRef, {
-                    id: docId,
-                    title: file.name,
-                    fileUrl: fileUrl,
-                    fileName: file.name,
-                    fileType: file.type,
+                // Document uploads are not part of the transaction for atomicity, but we prepare them.
+                const fileUploadPromises = filesToUpload.map(async (file) => {
+                    const fileUrl = await fileToDataUrl(file);
+                    const docId = generateUserId("DOC");
+                    const newDocRef = doc(customerDocsRef, docId);
+                    return { ref: newDocRef, data: { id: docId, title: file.name, fileUrl, fileName: file.name, fileType: file.type }};
                 });
-            }
-            
-            setIsUploading(false);
+                
+                const uploadedFiles = await Promise.all(fileUploadPromises);
+                setIsUploading(false);
 
-            // Update lead status to 'Completed'
-            const leadRef = doc(db, "leads", details.lead.id);
-            batch.update(leadRef, { status: 'Completed' });
+                // Now, start the transactional writes
+                uploadedFiles.forEach(file => transaction.set(file.ref, file.data));
+                
+                const leadRef = doc(db, "leads", details.lead.id);
+                transaction.update(leadRef, { status: 'Completed' });
+    
+                const customerRef = doc(db, "users", customerId);
+                transaction.update(customerRef, { status: 'active' });
+    
+                const propertyRef = doc(db, "properties", details.property!.id);
+                transaction.update(propertyRef, { status: 'Sold' });
+                
+                // Find seller by property email and update their wallet
+                const sellersQuery = query(collection(db, "users"), where("email", "==", details.property!.email));
+                const sellersSnapshot = await getDocs(sellersQuery);
+                if (!sellersSnapshot.empty) {
+                    const seller = sellersSnapshot.docs[0];
+                    const sellerWalletRef = doc(db, "wallets", seller.id);
+                    const sellerWalletDoc = await transaction.get(sellerWalletRef);
 
-            // Update customer status to active
-            const customerRef = doc(db, "users", customerId);
-            batch.update(customerRef, { status: 'active' });
-
-            // Update property status to 'Sold'
-            const propertyRef = doc(db, "properties", details.property.id);
-            batch.update(propertyRef, { status: 'Sold' });
-
-            await batch.commit();
+                    const currentRevenue = sellerWalletDoc.exists() ? sellerWalletDoc.data().revenue || 0 : 0;
+                    const newRevenue = currentRevenue + details.property!.listingPrice;
+                    
+                    transaction.set(sellerWalletRef, { revenue: newRevenue }, { merge: true });
+                }
+            });
             
             toast({ title: "Deal Completed", description: "Documents uploaded and booking marked as completed." });
             router.push('/booking-management');

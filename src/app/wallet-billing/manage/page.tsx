@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { doc, getDoc } from "firebase/firestore"
+import { collection, doc, getDoc, runTransaction, query, where, getDocs, addDoc, Timestamp } from "firebase/firestore"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Loader2, ArrowLeft, Wallet, Paperclip } from "lucide-react"
 import Link from "next/link"
@@ -99,41 +99,64 @@ export default function ManageWalletPage() {
     setIsSubmitting(true)
     
     try {
-        const adminDocRef = doc(db, "users", user.id);
-        const adminDoc = await getDoc(adminDocRef);
-        if(!adminDoc.exists()) {
-            toast({ variant: "destructive", title: "Authentication Failed", description: "Admin user not found."});
-            setIsSubmitting(false);
-            return;
-        }
+        await runTransaction(db, async (transaction) => {
+            const adminDocRef = doc(db, "users", user.id);
+            const adminDoc = await transaction.get(adminDocRef);
+            if(!adminDoc.exists()) {
+                throw new Error("Admin user not found.");
+            }
 
-        const isPasswordValid = await bcrypt.compare(values.adminPassword, adminDoc.data().password);
-        if (!isPasswordValid) {
-            form.setError("adminPassword", { message: "Incorrect password." });
-            setIsSubmitting(false);
-            return;
-        }
+            const isPasswordValid = await bcrypt.compare(values.adminPassword, adminDoc.data().password);
+            if (!isPasswordValid) {
+                throw new Error("Incorrect password.");
+            }
+            
+            let recipientWalletRef;
+            if (values.transactionType === "topup") {
+                recipientWalletRef = doc(db, "wallets", user.id); // Top-up own wallet
+            } else if (values.recipientId) {
+                 recipientWalletRef = doc(db, "wallets", values.recipientId);
+            } else {
+                throw new Error("Recipient required for this transaction type.");
+            }
+            
+            const recipientWalletDoc = await transaction.get(recipientWalletRef);
+            const currentBalance = recipientWalletDoc.exists() ? recipientWalletDoc.data().balance || 0 : 0;
+            const newBalance = currentBalance + values.amount;
+            
+            transaction.set(recipientWalletRef, { balance: newBalance }, { merge: true });
 
-        let proofUrl = "";
-        if (values.proof) {
-            proofUrl = await fileToDataUrl(values.proof);
-        }
+            const transactionsCollection = collection(db, "wallet_transactions");
+            let proofUrl = "";
+            if (values.proof) {
+                proofUrl = await fileToDataUrl(values.proof);
+            }
+            const transactionData = {
+                type: values.transactionType,
+                amount: values.amount,
+                fromId: user.id,
+                toId: values.transactionType === 'topup' ? user.id : values.recipientId,
+                paymentMethod: values.paymentMethod,
+                proofUrl: proofUrl,
+                status: 'Completed',
+                createdAt: Timestamp.now(),
+            };
+            
+            transaction.set(doc(transactionsCollection), transactionData);
+        });
 
-        const submissionData = { ...values, proofUrl };
-        delete submissionData.proof;
-        delete submissionData.adminPassword;
-
-        console.log("Transaction Data:", submissionData)
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
         toast({
-        title: "Transaction Successful",
-        description: "The transaction has been processed successfully.",
-        })
+            title: "Transaction Successful",
+            description: "The transaction has been processed successfully.",
+        });
         form.reset({ amount: 0, adminPassword: "" });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Transaction Error:", error);
-        toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred." });
+        if (error.message === "Incorrect password.") {
+            form.setError("adminPassword", { message: error.message });
+        } else {
+            toast({ variant: "destructive", title: "Error", description: error.message || "An unexpected error occurred." });
+        }
     } finally {
         setIsSubmitting(false)
     }
