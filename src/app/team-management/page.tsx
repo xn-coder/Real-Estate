@@ -33,7 +33,8 @@ export default function TeamManagementPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [searchTerm, setSearchTerm] = React.useState("");
+  const [dialogSearchTerm, setDialogSearchTerm] = React.useState("");
+  const [teamMemberSearchTerm, setTeamMemberSearchTerm] = React.useState("");
   const [selectedPartner, setSelectedPartner] = React.useState<PartnerUser | null>(null);
 
   const canManageTeam = user?.role && ['franchisee', 'channel', 'associate'].includes(user.role);
@@ -101,17 +102,25 @@ export default function TeamManagementPage() {
     }
   }
 
-  const partnersToDisplay = React.useMemo(() => {
-    if (!searchTerm) return [];
+  const partnersToDisplayInDialog = React.useMemo(() => {
+    if (!dialogSearchTerm) return [];
     return allRequestablePartners.filter(partner => 
-        partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        partner.id.toLowerCase().includes(searchTerm.toLowerCase())
+        partner.name.toLowerCase().includes(dialogSearchTerm.toLowerCase()) ||
+        partner.id.toLowerCase().includes(dialogSearchTerm.toLowerCase())
     );
-  }, [allRequestablePartners, searchTerm]);
+  }, [allRequestablePartners, dialogSearchTerm]);
+
+  const filteredTeamMembers = React.useMemo(() => {
+    if (!teamMemberSearchTerm) return teamMembers;
+    return teamMembers.filter(member => 
+        member.name.toLowerCase().includes(teamMemberSearchTerm.toLowerCase()) ||
+        member.email.toLowerCase().includes(teamMemberSearchTerm.toLowerCase())
+    );
+  }, [teamMembers, teamMemberSearchTerm]);
 
   const handleSelectPartner = (partner: PartnerUser) => {
     setSelectedPartner(partner);
-    setSearchTerm("");
+    setDialogSearchTerm("");
   }
 
 
@@ -143,7 +152,7 @@ export default function TeamManagementPage() {
                 setIsDialogOpen(open);
                 if (!open) {
                     setSelectedPartner(null);
-                    setSearchTerm("");
+                    setDialogSearchTerm("");
                 }
             }}>
               <DialogTrigger asChild>
@@ -176,15 +185,15 @@ export default function TeamManagementPage() {
                                 <Input 
                                     placeholder="Search for a partner by name or email..."
                                     className="pl-8"
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
+                                    value={dialogSearchTerm}
+                                    onChange={e => setDialogSearchTerm(e.target.value)}
                                 />
                             </div>
-                            {searchTerm && (
+                            {dialogSearchTerm && (
                                 <div className="mt-2 border rounded-md max-h-60 overflow-y-auto">
                                     {isLoading ? (
                                         <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                                    ) : partnersToDisplay.length > 0 ? partnersToDisplay.map(p => (
+                                    ) : partnersToDisplayInDialog.length > 0 ? partnersToDisplayInDialog.map(p => (
                                         <div key={p.id} onClick={() => handleSelectPartner(p)} className="p-2 hover:bg-muted cursor-pointer text-sm">
                                             {p.name} ({p.email})
                                         </div>
@@ -208,7 +217,18 @@ export default function TeamManagementPage() {
       <Card>
         <CardHeader>
           <CardTitle>Your Team</CardTitle>
-          <CardDescription>A list of partners you have added to your team.</CardDescription>
+          <div className="flex justify-between items-center">
+            <CardDescription>A list of partners you have added to your team.</CardDescription>
+            <div className="relative w-full max-w-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search team members..."
+                    className="pl-8"
+                    value={teamMemberSearchTerm}
+                    onChange={(e) => setTeamMemberSearchTerm(e.target.value)}
+                />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="border rounded-lg">
@@ -224,10 +244,12 @@ export default function TeamManagementPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                ) : teamMembers.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="h-24 text-center">No team members found.</TableCell></TableRow>
+                ) : filteredTeamMembers.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                    {teamMemberSearchTerm ? 'No members found.' : 'No team members added yet.'}
+                    </TableCell></TableRow>
                 ) : (
-                  teamMembers.map((member) => (
+                  filteredTeamMembers.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">{member.name}</TableCell>
                       <TableCell>{member.email}</TableCell>
