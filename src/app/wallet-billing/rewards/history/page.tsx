@@ -1,10 +1,11 @@
+
 'use client'
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Loader2, ArrowLeft, ArrowUp, ArrowDown, Search } from "lucide-react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { format } from "date-fns"
@@ -18,6 +19,7 @@ import { Input } from "@/components/ui/input"
 export default function RewardHistoryPage() {
     const { user } = useUser();
     const { toast } = useToast();
+    const router = useRouter();
     const [history, setHistory] = React.useState<RewardTransaction[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [searchTerm, setSearchTerm] = React.useState("");
@@ -94,10 +96,8 @@ export default function RewardHistoryPage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/wallet-billing">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold tracking-tight font-headline">Reward Points History</h1>
       </div>

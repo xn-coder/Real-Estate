@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Loader2, ArrowLeft, Gift, Search, User, CheckCircle } from "lucide-react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc, writeBatch, addDoc, Timestamp, getDoc } from "firebase/firestore"
@@ -44,6 +44,7 @@ type ClaimRewardsForm = z.infer<typeof claimRewardsSchema>
 export default function RewardsPage() {
   const { user, isLoading: isUserLoading } = useUser()
   const { toast } = useToast()
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [partners, setPartners] = React.useState<PartnerUser[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
@@ -231,10 +232,8 @@ export default function RewardsPage() {
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/wallet-billing">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button variant="outline" size="icon" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold tracking-tight font-headline">
             {(isAdmin || isSeller) ? "Send Reward Points" : "Claim Reward Points"}
