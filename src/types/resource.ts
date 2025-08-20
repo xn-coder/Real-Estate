@@ -23,4 +23,5 @@ export type Resource = {
 export type PropertyType = {
     id: string;
     name: string;
+    featureImage?: string;
 };

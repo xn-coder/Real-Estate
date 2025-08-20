@@ -7,6 +7,7 @@ import { doc, getDoc, collection, query, where, getDocs } from "firebase/firesto
 import { db } from "@/lib/firebase"
 import type { User } from "@/types/user"
 import type { Property } from "@/types/property"
+import type { PropertyType } from "@/types/resource"
 import { Loader2, Phone, Mail, MapPin, Globe, Instagram, Facebook, Youtube, Twitter, Linkedin, Building, Home, Contact, Newspaper, ArrowRight, Menu, X, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -26,13 +27,13 @@ const PartnerCatalogPage = () => {
     const [isLoading, setIsLoading] = React.useState(true)
     const [websiteData, setWebsiteData] = React.useState<User['website']>({});
     const [allProperties, setAllProperties] = React.useState<Property[]>([]);
+    const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
     const [featuredProperties, setFeaturedProperties] = React.useState<Property[]>([]);
-    const [categories, setCategories] = React.useState<string[]>([]);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     
     // Filtering and Pagination State
     const [searchTerm, setSearchTerm] = React.useState("");
-    const [selectedCategory, setSelectedCategory] = React.useState<string>("All");
+    const [selectedCategory, setSelectedCategory] = React.useState<string>("all");
     const [currentPage, setCurrentPage] = React.useState(1);
 
 
@@ -61,10 +62,8 @@ const PartnerCatalogPage = () => {
                 
                 const propsQuery = query(collection(db, "properties"), where("status", "==", "For Sale"));
                 const propsSnapshot = await getDocs(propsQuery);
-                const uniqueCategories = new Set<string>();
                 const propsData = await Promise.all(propsSnapshot.docs.map(async (pDoc) => {
                     const data = pDoc.data() as Property;
-                    if(data.propertyCategory) uniqueCategories.add(data.propertyCategory);
                     let featureImageUrl = 'https://placehold.co/600x400.png';
                     if (data.featureImageId) {
                         const fileDoc = await getDoc(doc(db, 'files', data.featureImageId));
@@ -75,7 +74,10 @@ const PartnerCatalogPage = () => {
                     return { ...data, id: pDoc.id, featureImage: featureImageUrl };
                 }));
                 setAllProperties(propsData);
-                setCategories(['All', ...Array.from(uniqueCategories)]);
+
+                const typesSnapshot = await getDocs(collection(db, "property_types"));
+                setPropertyTypes(typesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PropertyType)));
+                
 
                 const featuredIds = finalWebsiteData.featuredCatalog.slice(0, 6);
                 setFeaturedProperties(propsData.filter(p => featuredIds.includes(p.id)));
@@ -100,7 +102,7 @@ const PartnerCatalogPage = () => {
                 property.catalogTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 property.city.toLowerCase().includes(searchTerm.toLowerCase());
             
-            const categoryMatch = selectedCategory === "All" || property.propertyCategory === selectedCategory;
+            const categoryMatch = selectedCategory === "all" || property.propertyTypeId === selectedCategory;
 
             return searchMatch && categoryMatch;
         });
@@ -188,6 +190,13 @@ const PartnerCatalogPage = () => {
             </header>
 
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                 <div className="mb-8 space-y-4">
+                     <div className="relative max-w-lg mx-auto">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input placeholder="Search by title or location..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    </div>
+                </div>
+
                  <section id="featured-catalog" className="py-8">
                     <h2 className="text-3xl font-bold font-headline text-center mb-8">Featured Properties</h2>
                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -201,22 +210,23 @@ const PartnerCatalogPage = () => {
                         )}
                      </div>
                 </section>
+
+                <section id="property-types" className="py-12">
+                    <h2 className="text-3xl font-bold font-headline text-center mb-8">Property Types</h2>
+                    <div className="flex flex-wrap justify-center gap-4">
+                         <Button key="all" variant={selectedCategory === 'all' ? "default" : "outline"} onClick={() => setSelectedCategory('all')}>
+                            All
+                        </Button>
+                         {propertyTypes.map(category => (
+                            <Button key={category.id} variant={selectedCategory === category.id ? "default" : "outline"} onClick={() => setSelectedCategory(category.id)}>
+                                {category.name}
+                            </Button>
+                        ))}
+                    </div>
+                </section>
                 
                  <section id="full-catalog" className="py-12">
                     <h2 className="text-3xl font-bold font-headline text-center mb-8">All Properties</h2>
-                    <div className="mb-8 space-y-4">
-                         <div className="relative max-w-lg mx-auto">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input placeholder="Search by title or location..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                        </div>
-                        <div className="flex flex-wrap justify-center gap-2">
-                             {categories.map(category => (
-                                <Button key={category} variant={selectedCategory === category ? "default" : "outline"} onClick={() => setSelectedCategory(category)}>
-                                    {category}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
                     
                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {paginatedProperties.length > 0 ? paginatedProperties.map(property => (

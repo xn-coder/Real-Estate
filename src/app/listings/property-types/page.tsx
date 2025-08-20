@@ -51,9 +51,24 @@ import { collection, doc, setDoc, getDocs, updateDoc, deleteDoc } from "firebase
 import { generateUserId } from "@/lib/utils"
 import type { PropertyType } from "@/types/resource"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 const propertyTypeFormSchema = z.object({
   name: z.string().min(1, "Property type name is required."),
+  featureImage: z.any().optional(),
 });
 type PropertyTypeFormValues = z.infer<typeof propertyTypeFormSchema>;
 
@@ -68,7 +83,7 @@ export default function PropertyTypesPage() {
 
   const propertyTypeForm = useForm<PropertyTypeFormValues>({
     resolver: zodResolver(propertyTypeFormSchema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", featureImage: null },
   });
 
   const fetchPropertyTypes = React.useCallback(async () => {
@@ -92,9 +107,9 @@ export default function PropertyTypesPage() {
   const openPropertyTypeDialog = (propertyType: PropertyType | null) => {
     setEditingPropertyType(propertyType);
     if (propertyType) {
-        propertyTypeForm.reset(propertyType);
+        propertyTypeForm.reset({ name: propertyType.name, featureImage: propertyType.featureImage || null });
     } else {
-        propertyTypeForm.reset({ name: "" });
+        propertyTypeForm.reset({ name: "", featureImage: null });
     }
     setIsPropertyTypeDialogOpen(true);
   }
@@ -102,12 +117,22 @@ export default function PropertyTypesPage() {
   const onPropertyTypeSubmit = async (values: PropertyTypeFormValues) => {
     setIsSubmitting(true);
     try {
+        let imageUrl = editingPropertyType?.featureImage || '';
+        if (values.featureImage && typeof values.featureImage !== 'string') {
+            imageUrl = await fileToDataUrl(values.featureImage);
+        }
+
+        const dataToSave = {
+            name: values.name,
+            featureImage: imageUrl,
+        };
+        
         if (editingPropertyType) {
-            await updateDoc(doc(db, "property_types", editingPropertyType.id), values);
+            await updateDoc(doc(db, "property_types", editingPropertyType.id), dataToSave);
             toast({ title: "Property Type Updated", description: "The property type has been updated." });
         } else {
             const propertyTypeId = generateUserId("PT");
-            await setDoc(doc(db, "property_types", propertyTypeId), { id: propertyTypeId, name: values.name });
+            await setDoc(doc(db, "property_types", propertyTypeId), { ...dataToSave, id: propertyTypeId });
             toast({ title: "Property Type Created", description: "The new property type has been added." });
         }
         setIsPropertyTypeDialogOpen(false);
@@ -168,9 +193,23 @@ export default function PropertyTypesPage() {
                                             <FormItem>
                                             <FormLabel>Property Type Name</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="e.g., Sales Training" {...field} />
+                                                <Input placeholder="e.g., Apartment" {...field} />
                                             </FormControl>
                                             <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={propertyTypeForm.control}
+                                        name="featureImage"
+                                        render={({ field: { onChange, value, ...rest} }) => (
+                                            <FormItem>
+                                                <FormLabel>Feature Image</FormLabel>
+                                                {value && <Image src={typeof value === 'string' ? value : URL.createObjectURL(value)} alt="Preview" width={80} height={80} className="rounded-md object-cover"/>}
+                                                <FormControl>
+                                                    <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} />
+                                                </FormControl>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -190,18 +229,22 @@ export default function PropertyTypesPage() {
               <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>Image</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                  <TableBody>
                     {isLoadingTypes ? (
-                        <TableRow><TableCell colSpan={2} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                        <TableRow><TableCell colSpan={3} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
                     ) : propertyTypes.length === 0 ? (
-                        <TableRow><TableCell colSpan={2} className="h-24 text-center">No property types found.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={3} className="h-24 text-center">No property types found.</TableCell></TableRow>
                     ) : (
                         propertyTypes.map(cat => (
                             <TableRow key={cat.id}>
+                                <TableCell>
+                                    <Image src={cat.featureImage || 'https://placehold.co/100x100.png'} alt={cat.name} width={40} height={40} className="rounded-md bg-muted object-cover"/>
+                                </TableCell>
                                 <TableCell>{cat.name}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" onClick={() => openPropertyTypeDialog(cat)}>
