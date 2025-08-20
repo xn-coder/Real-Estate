@@ -370,7 +370,7 @@ export default function RewardsPage() {
                                 </CardHeader>
                                 <CardContent className="p-4 flex-grow">
                                     <CardTitle className="text-lg">{offer.title}</CardTitle>
-                                    <div className="prose prose-sm max-w-none text-muted-foreground mt-2" dangerouslySetInnerHTML={{ __html: offer.details }}></div>
+                                    <div className="prose prose-sm max-w-none text-muted-foreground mt-2 line-clamp-2" dangerouslySetInnerHTML={{ __html: offer.details }}></div>
                                 </CardContent>
                                 <CardFooter className="p-4 pt-0 border-t mt-auto">
                                     <Button className="w-full" onClick={() => handleClaimClick(offer)} disabled={(wallet?.rewardBalance || 0) < offer.points}>
