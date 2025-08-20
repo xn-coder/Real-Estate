@@ -178,34 +178,36 @@ export default function ManageWebsitePage() {
 
   const handleSlideSubmit = async (values: z.infer<typeof slideshowSchema>) => {
     try {
-        const processedSlides = await Promise.all(
-            values.slides.map(async (slide, index) => {
-                let bannerImageUrl = slide.bannerImage;
-                if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
-                    bannerImageUrl = await fileToDataUrl(bannerImageUrl);
-                } else if (typeof bannerImageUrl !== 'string') {
-                    // Use existing image if a new one isn't provided
-                    bannerImageUrl = displayedData.slideshow?.[index]?.bannerImage || '';
-                }
-                return {
-                    id: slide.id || generateUserId("SLD"),
-                    title: slide.title,
-                    bannerImage: bannerImageUrl,
-                    linkUrl: slide.linkUrl || '',
-                    showOnPartnerDashboard: slide.showOnPartnerDashboard,
-                    showOnPartnerWebsite: slide.showOnPartnerWebsite,
-                };
-            })
-        );
-        
-        await handleSave('slideshow', processedSlides);
-        toast({ title: "Slideshow Updated" });
-        
-        closeSlideDialog();
+      const processedSlides = await Promise.all(
+        values.slides.map(async (slide) => {
+          let bannerImageUrl = slide.bannerImage
+          // Check if bannerImage is a File object, which means it's a new upload
+          if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
+            bannerImageUrl = await fileToDataUrl(bannerImageUrl)
+          }
 
+          return {
+            id: slide.id || generateUserId('SLD'),
+            title: slide.title,
+            bannerImage: bannerImageUrl,
+            linkUrl: slide.linkUrl || '',
+            showOnPartnerDashboard: slide.showOnPartnerDashboard,
+            showOnPartnerWebsite: slide.showOnPartnerWebsite,
+          }
+        })
+      )
+
+      await handleSave('slideshow', processedSlides)
+      toast({ title: 'Slideshow Updated' })
+
+      closeSlideDialog()
     } catch (error) {
-        console.error("Error saving slide:", error);
-        toast({ variant: "destructive", title: "Save Failed", description: "Could not save slideshow." });
+      console.error('Error saving slide:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'Could not save slideshow.',
+      })
     }
   }
   
