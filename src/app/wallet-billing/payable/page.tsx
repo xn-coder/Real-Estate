@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, PlusCircle, Search } from "lucide-react"
+import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, orderBy, doc, updateDoc } from "firebase/firestore"
@@ -306,12 +306,12 @@ export default function PartnerEarningPage() {
                         <Accordion type="single" collapsible className="w-full">
                           {properties.map(property => (
                             <AccordionItem value={property.id} key={property.id}>
-                              <AccordionTrigger>
-                                <div className="flex justify-between w-full pr-4 items-center">
-                                    <span>{property.catalogTitle}</span>
-                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDialog(property); }}>Edit</Button>
+                                <div className="flex items-center w-full">
+                                    <AccordionTrigger className="flex-1">
+                                        <span>{property.catalogTitle}</span>
+                                    </AccordionTrigger>
+                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDialog(property); }} className="mr-2">Edit</Button>
                                 </div>
-                              </AccordionTrigger>
                               <AccordionContent>
                                 <div className="grid grid-cols-2 gap-4 p-4">
                                 {Object.keys(partnerRoles).map(role => (
