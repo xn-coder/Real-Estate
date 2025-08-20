@@ -120,7 +120,7 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         profileImage: user.profileImage || '',
-        dob: user.dob ? format(user.dob, 'yyyy-MM-dd') : '',
+        dob: user.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : '',
         gender: user.gender,
         qualification: user.qualification
       });
@@ -357,9 +357,9 @@ export default function ProfilePage() {
                 <>
                 <div className="grid grid-cols-2 gap-4">
                     <FormField control={profileForm.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Date of Birth</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={profileForm.control} name="gender" render={({ field }) => ( <FormItem> <FormLabel>Gender</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select gender"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="male">Male</SelectItem> <SelectItem value="female">Female</SelectItem> <SelectItem value="other">Other</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                    <FormField control={profileForm.control} name="gender" render={({ field }) => ( <FormItem> <FormLabel>Gender</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select gender"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="male">Male</SelectItem> <SelectItem value="female">Female</SelectItem> <SelectItem value="other">Other</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
                 </div>
-                <FormField control={profileForm.control} name="qualification" render={({ field }) => ( <FormItem> <FormLabel>Qualification</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select qualification"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="post-graduate">Post Graduate</SelectItem> <SelectItem value="graduate">Graduate</SelectItem> <SelectItem value="undergraduate">Undergraduate</SelectItem> <SelectItem value="diploma">Diploma</SelectItem> <SelectItem value="12th">12th</SelectItem> <SelectItem value="10th">10th</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                <FormField control={profileForm.control} name="qualification" render={({ field }) => ( <FormItem> <FormLabel>Qualification</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl><SelectTrigger><SelectValue placeholder="Select qualification"/></SelectTrigger></FormControl> <SelectContent> <SelectItem value="post-graduate">Post Graduate</SelectItem> <SelectItem value="graduate">Graduate</SelectItem> <SelectItem value="undergraduate">Undergraduate</SelectItem> <SelectItem value="diploma">Diploma</SelectItem> <SelectItem value="12th">12th</SelectItem> <SelectItem value="10th">10th</SelectItem> </SelectContent> </Select> <FormMessage /> </FormItem> )} />
                 </>
               )}
               <DialogFooter>
@@ -468,7 +468,7 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center"><UserIcon className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.name || 'N/A'}</span></div>
-                    <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(user.dob, 'PPP') : 'N/A'}</span></div>
+                    <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(new Date(user.dob), 'PPP') : 'N/A'}</span></div>
                     <div className="flex items-center capitalize"><Info className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.gender || 'N/A'}</span></div>
                     <div className="flex items-center"><GraduationCap className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.qualification || 'N/A'}</span></div>
                 </CardContent>
