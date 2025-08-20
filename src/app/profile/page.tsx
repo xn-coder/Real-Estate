@@ -151,7 +151,7 @@ export default function ProfilePage() {
           profileImageUrl = await uploadFile(values.profileImage, `users/${user.id}/profileImage`);
       }
 
-      const updateData = {
+      const updateData: Record<string, any> = {
         name: `${values.firstName} ${values.lastName}`,
         firstName: values.firstName,
         lastName: values.lastName,
@@ -161,6 +161,13 @@ export default function ProfilePage() {
         gender: values.gender || null,
         qualification: values.qualification || null,
       };
+      
+      // Ensure no undefined values are sent to Firestore
+      for (const key in updateData) {
+        if (updateData[key] === undefined) {
+          updateData[key] = null;
+        }
+      }
 
       await updateDoc(userDocRef, updateData)
       toast({
@@ -383,7 +390,9 @@ export default function ProfilePage() {
                     </Avatar>
                     <div>
                         <p className="font-semibold">{user?.businessName || 'Not Set'}</p>
-                        <p className="text-sm text-muted-foreground">{user?.businessType || 'Type not set'}</p>
+                        <p className="text-sm text-muted-foreground">
+                            {user?.role === 'admin' ? 'Admin Account' : (user?.businessType || 'Type not set')}
+                        </p>
                     </div>
                 </div>
             </CardContent>
