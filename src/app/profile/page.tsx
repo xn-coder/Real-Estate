@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { KeyRound, Loader2, Upload, Pencil, User as UserIcon, Calendar, GraduationCap, Info, BadgeCheck, FileText, Briefcase } from "lucide-react"
 import { db } from "@/lib/firebase"
-import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -29,13 +29,27 @@ import { format } from 'date-fns'
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 import { Label } from "@/components/ui/label"
+import { generateUserId } from "@/lib/utils"
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
 
 const profileFormSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required." }),
   lastName: z.string().min(1, { message: "Last name is required." }),
   email: z.string().email(),
   phone: z.string().min(10, { message: "Please enter a valid phone number." }),
-  profileImage: z.string().url().optional().or(z.literal('')),
+  profileImage: z.any().optional(),
   dob: z.string().optional(),
   gender: z.enum(["male", "female", "other"]).optional(),
   qualification: z.string().optional(),
@@ -56,7 +70,7 @@ type PasswordForm = z.infer<typeof passwordFormSchema>;
 
 const businessFormSchema = z.object({
   businessName: z.string().min(1, { message: "Business name is required." }),
-  businessLogo: z.string().url().optional().or(z.literal('')),
+  businessLogo: z.any().optional(),
 });
 
 type BusinessForm = z.infer<typeof businessFormSchema>;
@@ -113,7 +127,7 @@ export default function ProfilePage() {
   
   React.useEffect(() => {
     if (user) {
-      const profileData = {
+      profileForm.reset({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
@@ -122,26 +136,20 @@ export default function ProfilePage() {
         dob: user.dob ? format(user.dob, 'yyyy-MM-dd') : '',
         gender: user.gender,
         qualification: user.qualification
-      };
-      profileForm.reset(profileData);
+      });
       
-      const businessData = {
+      businessForm.reset({
           businessName: user.businessName || '',
           businessLogo: user.businessLogo || '',
-      };
-      businessForm.reset(businessData);
+      });
     }
   }, [user, profileForm, businessForm]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, fieldName: "profileImage" | "businessLogo", formInstance: typeof profileForm | typeof businessForm) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: "profileImage" | "businessLogo", formInstance: typeof profileForm | typeof businessForm) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        formInstance.setValue(fieldName, base64String);
-      };
-      reader.readAsDataURL(file);
+      const base64String = await fileToDataUrl(file);
+      formInstance.setValue(fieldName, base64String, { shouldValidate: true });
     }
   };
 
@@ -150,13 +158,20 @@ export default function ProfilePage() {
     if (!user?.id) return;
     setIsUpdating(true)
     try {
-      const userDocRef = doc(db, "users", user.id)
+      const userDocRef = doc(db, "users", user.id);
+      
+      let profileImageId = user.profileImageId;
+      if (values.profileImage && typeof values.profileImage === 'string' && values.profileImage.startsWith('data:image')) {
+          profileImageId = user.profileImageId || generateUserId('FILE');
+          await setDoc(doc(db, 'files', profileImageId), { data: values.profileImage });
+      }
+
       await updateDoc(userDocRef, {
         name: `${values.firstName} ${values.lastName}`,
         firstName: values.firstName,
         lastName: values.lastName,
         phone: values.phone,
-        profileImage: values.profileImage,
+        profileImageId: profileImageId,
         dob: values.dob ? new Date(values.dob) : null,
         gender: values.gender,
         qualification: values.qualification,
@@ -184,9 +199,16 @@ export default function ProfilePage() {
     setIsBusinessUpdating(true);
     try {
         const userDocRef = doc(db, "users", user.id);
+
+        let businessLogoId = user.businessLogoId;
+        if (values.businessLogo && typeof values.businessLogo === 'string' && values.businessLogo.startsWith('data:image')) {
+            businessLogoId = user.businessLogoId || generateUserId('FILE');
+            await setDoc(doc(db, 'files', businessLogoId), { data: values.businessLogo });
+        }
+
         await updateDoc(userDocRef, {
             businessName: values.businessName,
-            businessLogo: values.businessLogo,
+            businessLogoId: businessLogoId,
         });
         toast({
             title: "Business Profile Updated",
@@ -555,3 +577,5 @@ export default function ProfilePage() {
     </div>
   )
 }
+
+    
