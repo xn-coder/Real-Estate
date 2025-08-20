@@ -293,7 +293,8 @@ const PartnerDashboard = () => {
                 // Fetch website defaults
                 const defaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
                 const defaults = defaultsDoc.exists() ? defaultsDoc.data() : {};
-                setSlides(defaults.slideshow || []);
+                const dashboardSlides = (defaults.slideshow || []).filter((s: any) => s.showOnPartnerDashboard);
+                setSlides(dashboardSlides);
 
                 const fetchPropsByIds = async (ids: string[]) => {
                     if (!ids || ids.length === 0) return [];
@@ -428,5 +429,3 @@ export default function Dashboard() {
 
   return <AdminSellerDashboard />;
 }
-
-    

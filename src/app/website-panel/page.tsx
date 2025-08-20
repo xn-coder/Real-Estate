@@ -22,13 +22,11 @@ import { Loader2, Pencil, Upload, Globe, Instagram, Facebook, Youtube, Twitter, 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Image from "next/image"
 import { Textarea } from "@/components/ui/textarea"
-import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { doc, updateDoc, getDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { User } from "@/types/user"
-import type { Property } from "@/types/property"
 import { Checkbox } from "@/components/ui/checkbox"
 
 // Schemas for forms
@@ -42,6 +40,8 @@ const slideshowItemSchema = z.object({
     title: z.string().min(1, "Title is required"),
     bannerImage: z.any().refine(val => val, "Banner image is required"),
     linkUrl: z.string().url().optional().or(z.literal('')),
+    showOnPartnerDashboard: z.boolean().default(false),
+    showOnPartnerWebsite: z.boolean().default(false),
 });
 
 const slideshowSchema = z.object({
@@ -88,7 +88,7 @@ const fileToDataUrl = (file: File): Promise<string> => {
 
 export default function ManageWebsitePage() {
   const { toast } = useToast()
-  const { user, isLoading: isUserLoading, fetchUser } = useUser()
+  const { user, isLoading: isUserLoading } = useUser()
   const [isSlideDialogOpen, setIsSlideDialogOpen] = React.useState(false);
   const [isDataLoading, setIsDataLoading] = React.useState(true);
   const [displayedData, setDisplayedData] = React.useState<Partial<User['website']>>({});
@@ -192,6 +192,8 @@ export default function ManageWebsitePage() {
                     title: slide.title,
                     bannerImage: bannerImageUrl,
                     linkUrl: slide.linkUrl || '',
+                    showOnPartnerDashboard: slide.showOnPartnerDashboard,
+                    showOnPartnerWebsite: slide.showOnPartnerWebsite,
                 };
             })
         );
@@ -300,6 +302,10 @@ export default function ManageWebsitePage() {
                         <div className="flex-1">
                             <p className="font-semibold">{slide.title}</p>
                             <a href={slide.linkUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline truncate">{slide.linkUrl}</a>
+                            <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
+                                <span>Dashboard: {slide.showOnPartnerDashboard ? 'Yes' : 'No'}</span>
+                                <span>Website: {slide.showOnPartnerWebsite ? 'Yes' : 'No'}</span>
+                            </div>
                         </div>
                     </div>
                 ))
@@ -358,6 +364,28 @@ export default function ManageWebsitePage() {
                                 <div className="md:col-span-2 space-y-2">
                                     <FormField control={slideshowForm.control} name={`slides.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Promotion Title" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={slideshowForm.control} name={`slides.${index}.linkUrl`} render={({ field }) => (<FormItem><FormLabel>Link</FormLabel><FormControl><Input placeholder="https://example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                    <div className="flex gap-4 pt-2">
+                                         <FormField
+                                            control={slideshowForm.control}
+                                            name={`slides.${index}.showOnPartnerDashboard`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                    <div className="space-y-1 leading-none"><FormLabel>Partner Dashboard</FormLabel></div>
+                                                </FormItem>
+                                            )}
+                                        />
+                                         <FormField
+                                            control={slideshowForm.control}
+                                            name={`slides.${index}.showOnPartnerWebsite`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                    <div className="space-y-1 leading-none"><FormLabel>Partner Website</FormLabel></div>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                             <Button
@@ -373,7 +401,7 @@ export default function ManageWebsitePage() {
                     )})}
                     </div>
 
-                    <Button type="button" variant="outline" onClick={() => appendSlide({ title: '', bannerImage: null, linkUrl: ''})}>
+                    <Button type="button" variant="outline" onClick={() => appendSlide({ title: '', bannerImage: null, linkUrl: '', showOnPartnerDashboard: false, showOnPartnerWebsite: false })}>
                         <PlusCircle className="mr-2 h-4 w-4"/> Add More Slideshows
                     </Button>
                     

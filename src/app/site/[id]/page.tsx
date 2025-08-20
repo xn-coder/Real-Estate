@@ -57,6 +57,10 @@ const PartnerWebsitePage = () => {
                     socialLinks: partnerWebsiteData.socialLinks || defaults.socialLinks,
                     featuredCatalog: partnerWebsiteData.featuredCatalog || defaults.featuredCatalog || [],
                 };
+                
+                // Filter slides for website
+                finalWebsiteData.slideshow = finalWebsiteData.slideshow.filter((s: any) => s.showOnPartnerWebsite);
+
                 setWebsiteData(finalWebsiteData);
 
                 // Fetch featured properties

@@ -52,6 +52,8 @@ export type User = {
       title: string;
       bannerImage: string;
       linkUrl: string;
+      showOnPartnerDashboard?: boolean;
+      showOnPartnerWebsite?: boolean;
     }[];
     featuredCatalog?: string[];
     contactDetails?: {
