@@ -176,12 +176,12 @@ export default function MarketingKitPage() {
     }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await uploadFile(values.featureImage);
+        const featureImageUrl = await uploadFile(values.featureImage, `marketing_kits/${generateUserId("KIT")}/feature`);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await uploadFile(file);
+                const fileUrl = await uploadFile(file, `marketing_kits/${generateUserId("KIT")}/files`);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
@@ -201,7 +201,7 @@ export default function MarketingKitPage() {
             featureImage: featureImageUrl,
             files: filesData,
             previewUrl: featureImageUrl,
-            downloadUrl: filesData[0]?.url || featureImageUrl, // Use first file as download or fallback to feature image
+            downloadUrl: filesData[0]?.url || featureImageUrl,
         });
 
         setIsSubmitting(false);
@@ -249,7 +249,7 @@ export default function MarketingKitPage() {
   
     for (const file of kit.files) {
       try {
-        const response = await fetch(file.url, { mode: 'no-cors' });
+        const response = await fetch(file.url);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
