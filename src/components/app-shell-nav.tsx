@@ -114,7 +114,7 @@ const partnerNavItems: NavItem[] = [
       allowedRoles: ['franchisee', 'channel', 'associate'],
   },
   { href: '/marketing-kit', icon: ShoppingBag, label: 'Marketing Kits' },
-  { href: '/wallet-billing', icon: Wallet, label: 'Earning & Wallet' },
+  { href: '/wallet', icon: Wallet, label: 'Earning & Wallet' },
   { href: '/support', icon: Headset, label: 'Help & Support' },
   { href: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   { href: '/upgrade', icon: Award, label: 'Upgrade' },
