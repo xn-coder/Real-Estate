@@ -178,42 +178,42 @@ export default function ManageWebsitePage() {
 
   const handleSlideSubmit = async (values: z.infer<typeof slideshowSchema>) => {
     try {
-      const processedSlides = await Promise.all(
-        values.slides.map(async (slide) => {
-          let bannerImageUrl = slide.bannerImage;
+        const processedSlides = await Promise.all(
+            values.slides.map(async (slide) => {
+                let finalImageUrl = slide.bannerImage;
 
-          // If bannerImage is a File object, it's a new upload.
-          if (bannerImageUrl && typeof bannerImageUrl !== 'string') {
-            bannerImageUrl = await fileToDataUrl(bannerImageUrl);
-          }
-          // If bannerImage is null or undefined from a new empty slide, ensure it's a blank string.
-          else if (!bannerImageUrl) {
-            bannerImageUrl = '';
-          }
-          // Otherwise, it's an existing string URL, which is fine.
-          
-          return {
-            id: slide.id || generateUserId('SLD'),
-            title: slide.title,
-            bannerImage: bannerImageUrl,
-            linkUrl: slide.linkUrl || '',
-            showOnPartnerDashboard: slide.showOnPartnerDashboard,
-            showOnPartnerWebsite: slide.showOnPartnerWebsite,
-          };
-        })
-      );
+                // Case 1: A new file has been uploaded (it's a File object)
+                if (finalImageUrl instanceof File) {
+                    finalImageUrl = await fileToDataUrl(finalImageUrl);
+                }
+                // Case 2: It's an existing image URL (it's a string) - do nothing.
+                // Case 3: It's empty/null/undefined - ensure it's a savable empty string.
+                else if (!finalImageUrl || typeof finalImageUrl !== 'string') {
+                    finalImageUrl = '';
+                }
 
-      await handleSave('slideshow', processedSlides);
-      toast({ title: 'Slideshow Updated' });
+                return {
+                    id: slide.id || generateUserId('SLD'),
+                    title: slide.title,
+                    bannerImage: finalImageUrl,
+                    linkUrl: slide.linkUrl || '',
+                    showOnPartnerDashboard: slide.showOnPartnerDashboard,
+                    showOnPartnerWebsite: slide.showOnPartnerWebsite,
+                };
+            })
+        );
+        
+        await handleSave('slideshow', processedSlides);
+        toast({ title: 'Slideshow Updated' });
 
-      closeSlideDialog();
+        closeSlideDialog();
     } catch (error) {
-      console.error('Error saving slide:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'Could not save slideshow.',
-      });
+        console.error('Error saving slide:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Save Failed',
+            description: 'Could not save slideshow. Please ensure all images are uploaded correctly.',
+        });
     }
   };
   
