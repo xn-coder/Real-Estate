@@ -1,156 +1,127 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check if a user is authenticated
+
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper function to check if a user has a specific role
-    function hasRole(role) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
-    }
-    
-    // Helper function to check if the user is an admin
-    function isAdmin() {
-      return hasRole('admin');
-    }
-    
-    // Helper function to check if the user is the owner of the document
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
+
+    function isAdmin() {
+      // Ensure the user document exists before trying to read the role
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
     
-    // By default, deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+    function isSeller() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller';
+    }
+    
+    function isPartner() {
+      if (!isSignedIn()) { return false; }
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return userRole in ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
     }
 
-    // Users can be read publicly (for profiles), but only owners or admins can write.
+    // Users can be read by any signed-in user, but only updated by themselves or an admin.
     match /users/{userId} {
-      allow read: if true;
-      allow create: if true; // Allows user registration
+      allow create: if true;
+      allow read: if isSignedIn();
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
 
-      // Documents subcollection: Only the owner can manage their documents.
+      // Documents subcollection can only be managed by the owner.
       match /documents/{docId} {
         allow read, write: if isOwner(userId);
       }
     }
-
-    // App settings can only be read and written by admins.
-    match /app_settings/{settingId} {
-        allow read, write: if isAdmin();
-    }
     
-    // Files can be read by anyone, but write is restricted (handled via backend logic).
-    match /files/{fileId} {
-        allow read: if true;
-        allow write: if isSignedIn(); // Allow authenticated users to upload
-    }
-
-    // Properties can be read by anyone.
-    // Write access for admins or sellers (who are the owners based on email).
+    // Publicly readable collections
     match /properties/{propertyId} {
-        allow read: if true;
-        allow create: if hasRole('admin') || hasRole('seller');
-        allow update, delete: if isAdmin() || (hasRole('seller') && resource.data.email == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email);
+      allow read: if true;
+      allow create, update: if isSeller() || isAdmin();
+      allow delete: if isAdmin();
     }
     
-    // Property types can be read by anyone, written by admins.
     match /property_types/{typeId} {
         allow read: if true;
         allow write: if isAdmin();
     }
 
-    // Leads can be created by authenticated users. Read/Update by involved parties or admin.
-    match /leads/{leadId} {
-        allow create: if isSignedIn();
-        allow read, update: if isAdmin() || isOwner(resource.data.partnerId) || isOwner(resource.data.customerId) || (hasRole('seller') && get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.email == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email);
-        allow delete: if isAdmin();
+    match /resources/{resourceId} {
+        allow read: if true;
+        allow write: if isAdmin() || isSeller();
     }
 
-    // Appointments are managed by the involved parties or admin.
-    match /appointments/{appointmentId} {
-        allow create: if isSignedIn();
-        allow read, update: if isAdmin() || isOwner(resource.data.partnerId) || isOwner(resource.data.customerId);
-        allow delete: if isAdmin();
-    }
-    
-    // Wallets are private to the user and admin.
-    match /wallets/{userId} {
-        allow read: if isOwner(userId) || isAdmin() || hasRole('seller');
-        allow write: if isAdmin(); // Only admin can update wallets directly
-    }
-
-    // Withdrawal requests can be created by the user, read by user/admin/seller, updated by admin/seller.
-    match /withdrawal_requests/{requestId} {
-        allow create: if isOwner(request.resource.data.userId);
-        allow read: if isOwner(resource.data.userId) || isAdmin() || hasRole('seller');
-        allow update: if isAdmin() || hasRole('seller');
-    }
-
-    // Reward offers can be read by anyone, written by admin.
     match /reward_offers/{offerId} {
         allow read: if true;
         allow write: if isAdmin();
     }
-
-    // Reward transactions are private to the involved parties or admin.
-    match /reward_transactions/{transactionId} {
-        allow read: if isAdmin() || isOwner(resource.data.fromId) || isOwner(resource.data.toId);
-        allow create: if isOwner(request.resource.data.fromId)
-    }
-
-    // Inquiries are readable by the partner they were sent to.
-    match /inquiries/{inquiryId} {
-        allow read: if isOwner(resource.data.partnerId);
-        allow create: if true; // Anyone can send an inquiry from the public site.
-    }
-
-    // Resources are public to read, only admins can write.
-    match /resources/{resourceId} {
+    
+    match /files/{fileId} {
         allow read: if true;
-        allow write: if isAdmin() || hasRole('seller');
+        allow write: if isSignedIn();
     }
 
-    // Support tickets are private to the user who created them and admins.
-    match /support_tickets/{ticketId} {
-        allow read: if isOwner(resource.data.userId) || isAdmin();
-        allow create: if isOwner(request.resource.data.userId);
-        allow update: if isAdmin();
-    }
-    
-    // Requirements can be created by any user, read by admins/sellers.
-    match /requirements/{reqId} {
-      allow create: if isSignedIn();
-      allow read: if isAdmin() || hasRole('seller');
-    }
-    
-    // Payables are visible to admins and the involved seller.
-    match /payables/{payableId} {
-        allow read: if isAdmin() || (hasRole('seller') && resource.data.sellerId == request.auth.uid);
+    // Authenticated access collections
+    match /app_settings/{settingId} {
+        allow read: if isSignedIn();
         allow write: if isAdmin();
     }
-    
-    // Receivables are visible to admins and the involved seller.
-     match /receivables/{receivableId} {
-        allow read: if isAdmin() || (hasRole('seller') && resource.data.sellerId == request.auth.uid);
-        allow write: if isAdmin() || hasRole('seller');
+
+    match /leads/{leadId} {
+      allow read: if isSignedIn();
+      allow create: if isPartner();
+      allow update, delete: if isAdmin() || isSeller();
     }
-     
-    // Messages can be created by authenticated users and read by the recipient.
-    match /messages/{messageId} {
-      allow create: if isSignedIn();
-      // Read if user is the recipient, or part of the recipient group (e.g. ALL_PARTNERS)
-      allow read: if isOwner(resource.data.recipientId) || (
-        resource.data.recipientId == "ALL_PARTNERS" && hasRole('partner') ||
-        resource.data.recipientId == "ALL_SELLERS" && hasRole('seller') ||
-        resource.data.recipientId == "ALL_ADMINS" && hasRole('admin')
-      );
+    
+    match /appointments/{appointmentId} {
+        allow read: if isSignedIn();
+        allow create: if isPartner();
+        allow update, delete: if isAdmin() || isSeller();
+    }
+    
+    match /inquiries/{inquiryId} {
+        allow read, write: if isSignedIn();
+    }
+
+    match /wallets/{walletId} {
+        allow read: if isOwner(walletId) || isAdmin();
+        allow write: if isAdmin(); // Only admins can directly modify wallets
+    }
+    
+    match /withdrawal_requests/{reqId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin() || isSeller();
+    }
+    
+    match /reward_transactions/{txId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin() || isSeller();
+    }
+
+    match /support_tickets/{ticketId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin();
+    }
+    
+     match /receivables/{recId} {
+        allow read, write: if isSeller() || isAdmin();
+    }
+    
+    match /payables/{payId} {
+        allow read, write: if isSeller() || isAdmin();
+    }
+    
+     match /messages/{msgId} {
+        allow read, write: if isSignedIn();
     }
   }
 }
