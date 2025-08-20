@@ -325,8 +325,8 @@ export default function MarketingKitPage() {
         let brandName: string;
         let brandPhone: string;
         
-        if (isPartner && user.businessName && user.phone) {
-            brandName = user.businessName;
+        if (isPartner && user.website?.businessProfile?.businessName && user.phone) {
+            brandName = user.website.businessProfile.businessName;
             brandPhone = user.phone;
         } else {
             brandName = defaultBusinessInfo?.name || 'DealFlow';
