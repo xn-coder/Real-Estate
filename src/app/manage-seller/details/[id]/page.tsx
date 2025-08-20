@@ -205,26 +205,27 @@ export default function SellerDetailsPage() {
                         <CardTitle>KYC Documents</CardTitle>
                     </CardHeader>
                      <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="grid sm:grid-cols-2 gap-4">
                             <div>
                                 <Label className="text-sm font-medium">Aadhar Card</Label>
-                                <p className="text-sm text-muted-foreground font-mono mt-1">{seller.aadharNumber}</p>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">{seller.aadharNumber || 'Not Provided'}</p>
                                 <div className="mt-2 border rounded-lg overflow-hidden">
-                                    {seller.aadharFile ? <Image src={seller.aadharFile} alt="Aadhar Card" width={150} height={100} className="w-full" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file</p>}
+                                    {seller.aadharFile ? <Image src={seller.aadharFile} alt="Aadhar Card" width={150} height={100} className="w-full object-contain" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file</p>}
                                 </div>
                             </div>
                             <div>
                                 <Label className="text-sm font-medium">PAN Card</Label>
-                                <p className="text-sm text-muted-foreground font-mono mt-1">{seller.panNumber}</p>
+                                <p className="text-sm text-muted-foreground font-mono mt-1">{seller.panNumber || 'Not Provided'}</p>
                                  <div className="mt-2 border rounded-lg overflow-hidden">
-                                    {seller.panFile ? <Image src={seller.panFile} alt="PAN Card" width={150} height={100} className="w-full" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file</p>}
+                                    {seller.panFile ? <Image src={seller.panFile} alt="PAN Card" width={150} height={100} className="w-full object-contain" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file</p>}
                                 </div>
                             </div>
                         </div>
                         <div>
                             <Label className="text-sm font-medium">RERA Certificate</Label>
+                             <p className="text-sm text-muted-foreground font-mono mt-1">{seller.reraNumber || 'Not Provided'}</p>
                             <div className="mt-2 border rounded-lg overflow-hidden">
-                                {seller.reraCertificate ? <Image src={seller.reraCertificate} alt="RERA Certificate" width={300} height={200} className="w-full" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file uploaded</p>}
+                                {seller.reraCertificate ? <Image src={seller.reraCertificate} alt="RERA Certificate" width={300} height={200} className="w-full object-contain" /> : <p className="text-xs text-center p-4 text-muted-foreground">No file uploaded</p>}
                             </div>
                         </div>
                     </CardContent>
