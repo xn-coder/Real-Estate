@@ -176,12 +176,12 @@ export default function MarketingKitPage() {
     }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await uploadFile(values.featureImage, `marketing_kits/${generateUserId("KIT")}/feature`);
+        const featureImageUrl = await uploadFile(values.featureImage);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await uploadFile(file, `marketing_kits/${generateUserId("KIT")}/files`);
+                const fileUrl = await uploadFile(file);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
@@ -230,7 +230,7 @@ export default function MarketingKitPage() {
     }
 }
 
-  const handleDownload = async (kit: Kit) => {
+ const handleDownload = async (kit: Kit) => {
     if (!user) {
       toast({ variant: 'destructive', title: 'Login Required' });
       return;
@@ -249,16 +249,12 @@ export default function MarketingKitPage() {
   
     for (const file of kit.files) {
       try {
-        const response = await fetch(file.url);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.href = url;
+        link.href = file.url;
         link.setAttribute("download", file.name);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
       } catch (error) {
         console.error('Download error for file:', file.name, error);
         toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}. Please try again.` });
@@ -460,3 +456,5 @@ export default function MarketingKitPage() {
     </div>
   )
 }
+
+    
