@@ -1,3 +1,4 @@
+
 'use client'
 
 import * as React from "react"
@@ -43,6 +44,8 @@ export default function ManageCustomerPage() {
         const usersCollection = collection(db, "users");
         const leadsCollection = collection(db, "leads");
 
+        const customerRoleClause = where("role", "==", "customer");
+
         if (partnerIdFilter) {
             const partnerLeadsQuery = query(leadsCollection, where("partnerId", "==", partnerIdFilter));
             const partnerLeadsSnapshot = await getDocs(partnerLeadsQuery);
@@ -53,10 +56,10 @@ export default function ManageCustomerPage() {
                  setIsLoading(false);
                  return;
             }
-            customerQuery = query(usersCollection, where(documentId(), "in", customerIds));
+            customerQuery = query(usersCollection, where(documentId(), "in", customerIds), customerRoleClause);
         }
         else if (user.role === 'admin') {
-            customerQuery = query(usersCollection, where("role", "==", "customer"));
+            customerQuery = query(usersCollection, customerRoleClause);
         } else if (user.role === 'seller') {
             const propertiesCollection = collection(db, "properties");
             const sellerPropertiesQuery = query(propertiesCollection, where("email", "==", user.email));
@@ -78,7 +81,7 @@ export default function ManageCustomerPage() {
                  setIsLoading(false);
                  return;
             }
-            customerQuery = query(usersCollection, where(documentId(), "in", customerIds));
+            customerQuery = query(usersCollection, where(documentId(), "in", customerIds), customerRoleClause);
 
         } else { // Partner roles
             const partnerLeadsQuery = query(leadsCollection, where("partnerId", "==", user.id));
@@ -90,7 +93,7 @@ export default function ManageCustomerPage() {
                  setIsLoading(false);
                  return;
             }
-            customerQuery = query(usersCollection, where(documentId(), "in", customerIds));
+            customerQuery = query(usersCollection, where(documentId(), "in", customerIds), customerRoleClause);
         }
 
       const customerSnapshot = await getDocs(customerQuery)
