@@ -265,7 +265,6 @@ const PartnerDashboard = () => {
     const [stats, setStats] = React.useState({ newLeads: 0, totalVisits: 0, customers: 0, rewardPoints: 0 });
     const [featuredProps, setFeaturedProps] = React.useState<Property[]>([]);
     const [recommendedProps, setRecommendedProps] = React.useState<Property[]>([]);
-    const [categories, setCategories] = React.useState<string[]>([]);
     const [propertyTypes, setPropertyTypes] = React.useState<PropertyType[]>([]);
 
 
@@ -310,12 +309,7 @@ const PartnerDashboard = () => {
                 setFeaturedProps((await fetchPropsByIds(defaults.partnerFeaturedCatalog || [])).filter(Boolean) as Property[]);
                 setRecommendedProps((await fetchPropsByIds(defaults.recommendedCatalog || [])).filter(Boolean) as Property[]);
                 
-                // Fetch categories and types
-                const propsSnap = await getDocs(query(collection(db, "properties"), where("status", "==", "For Sale")));
-                const uniqueCategories = new Set<string>();
-                propsSnap.forEach(doc => uniqueCategories.add(doc.data().propertyCategory));
-                setCategories(Array.from(uniqueCategories));
-                
+                // Fetch types
                 const typesSnap = await getDocs(collection(db, "property_types"));
                 setPropertyTypes(typesSnap.docs.map(d => ({id: d.id, ...d.data()} as PropertyType)));
 
@@ -422,13 +416,7 @@ const PartnerDashboard = () => {
                 </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader><CardTitle>Categories</CardTitle></CardHeader>
-                    <CardContent className="space-y-2">
-                        {categories.map(cat => <div key={cat} className="flex justify-between items-center"><p>{cat}</p><Button variant="ghost" size="sm" asChild><Link href="/listings/list">Explore <ArrowRight className="h-4 w-4 ml-2"/></Link></Button></div>)}
-                    </CardContent>
-                </Card>
+            <div className="grid grid-cols-1 gap-6">
                 <Card>
                     <CardHeader><CardTitle>Property Types</CardTitle></CardHeader>
                     <CardContent className="space-y-2">
@@ -455,5 +443,3 @@ export default function Dashboard() {
 
   return <AdminSellerDashboard />;
 }
-
-    
