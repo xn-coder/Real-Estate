@@ -189,7 +189,7 @@ export default function ManageVisitorPage() {
             <TabsTrigger value="Scheduled">Scheduled</TabsTrigger>
             <TabsTrigger value="Pending Verification">Pending Verification</TabsTrigger>
             <TabsTrigger value="Completed">Completed</TabsTrigger>
-            <TabsTrigger value="Cancelled">Cancelled</TabsTrigger>
+            <TabsTrigger value="Rejected">Rejected</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
