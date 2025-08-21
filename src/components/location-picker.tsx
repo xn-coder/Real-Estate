@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import { LatLngExpression, LatLng, Icon } from 'leaflet'
-import 'leaflet/dist/leaflet.css';
 
 // Leaflet's default icon doesn't work well with bundlers, so we fix it
 const markerIcon = new Icon({
@@ -18,6 +17,17 @@ const markerIcon = new Icon({
 interface LocationPickerProps {
     onLocationChange: (lat: number, lng: number) => void;
     position?: LatLngExpression;
+}
+
+const MapResizer = () => {
+    const map = useMapEvents({});
+    useEffect(() => {
+        // Invalidate size to fix rendering issues inside dialogs or tabs
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+    }, [map]);
+    return null;
 }
 
 const LocationMarker = ({ onLocationChange, initialPosition }: { onLocationChange: (lat: number, lng: number) => void, initialPosition: LatLng }) => {
@@ -61,6 +71,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationChange, posit
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
             <LocationMarker onLocationChange={onLocationChange} initialPosition={initialPosition} />
+            <MapResizer />
         </MapContainer>
     );
 };
