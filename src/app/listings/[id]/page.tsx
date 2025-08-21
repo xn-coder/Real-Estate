@@ -157,7 +157,7 @@ export default function PropertyDetailsPage() {
                     phone: values.phone,
                     password: hashedPassword,
                     role: 'customer',
-                    status: 'active',
+                    status: 'New lead',
                     address: '', 
                     city: values.city,
                     state: values.state,
