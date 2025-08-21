@@ -114,7 +114,10 @@ export default function ManageWebsitePage() {
         // This page now ONLY manages the defaults
         setDisplayedData(defaults);
 
-        businessProfileForm.reset(defaults.businessProfile || {});
+        businessProfileForm.reset({ 
+            businessName: defaults.businessProfile?.businessName || '',
+            businessLogo: defaults.businessProfile?.businessLogo || '',
+        });
         slideshowForm.reset({ slides: defaults.slideshow || [] });
         contactDetailsForm.reset(defaults.contactDetails || {});
         aboutLegalForm.reset(defaults.aboutLegal || { aboutText: '' });
@@ -527,5 +530,3 @@ export default function ManageWebsitePage() {
     </div>
   )
 }
-
-    

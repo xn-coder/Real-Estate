@@ -67,7 +67,8 @@ const AdminSellerDashboard = () => {
           try {
             // Stats
             const propertiesQuery = query(collection(db, "properties"));
-            const newLeadsQuery = query(collection(db, "leads"), where("status", "==", "New lead"));
+            const currentMonthStart = startOfMonth(new Date());
+            const newLeadsQuery = query(collection(db, "leads"), where("createdAt", ">=", Timestamp.fromDate(currentMonthStart)));
             const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
             const customersQuery = query(collection(db, "users"), where("role", "==", "customer"));
     
