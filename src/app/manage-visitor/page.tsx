@@ -250,7 +250,7 @@ export default function ManageVisitorPage() {
                         {visit.appointment.status}
                     </Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                 <TableCell className="text-right">
                     {visit.appointment.status === 'Pending Verification' ? (
                         <div className="flex gap-2 justify-end">
                             <Dialog>
@@ -279,6 +279,25 @@ export default function ManageVisitorPage() {
                                 </DialogContent>
                             </Dialog>
                         </div>
+                    ) : (visit.appointment.status === 'Completed' || visit.appointment.status === 'Rejected') && visit.appointment.visitProofUrl ? (
+                         <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                    <Eye className="mr-2 h-4 w-4"/> View Proof
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Visit Proof ({visit.appointment.status})</DialogTitle>
+                                </DialogHeader>
+                                <div className="p-4 flex justify-center">
+                                    <Image src={visit.appointment.visitProofUrl} alt="Visit proof" width={600} height={800} className="max-w-full max-h-[70vh] h-auto rounded-lg object-contain" />
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="secondary" onClick={() => (event.currentTarget as HTMLButtonElement).closest('[role="dialog"]')?.click()}>Close</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     ) : (
                         <span className="text-xs text-muted-foreground">No action needed</span>
                     )}
