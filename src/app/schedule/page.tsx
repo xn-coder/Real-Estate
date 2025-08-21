@@ -11,7 +11,7 @@ import { collection, getDocs, query, where, Timestamp, doc, getDoc, updateDoc } 
 import type { Appointment } from "@/types/appointment"
 import type { Property } from "@/types/property"
 import type { Lead } from "@/types/lead"
-import { format } from "date-fns"
+import { format, isSameDay } from "date-fns"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import {
@@ -39,9 +39,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
-import { createAppointment } from "@/services/appointment-service"
+import { createAppointment, getScheduledSlotsForProperty } from "@/services/appointment-service"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -97,6 +99,11 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<s
     });
 };
 
+const timeSlots = Array.from({ length: 8 }, (_, i) => {
+    const hour = 10 + i;
+    return `${hour}:00`;
+});
+
 export default function SchedulePage() {
   const { user } = useUser()
   const { toast } = useToast();
@@ -109,7 +116,10 @@ export default function SchedulePage() {
   const [isConfirmVisitOpen, setIsConfirmVisitOpen] = React.useState(false);
   const [selectedAppointment, setSelectedAppointment] = React.useState<DetailedAppointment | null>(null);
   const [newVisitDate, setNewVisitDate] = React.useState<Date | undefined>(new Date());
+  const [newVisitTime, setNewVisitTime] = React.useState<string | undefined>();
   const [visitProofUrl, setVisitProofUrl] = React.useState<string | null>(null);
+  const [bookedSlots, setBookedSlots] = React.useState<{date: Date, time: string}[]>([]);
+
 
   const isCustomer = user?.role === 'customer';
 
@@ -223,18 +233,24 @@ export default function SchedulePage() {
   };
 
 
-  const handleRescheduleClick = (appointment: DetailedAppointment) => {
+  const handleRescheduleClick = async (appointment: DetailedAppointment) => {
       setSelectedAppointment(appointment);
       setNewVisitDate(appointment.visitDate as Date);
+      setNewVisitTime(appointment.visitTime);
+      const slots = await getScheduledSlotsForProperty(appointment.propertyId);
+      setBookedSlots(slots);
       setIsRescheduleOpen(true);
   }
 
   const handleReschedule = async () => {
-    if (!selectedAppointment || !newVisitDate) return;
+    if (!selectedAppointment || !newVisitDate || !newVisitTime) return;
     setIsUpdating(selectedAppointment.id);
     try {
       const appointmentRef = doc(db, "appointments", selectedAppointment.id);
-      await updateDoc(appointmentRef, { visitDate: Timestamp.fromDate(newVisitDate) });
+      await updateDoc(appointmentRef, { 
+          visitDate: Timestamp.fromDate(newVisitDate),
+          visitTime: newVisitTime,
+      });
       toast({ title: "Rescheduled", description: "The appointment has been successfully rescheduled." });
       fetchAppointments();
       setIsRescheduleOpen(false);
@@ -277,6 +293,10 @@ export default function SchedulePage() {
         }
     }
   };
+  
+  const bookedTimesForSelectedDate = newVisitDate
+    ? bookedSlots.filter(slot => isSameDay(slot.date, newVisitDate)).map(slot => slot.time)
+    : [];
 
 
   return (
@@ -294,7 +314,7 @@ export default function SchedulePage() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Date</TableHead>
+                        <TableHead>Date & Time</TableHead>
                         {!isCustomer && <TableHead>Client</TableHead>}
                         <TableHead>Property</TableHead>
                         {!isCustomer && <TableHead className="text-right">Actions</TableHead>}
@@ -310,7 +330,9 @@ export default function SchedulePage() {
                     ) : upcomingAppointments.length > 0 ? (
                         upcomingAppointments.map((appointment) => (
                         <TableRow key={appointment.id}>
-                            <TableCell className="font-medium">{format(appointment.visitDate as Date, "PPP")}</TableCell>
+                            <TableCell className="font-medium">
+                                {format(appointment.visitDate as Date, "PPP")} at {appointment.visitTime}
+                            </TableCell>
                             {!isCustomer && <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>}
                             <TableCell>
                                 {appointment.property ? (
@@ -376,7 +398,7 @@ export default function SchedulePage() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Date</TableHead>
+                        <TableHead>Date & Time</TableHead>
                         {!isCustomer && <TableHead>Client</TableHead>}
                         <TableHead>Property</TableHead>
                         <TableHead>Status</TableHead>
@@ -393,7 +415,9 @@ export default function SchedulePage() {
                     ) : pastAppointments.length > 0 ? (
                         pastAppointments.map((appointment) => (
                         <TableRow key={appointment.id}>
-                            <TableCell className="font-medium">{format(appointment.visitDate as Date, "PPP")}</TableCell>
+                            <TableCell className="font-medium">
+                                {format(appointment.visitDate as Date, "PPP")} at {appointment.visitTime}
+                            </TableCell>
                             {!isCustomer && <TableCell>{appointment.lead?.name || 'N/A'}</TableCell>}
                             <TableCell>
                                 {appointment.property ? (
@@ -453,20 +477,34 @@ export default function SchedulePage() {
                 <DialogHeader>
                     <DialogTitle>Reschedule Appointment</DialogTitle>
                     <DialogDescription>
-                        Select a new date for the visit with {selectedAppointment?.lead?.name}.
+                        Select a new date and time for the visit with {selectedAppointment?.lead?.name}.
                     </DialogDescription>
                 </DialogHeader>
-                 <div className="py-4 flex justify-center">
+                 <div className="py-4 flex flex-col md:flex-row items-center gap-4">
                     <Calendar
                         mode="single"
                         selected={newVisitDate}
                         onSelect={setNewVisitDate}
                         disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
                     />
+                    <div className="w-full md:w-auto">
+                        <Select onValueChange={setNewVisitTime} value={newVisitTime}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a time slot" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {timeSlots.map(time => (
+                                    <SelectItem key={time} value={time} disabled={bookedTimesForSelectedDate.includes(time)}>
+                                        {time} {bookedTimesForSelectedDate.includes(time) && "(Booked)"}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 <DialogFooter>
                      <Button variant="outline" onClick={() => setIsRescheduleOpen(false)}>Cancel</Button>
-                     <Button onClick={handleReschedule} disabled={!!isUpdating}>
+                     <Button onClick={handleReschedule} disabled={!!isUpdating || !newVisitTime}>
                         {isUpdating === selectedAppointment?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Confirm Reschedule
                      </Button>
