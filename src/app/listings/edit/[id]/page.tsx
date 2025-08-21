@@ -77,7 +77,7 @@ const fileSchema = z.any()
 const step1Schema = z.object({
   catalogTitle: z.string().min(1, "Catalog title is required."),
   catalogMetaDescription: z.string().min(1, "Meta description is required."),
-  catalogMetaKeyword: z.string().min(1, "Meta keywords are required."),
+  catalogMetaKeyword: z.string().min(1, "Meta keywords is required."),
   propertyCategory: z.enum(["Residential", "Commercial", "Land", "Industrial", "Agriculture", "Rental", "Other"]),
   propertyTypeId: z.string().min(1, "Please select a property type."),
   propertyAge: z.enum(["New", "<1 year", "1 - 5 years", "5 - 10 years", "10+ years"]),
