@@ -334,30 +334,36 @@ const PartnerDashboard = () => {
 
     return (
         <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-            <Carousel 
-                className="w-full" 
-                plugins={[plugin.current]} 
-                onMouseEnter={plugin.current.stop} 
-                onMouseLeave={plugin.current.reset}
-                opts={{ loop: true }}
-            >
-                <CarouselContent>
-                    {Array.isArray(slides) && slides.map(slide => (
-                         <CarouselItem key={slide.id}>
-                             <a href={slide.linkUrl || '#'} target={slide.linkUrl ? '_blank' : '_self'} rel="noopener noreferrer">
-                                <div className="aspect-[16/7] relative rounded-lg overflow-hidden">
-                                     <Image src={slide.bannerImage} alt={slide.title} layout="fill" objectFit="cover" data-ai-hint="real estate building" />
-                                     <div className="absolute inset-0 bg-black/40 flex items-end p-8">
-                                         <h2 className="text-white text-3xl font-bold font-headline">{slide.title}</h2>
-                                     </div>
-                                </div>
-                            </a>
-                        </CarouselItem>
-                    ))}
-                </CarouselContent>
-                <CarouselPrevious className="absolute left-4" />
-                <CarouselNext className="absolute right-4"/>
-            </Carousel>
+            {slides.length > 0 && (
+                <Carousel 
+                    className="w-full" 
+                    plugins={[plugin.current]} 
+                    onMouseEnter={plugin.current.stop} 
+                    onMouseLeave={plugin.current.reset}
+                    opts={{ loop: true }}
+                >
+                    <CarouselContent>
+                        {slides.map(slide => (
+                             <CarouselItem key={slide.id}>
+                                 <a href={slide.linkUrl || '#'} target={slide.linkUrl ? '_blank' : '_self'} rel="noopener noreferrer">
+                                    <div className="aspect-[16/7] relative rounded-lg overflow-hidden">
+                                         <Image src={slide.bannerImage} alt={slide.title} layout="fill" objectFit="cover" data-ai-hint="real estate building" />
+                                         <div className="absolute inset-0 bg-black/40 flex items-end p-8">
+                                             <h2 className="text-white text-3xl font-bold font-headline">{slide.title}</h2>
+                                         </div>
+                                    </div>
+                                </a>
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    {slides.length > 1 && (
+                        <>
+                            <CarouselPrevious className="absolute left-4" />
+                            <CarouselNext className="absolute right-4"/>
+                        </>
+                    )}
+                </Carousel>
+            )}
             
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <Card>
