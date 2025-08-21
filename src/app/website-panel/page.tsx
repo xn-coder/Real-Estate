@@ -28,6 +28,7 @@ import { doc, updateDoc, getDoc, collection, query, where, getDocs, setDoc } fro
 import { generateUserId } from "@/lib/utils"
 import type { User } from "@/types/user"
 import { Checkbox } from "@/components/ui/checkbox"
+import { uploadFile } from "@/services/file-upload-service"
 
 // Schemas for forms
 const businessProfileSchema = z.object({
@@ -71,19 +72,6 @@ const socialLinksSchema = z.object({
   twitter: z.string().url().optional().or(z.literal('')),
   linkedin: z.string().url().optional().or(z.literal('')),
 })
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 
 export default function ManageWebsitePage() {
@@ -153,8 +141,10 @@ export default function ManageWebsitePage() {
       
       if (section === 'businessProfile') {
           let logoUrl = values.businessLogo;
-          if (logoUrl && typeof logoUrl !== 'string') {
-              logoUrl = await fileToDataUrl(logoUrl);
+          if (logoUrl instanceof File) {
+            const formData = new FormData();
+            formData.append('file', logoUrl);
+            logoUrl = await uploadFile(formData);
           }
           dataToUpdate = {
               businessProfile: {
@@ -182,16 +172,12 @@ export default function ManageWebsitePage() {
             values.slides.map(async (slide) => {
                 let finalImageUrl = slide.bannerImage;
 
-                // Case 1: A new file has been uploaded (it's a File object)
                 if (finalImageUrl instanceof File) {
-                    finalImageUrl = await fileToDataUrl(finalImageUrl);
+                    const formData = new FormData();
+                    formData.append('file', finalImageUrl);
+                    finalImageUrl = await uploadFile(formData);
                 }
-                // Case 2: It's an existing image URL (it's a string) - do nothing.
-                // Case 3: It's empty/null/undefined - ensure it's a savable empty string.
-                else if (!finalImageUrl || typeof finalImageUrl !== 'string') {
-                    finalImageUrl = '';
-                }
-
+                
                 return {
                     id: slide.id || generateUserId('SLD'),
                     title: slide.title,
@@ -541,3 +527,5 @@ export default function ManageWebsitePage() {
     </div>
   )
 }
+
+    
