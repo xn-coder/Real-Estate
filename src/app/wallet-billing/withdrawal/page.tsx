@@ -22,7 +22,7 @@ import { Loader2, ArrowLeft, Search, CheckCircle, XCircle, Paperclip } from "luc
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, Timestamp, query, where, getDocs, doc, updateDoc, orderBy } from "firebase/firestore"
+import { collection, addDoc, Timestamp, query, where, getDocs, doc, updateDoc, orderBy, getDoc } from "firebase/firestore"
 import type { WithdrawalRequest } from "@/types/wallet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -144,19 +144,28 @@ export default function WithdrawalRequestPage() {
     if (!user) return;
     setIsLoadingSellers(true);
     try {
-        const sellersQuery = query(collection(db, "users"), where("role", "in", ["seller", "admin"]), where("status", "==", "active"));
-        const sellersSnapshot = await getDocs(sellersQuery);
-        const sellersList = sellersSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as User))
-            .filter(seller => seller.id !== user.id); // Exclude the current user from the list
-        setSellers(sellersList);
+        if(user.teamLeadId) {
+            const sellerDoc = await getDoc(doc(db, "users", user.teamLeadId));
+            if(sellerDoc.exists()) {
+                setSellers([{id: sellerDoc.id, ...sellerDoc.data()} as User]);
+                setSelectedSeller({id: sellerDoc.id, ...sellerDoc.data()} as User);
+                form.setValue("sellerId", sellerDoc.id);
+            }
+        } else {
+            const sellersQuery = query(collection(db, "users"), where("role", "in", ["seller", "admin"]), where("status", "==", "active"));
+            const sellersSnapshot = await getDocs(sellersQuery);
+            const sellersList = sellersSnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as User))
+                .filter(seller => seller.id !== user.id); 
+            setSellers(sellersList);
+        }
     } catch (error) {
         console.error("Error fetching sellers:", error);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch sellers list.' });
     } finally {
         setIsLoadingSellers(false);
     }
-  }, [user, toast]);
+  }, [user, toast, form]);
 
 
   React.useEffect(() => {
@@ -183,6 +192,7 @@ export default function WithdrawalRequestPage() {
             userName: user.name,
             amount: values.amount,
             sellerId: selectedSeller?.id || null,
+            sellerName: selectedSeller?.name || 'Admin',
             notes: values.notes,
             status: "Pending",
             requestedAt: Timestamp.now(),
@@ -313,7 +323,7 @@ export default function WithdrawalRequestPage() {
                                                     <p className="font-medium">{selectedSeller.name}</p>
                                                     <p className="text-sm text-muted-foreground">{selectedSeller.email}</p>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={() => { setSelectedSeller(null); form.setValue("sellerId", ""); }}>Change</Button>
+                                                {!user?.teamLeadId && <Button variant="ghost" size="sm" onClick={() => { setSelectedSeller(null); form.setValue("sellerId", ""); }}>Change</Button>}
                                             </div>
                                         ) : (
                                             <div>
