@@ -11,6 +11,7 @@ interface AppointmentData {
     propertyId: string;
     partnerId: string;
     visitDate: Date;
+    visitTime: string;
 }
 
 export async function createAppointment(data: AppointmentData): Promise<void> {
@@ -28,28 +29,20 @@ export async function createAppointment(data: AppointmentData): Promise<void> {
             throw new Error("Customer ID not found on the lead record.");
         }
 
-        // 2. Check for existing appointments for the same customer, property, and date
+        // 2. Check for existing appointments for the same property, date, and time
         const appointmentsCollection = collection(db, "appointments");
         
-        // Normalize the start and end of the day for the query
-        const startOfDay = new Date(data.visitDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(data.visitDate);
-        endOfDay.setHours(23, 59, 59, 999);
-
         const q = query(
             appointmentsCollection,
-            where("customerId", "==", customerId),
             where("propertyId", "==", data.propertyId),
-            where("visitDate", ">=", Timestamp.fromDate(startOfDay)),
-            where("visitDate", "<=", Timestamp.fromDate(endOfDay))
+            where("visitDate", "==", Timestamp.fromDate(data.visitDate)),
+            where("visitTime", "==", data.visitTime)
         );
 
         const existingAppointmentsSnapshot = await getDocs(q);
 
         if (!existingAppointmentsSnapshot.empty) {
-            // An appointment for this customer, property, and day already exists.
-            throw new Error("A visit for this property is already scheduled for this day.");
+            throw new Error("This time slot for this property is already booked.");
         }
 
         // 3. Create the new appointment if no duplicates are found
@@ -59,6 +52,7 @@ export async function createAppointment(data: AppointmentData): Promise<void> {
             partnerId: data.partnerId,
             customerId: customerId,
             visitDate: Timestamp.fromDate(data.visitDate),
+            visitTime: data.visitTime,
             status: 'Scheduled',
             createdAt: Timestamp.now(),
         };
@@ -68,7 +62,29 @@ export async function createAppointment(data: AppointmentData): Promise<void> {
         console.log("Appointment created successfully for lead:", data.leadId);
     } catch (error: any) {
         console.error("Error creating appointment:", error);
-        // Re-throw the specific error message to be caught in the UI
         throw new Error(error.message || "Could not create appointment in database.");
+    }
+}
+
+export async function getScheduledSlotsForProperty(propertyId: string): Promise<{date: Date, time: string}[]> {
+    try {
+        const appointmentsCollection = collection(db, "appointments");
+        const q = query(
+            appointmentsCollection,
+            where("propertyId", "==", propertyId),
+            where("status", "==", "Scheduled")
+        );
+
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => {
+            const data = doc.data() as Appointment;
+            return {
+                date: (data.visitDate as Timestamp).toDate(),
+                time: data.visitTime
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching scheduled slots:", error);
+        return [];
     }
 }

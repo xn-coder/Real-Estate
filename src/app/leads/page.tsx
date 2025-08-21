@@ -36,7 +36,7 @@ import type { Lead, LeadStatus, DealStatus } from "@/types/lead"
 import type { User } from "@/types/user"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
-import { createAppointment } from "@/services/appointment-service"
+import { createAppointment, getScheduledSlotsForProperty } from "@/services/appointment-service"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -45,6 +45,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { utils, writeFile } from 'xlsx';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { isSameDay } from "date-fns"
 
 
 const statusColors: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
@@ -85,6 +87,11 @@ const filterStatuses: (LeadStatus | 'All')[] = ['All', 'New lead', 'Contacted', 
 const leadStatusOptions: LeadStatus[] = ['New lead', 'Contacted', 'Interested', 'Site visit scheduled', 'Site visited', 'In negotiation', 'Booking confirmed', 'Deal closed', 'Follow-up required', 'Lost lead'];
 const dealStatusOptions: DealStatus[] = ['New lead', 'Contacted', 'Interested', 'site visit scheduled', 'site visit done', 'negotiation in progress', 'booking form filled', 'booking amount received', 'property reserved', 'kyc documents collected', 'agreement drafted', 'agreement signed', 'part payment pending', 'payment in progress', 'registration done', 'handover/possession given', 'booking cancelled'];
 
+const timeSlots = Array.from({ length: 8 }, (_, i) => {
+    const hour = 10 + i;
+    return `${hour}:00`;
+});
+
 export default function ManageBookingPage() {
   const { user } = useUser();
   const { toast } = useToast();
@@ -95,6 +102,8 @@ export default function ManageBookingPage() {
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
+  const [visitTime, setVisitTime] = React.useState<string | undefined>();
+  const [bookedSlots, setBookedSlots] = React.useState<{date: Date, time: string}[]>([]);
   const [isScheduling, setIsScheduling] = React.useState(false);
 
   const [isSendToPartnerDialogOpen, setIsSendToPartnerDialogOpen] = React.useState(false);
@@ -204,13 +213,15 @@ export default function ManageBookingPage() {
   }, [leads, searchTerm, activeFilter]);
 
 
-  const handleScheduleClick = (lead: Lead) => {
+  const handleScheduleClick = async (lead: Lead) => {
     setSelectedLead(lead);
+    const slots = await getScheduledSlotsForProperty(lead.propertyId);
+    setBookedSlots(slots);
     setIsScheduleDialogOpen(true);
   };
 
   const handleScheduleVisit = async () => {
-    if (!visitDate || !selectedLead || !user) return;
+    if (!visitDate || !visitTime || !selectedLead || !user) return;
     setIsScheduling(true);
     try {
         await createAppointment({
@@ -218,6 +229,7 @@ export default function ManageBookingPage() {
             propertyId: selectedLead.propertyId,
             partnerId: user.id,
             visitDate,
+            visitTime,
         });
         toast({ title: "Visit Scheduled", description: "The site visit has been successfully scheduled." });
         setIsScheduleDialogOpen(false);
@@ -387,6 +399,10 @@ export default function ManageBookingPage() {
         writeFile(workbook, "Bookings_Export.xlsx");
     };
 
+    const bookedTimesForSelectedDate = visitDate
+        ? bookedSlots.filter(slot => isSameDay(slot.date, visitDate)).map(slot => slot.time)
+        : [];
+
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -532,24 +548,36 @@ export default function ManageBookingPage() {
         </div>
       </div>
         <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Schedule a Site Visit</DialogTitle>
                     <DialogDescription>
-                       Select a date to schedule a visit for {selectedLead?.name}.
+                       Select a date and time to schedule a visit for {selectedLead?.name}.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="py-4 flex justify-center">
+                <div className="py-4 flex flex-col items-center gap-4">
                     <Calendar
                         mode="single"
                         selected={visitDate}
                         onSelect={setVisitDate}
                         disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
                     />
+                     <Select onValueChange={setVisitTime} value={visitTime}>
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a time slot" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {timeSlots.map(time => (
+                                <SelectItem key={time} value={time} disabled={bookedTimesForSelectedDate.includes(time)}>
+                                    {time} {bookedTimesForSelectedDate.includes(time) && "(Booked)"}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsScheduleDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleScheduleVisit} disabled={isScheduling}>
+                    <Button onClick={handleScheduleVisit} disabled={isScheduling || !visitTime}>
                         {isScheduling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         Confirm Visit
@@ -665,6 +693,3 @@ export default function ManageBookingPage() {
     </div>
   )
 }
-
-
-    
