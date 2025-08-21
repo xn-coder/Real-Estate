@@ -23,9 +23,9 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Users, Building, UserPlus, Target, Handshake, ArrowRight } from "lucide-react"
+import { Loader2, Users, Building, UserPlus, Target, Handshake, ArrowRight, Home } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp, orderBy, limit } from "firebase/firestore"
@@ -45,7 +45,8 @@ type SellerStats = {
 type AdminStats = {
     totalProperties: number;
     totalPartners: number;
-    closedDeals: number;
+    totalCustomers: number;
+    totalLeads: number;
 }
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
@@ -55,13 +56,21 @@ const chartConfig = {
     label: "Leads",
     color: "hsl(var(--primary))",
   },
+  customers: {
+    label: "Customers",
+    color: "hsl(var(--accent))",
+  },
+  partners: {
+    label: "Partners",
+    color: "hsl(var(--secondary-foreground))",
+  },
 } satisfies ChartConfig
 
 export default function DashboardPage() {
     const { user, isLoading: isUserLoading } = useUser();
     const [stats, setStats] = React.useState<SellerStats | AdminStats | null>(null);
     const [recentLeads, setRecentLeads] = React.useState<Lead[]>([]);
-    const [leadsByMonth, setLeadsByMonth] = React.useState<{ month: string, leads: number }[]>([])
+    const [monthlyChartData, setMonthlyChartData] = React.useState<{ month: string, leads: number, customers: number, partners: number }[]>([])
     const [isLoadingStats, setIsLoadingStats] = React.useState(true);
 
     const fetchSellerData = React.useCallback(async () => {
@@ -113,31 +122,55 @@ export default function DashboardPage() {
             const usersSnapshot = await getDocs(collection(db, "users"));
             const leadsSnapshot = await getDocs(collection(db, "leads"));
             
+            const allUsers = usersSnapshot.docs.map(doc => doc.data() as User);
+            
             const totalProperties = propertiesSnapshot.size;
-            const totalPartners = usersSnapshot.docs.filter(doc => partnerRoles.includes(doc.data().role)).length;
-            const closedDeals = leadsSnapshot.docs.filter(doc => doc.data().status === 'Completed' || doc.data().status === 'Deal closed').length;
+            const totalPartners = allUsers.filter(u => partnerRoles.includes(u.role)).length;
+            const totalCustomers = allUsers.filter(u => u.role === 'customer').length;
+            const totalLeads = leadsSnapshot.size;
             
-            setStats({ totalProperties, totalPartners, closedDeals });
+            setStats({ totalProperties, totalPartners, totalLeads, totalCustomers });
 
-            // Prepare chart data (Leads by Month - last 6 months)
-            const monthlyData: { [key: string]: number } = {};
+            // Prepare chart data (last 6 months)
             const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
-            
+            const monthlyData: { [key: string]: { leads: number, customers: number, partners: number } } = {};
+
+            // Initialize months
+            for (let i = 0; i < 6; i++) {
+                const monthKey = format(subMonths(new Date(), 5 - i), 'MMM');
+                monthlyData[monthKey] = { leads: 0, customers: 0, partners: 0 };
+            }
+
+            // Process leads
             leadsSnapshot.docs.forEach(doc => {
                 const lead = doc.data() as Lead;
                 const createdAt = (lead.createdAt as Timestamp).toDate();
                 if (createdAt >= sixMonthsAgo) {
                     const monthKey = format(createdAt, 'MMM');
-                    monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
+                    if (monthlyData[monthKey]) monthlyData[monthKey].leads++;
                 }
             });
             
-            const finalChartData = Array.from({ length: 6 }, (_, i) => {
-                const date = subMonths(new Date(), 5 - i);
-                const month = format(date, 'MMM');
-                return { month, leads: monthlyData[month] || 0 };
+            // Process users (customers and partners)
+            allUsers.forEach(u => {
+                if (u.createdAt) {
+                    const createdAt = (u.createdAt as Timestamp).toDate();
+                    if (createdAt >= sixMonthsAgo) {
+                         const monthKey = format(createdAt, 'MMM');
+                         if(monthlyData[monthKey]) {
+                             if(u.role === 'customer') monthlyData[monthKey].customers++;
+                             if(partnerRoles.includes(u.role)) monthlyData[monthKey].partners++;
+                         }
+                    }
+                }
             });
-            setLeadsByMonth(finalChartData);
+
+            const finalChartData = Object.entries(monthlyData).map(([month, data]) => ({
+                month,
+                ...data
+            }));
+            
+            setMonthlyChartData(finalChartData);
 
         } catch (error) {
             console.error("Error fetching admin dashboard data:", error);
@@ -205,13 +238,14 @@ export default function DashboardPage() {
         const adminCards = [
             { title: "Total Properties", icon: Building, value: adminStats?.totalProperties, href: "/listings" },
             { title: "Total Partners", icon: Handshake, value: adminStats?.totalPartners, href: "/manage-partner" },
-            { title: "Closed Deals", icon: Target, value: adminStats?.closedDeals, href: "/deals" },
+            { title: "Total Customers", icon: Users, value: adminStats?.totalCustomers, href: "/manage-customer" },
+            { title: "Total Leads", icon: UserPlus, value: adminStats?.totalLeads, href: "/leads" },
         ];
 
          return (
             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
                 <h1 className="text-3xl font-bold tracking-tight font-headline">Admin Dashboard</h1>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                      {adminCards.map(item => (
                         <Card key={item.title}>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -229,19 +263,22 @@ export default function DashboardPage() {
                 </div>
                  <Card>
                     <CardHeader>
-                        <CardTitle>Lead Generation by Month</CardTitle>
-                        <CardDescription>A snapshot of the latest leads across the platform.</CardDescription>
+                        <CardTitle>Growth Overview</CardTitle>
+                        <CardDescription>A snapshot of new leads, customers, and partners per month.</CardDescription>
                     </CardHeader>
                     <CardContent className="pl-2">
                         {isLoadingStats ? <div className="h-[350px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
                             <ChartContainer config={chartConfig} className="min-h-[250px] h-[350px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={leadsByMonth}>
+                                <BarChart data={monthlyChartData}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
                                     <YAxis tickLine={false} axisLine={false} tickMargin={8} />
                                     <ChartTooltip content={<ChartTooltipContent />} />
+                                    <Legend />
                                     <Bar dataKey="leads" fill="var(--color-leads)" radius={4} />
+                                    <Bar dataKey="customers" fill="var(--color-customers)" radius={4} />
+                                    <Bar dataKey="partners" fill="var(--color-partners)" radius={4} />
                                 </BarChart>
                                 </ResponsiveContainer>
                             </ChartContainer>
@@ -260,3 +297,4 @@ export default function DashboardPage() {
       </div>
     );
 }
+
