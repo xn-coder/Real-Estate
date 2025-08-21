@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, CheckCircle, XCircle, Loader2, SlidersHorizontal, Search } from "lucide-react"
+import { MoreHorizontal, CheckCircle, XCircle, Loader2, SlidersHorizontal, Search, ArrowLeft } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Slider } from "@/components/ui/slider"
+import Link from "next/link"
 
 const propertyCategories = ["Residential", "Commercial", "Land", "Industrial", "Agriculture", "Rental", "Other"];
 
@@ -119,7 +120,14 @@ export default function PendingListingsPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Pending Properties</h1>
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" asChild>
+                    <Link href="/listings">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Pending Properties</h1>
+            </div>
       </div>
       <Card>
         <CardContent className="p-4">
