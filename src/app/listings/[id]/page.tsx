@@ -126,14 +126,29 @@ export default function PropertyDetailsPage() {
 
         try {
             const leadsCollection = collection(db, "leads");
-            const existingLeadQuery = query(leadsCollection, where("email", "==", values.email), where("propertyId", "==", property.id));
-            const existingLeadSnapshot = await getDocs(existingLeadQuery);
+            
+            // Check for existing lead for the same property from the same email
+            const emailLeadQuery = query(leadsCollection, where("email", "==", values.email), where("propertyId", "==", property.id));
+            const emailLeadSnapshot = await getDocs(emailLeadQuery);
 
-            if (!existingLeadSnapshot.empty) {
+            if (!emailLeadSnapshot.empty) {
                 toast({
                     variant: "default",
                     title: "Already Enquired",
-                    description: "You have already submitted an enquiry for this property.",
+                    description: "You have already submitted an enquiry for this property with this email address.",
+                });
+                return;
+            }
+
+            // Check for existing lead for the same property from the same phone number
+            const phoneLeadQuery = query(leadsCollection, where("phone", "==", values.phone), where("propertyId", "==", property.id));
+            const phoneLeadSnapshot = await getDocs(phoneLeadQuery);
+
+            if (!phoneLeadSnapshot.empty) {
+                toast({
+                    variant: "default",
+                    title: "Already Enquired",
+                    description: "An enquiry for this property with this phone number already exists.",
                 });
                 return;
             }
@@ -148,14 +163,12 @@ export default function PropertyDetailsPage() {
             ]);
 
             let customerId: string;
-            let existingCustomer = true;
 
             if (!emailSnapshot.empty) {
                 customerId = emailSnapshot.docs[0].id;
             } else if (!phoneSnapshot.empty) {
                 customerId = phoneSnapshot.docs[0].id;
             } else {
-                existingCustomer = false;
                 customerId = generateUserId("CUS");
                 const [firstName, ...lastNameParts] = values.name.split(' ');
                 const lastName = lastNameParts.join(' ');
@@ -212,7 +225,8 @@ export default function PropertyDetailsPage() {
                 description: "Your enquiry has been sent. We will get back to you shortly.",
             });
             enquiryForm.reset();
-            setIsScheduleDialogOpen(true);
+            // OTP Dialog removed. Scheduling dialog can be triggered if needed.
+            // setIsScheduleDialogOpen(true); 
         } catch (error) {
             console.error("Error creating lead:", error);
             throw error;
