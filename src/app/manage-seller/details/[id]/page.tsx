@@ -192,10 +192,6 @@ export default function SellerDetailsPage() {
                                 <p className="text-sm text-muted-foreground">{seller.businessType}</p>
                             </div>
                         </div>
-                        <Separator/>
-                        <div className="text-sm">
-                            <span className="font-semibold">GSTN:</span> {seller.gstn || 'N/A'}
-                        </div>
                     </CardContent>
                 </Card>
             </div>
