@@ -43,6 +43,7 @@ import { createAppointment, getScheduledSlotsForProperty } from "@/services/appo
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { uploadFile } from "@/services/file-upload-service"
 
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
@@ -53,50 +54,6 @@ const LocationPicker = dynamic(() => import('@/components/location-picker'), {
 type DetailedAppointment = Appointment & {
   property?: Property;
   lead?: Lead;
-};
-
-const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file.type.startsWith('image/')) {
-            reject(new Error('File is not an image.'));
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = document.createElement('img');
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let { width, height } = img;
-
-                if (width > height) {
-                    if (width > maxWidth) {
-                        height *= maxWidth / width;
-                        width = maxWidth;
-                    }
-                } else {
-                    if (height > maxHeight) {
-                        width *= maxHeight / height;
-                        height = maxHeight;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    reject(new Error('Could not get canvas context.'));
-                    return;
-                }
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL(file.type, 0.9)); // Get data URL, quality 0.9
-            };
-            img.onerror = reject;
-            img.src = e.target?.result as string;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
 };
 
 const timeSlots = Array.from({ length: 8 }, (_, i) => {
@@ -117,7 +74,7 @@ export default function SchedulePage() {
   const [selectedAppointment, setSelectedAppointment] = React.useState<DetailedAppointment | null>(null);
   const [newVisitDate, setNewVisitDate] = React.useState<Date | undefined>(new Date());
   const [newVisitTime, setNewVisitTime] = React.useState<string | undefined>();
-  const [visitProofUrl, setVisitProofUrl] = React.useState<string | null>(null);
+  const [visitProofFile, setVisitProofFile] = React.useState<File | null>(null);
   const [bookedSlots, setBookedSlots] = React.useState<{date: Date, time: string}[]>([]);
 
 
@@ -225,11 +182,24 @@ export default function SchedulePage() {
   }
 
   const handleConfirmVisitSubmit = async () => {
-    if (!selectedAppointment || !visitProofUrl) {
+    if (!selectedAppointment || !visitProofFile) {
         toast({ variant: 'destructive', title: "Missing Proof", description: "Please upload an image as proof of visit." });
         return;
     }
-    await handleUpdateStatus(selectedAppointment.id, 'Pending Verification', visitProofUrl);
+    
+    setIsUpdating(selectedAppointment.id);
+    try {
+        const formData = new FormData();
+        formData.append('file', visitProofFile);
+        const proofUrl = await uploadFile(formData);
+        
+        await handleUpdateStatus(selectedAppointment.id, 'Pending Verification', proofUrl);
+    } catch(error) {
+        console.error("Error uploading proof or updating status:", error);
+        toast({ variant: 'destructive', title: "Upload Failed", description: "Could not upload proof image." });
+    } finally {
+        setIsUpdating(null);
+    }
   };
 
 
@@ -280,17 +250,7 @@ export default function SchedulePage() {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-        try {
-            const resizedDataUrl = await resizeImage(file, 800, 800); // Max width/height 800px
-            setVisitProofUrl(resizedDataUrl);
-        } catch (error) {
-            console.error("Error resizing image:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Image Error',
-                description: 'Could not process the selected image.',
-            });
-        }
+        setVisitProofFile(file);
     }
   };
   
@@ -499,7 +459,7 @@ export default function SchedulePage() {
             </DialogContent>
         </Dialog>
         
-        <Dialog open={isConfirmVisitOpen} onOpenChange={(open) => { if(!open) { setVisitProofUrl(null); } setIsConfirmVisitOpen(open); }}>
+        <Dialog open={isConfirmVisitOpen} onOpenChange={(open) => { if(!open) { setVisitProofFile(null); } setIsConfirmVisitOpen(open); }}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Confirm Site Visit</DialogTitle>
@@ -508,9 +468,9 @@ export default function SchedulePage() {
                     </DialogDescription>
                 </DialogHeader>
                  <div className="py-4 space-y-4">
-                     {visitProofUrl && (
+                     {visitProofFile && (
                         <div className="flex justify-center">
-                            <Image src={visitProofUrl} alt="Visit Proof Preview" width={80} height={80} className="w-20 h-20 object-cover rounded-md" />
+                            <Image src={URL.createObjectURL(visitProofFile)} alt="Visit Proof Preview" width={80} height={80} className="w-20 h-20 object-cover rounded-md" />
                         </div>
                      )}
                      <Input 
@@ -521,7 +481,7 @@ export default function SchedulePage() {
                 </div>
                 <DialogFooter>
                      <Button variant="outline" onClick={() => setIsConfirmVisitOpen(false)}>Cancel</Button>
-                     <Button onClick={handleConfirmVisitSubmit} disabled={!!isUpdating || !visitProofUrl}>
+                     <Button onClick={handleConfirmVisitSubmit} disabled={isUpdating === selectedAppointment?.id || !visitProofFile}>
                         {isUpdating === selectedAppointment?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Confirm & Upload
                      </Button>
