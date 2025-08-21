@@ -25,10 +25,10 @@ import {
 } from "@/components/ui/chart"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, TooltipProps } from "recharts"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Users, Building, UserPlus, Target, Handshake, ArrowRight, Home } from "lucide-react"
+import { Loader2, Users, Building, UserPlus, Target, Handshake, ArrowRight, Home, Star } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, where, Timestamp, orderBy, limit } from "firebase/firestore"
+import { collection, getDocs, query, where, Timestamp, orderBy, limit, doc, getDoc } from "firebase/firestore"
 import type { Lead } from "@/types/lead"
 import type { User } from "@/types/user"
 import type { Property } from "@/types/property"
@@ -41,6 +41,13 @@ type SellerStats = {
     newLeads: number;
     propertiesSold: number;
     totalRevenue: number;
+}
+
+type PartnerStats = {
+    totalLeads: number;
+    totalCustomers: number;
+    totalDealValue: number;
+    rewardPoints: number;
 }
 
 type AdminStats = {
@@ -93,7 +100,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameT
 
 export default function DashboardPage() {
     const { user, isLoading: isUserLoading } = useUser();
-    const [stats, setStats] = React.useState<SellerStats | AdminStats | null>(null);
+    const [stats, setStats] = React.useState<SellerStats | AdminStats | PartnerStats | null>(null);
     const [recentLeads, setRecentLeads] = React.useState<Lead[]>([]);
     const [monthlyChartData, setMonthlyChartData] = React.useState<{ month: string, leads: number, customers: number, partners: number }[]>([])
     const [isLoadingStats, setIsLoadingStats] = React.useState(true);
@@ -138,6 +145,36 @@ export default function DashboardPage() {
             setIsLoadingStats(false);
         }
     }, [user]);
+
+    const fetchPartnerData = React.useCallback(async () => {
+        if (!user || !partnerRoles.includes(user.role)) return;
+        setIsLoadingStats(true);
+        try {
+            const leadsQuery = query(collection(db, "leads"), where("partnerId", "==", user.id));
+            const leadsSnapshot = await getDocs(leadsQuery);
+            const leads = leadsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Lead));
+
+            const totalLeads = leads.length;
+            const totalCustomers = new Set(leads.map(lead => lead.customerId)).size;
+            
+            const completedLeads = leads.filter(l => l.status === 'Completed' || l.status === 'Deal closed');
+            const totalDealValue = completedLeads.reduce((acc, lead) => acc + (lead.closingAmount || 0), 0);
+
+            const walletDoc = await getDoc(doc(db, "wallets", user.id));
+            const rewardPoints = walletDoc.exists() ? walletDoc.data().rewardBalance || 0 : 0;
+            
+            setStats({ totalLeads, totalCustomers, totalDealValue, rewardPoints });
+
+            const sortedLeads = leads.sort((a,b) => (b.createdAt as Timestamp).toMillis() - (a.createdAt as Timestamp).toMillis());
+            setRecentLeads(sortedLeads.slice(0, 5));
+
+        } catch (error) {
+            console.error("Error fetching partner dashboard data:", error);
+        } finally {
+            setIsLoadingStats(false);
+        }
+    }, [user]);
+
 
     const fetchAdminData = React.useCallback(async () => {
          if (!user || user.role !== 'admin') return;
@@ -210,15 +247,71 @@ export default function DashboardPage() {
                 fetchSellerData();
             } else if (user.role === 'admin') {
                 fetchAdminData();
+            } else if (partnerRoles.includes(user.role)) {
+                fetchPartnerData();
             } else {
                  setIsLoadingStats(false);
             }
         }
-    }, [user, fetchSellerData, fetchAdminData]);
+    }, [user, fetchSellerData, fetchAdminData, fetchPartnerData]);
 
 
     if (isUserLoading) {
         return <div className="flex-1 p-8 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    }
+    
+    if (user && partnerRoles.includes(user.role)) {
+        const partnerStats = stats as PartnerStats;
+        const partnerCards = [
+            { title: "Total Leads", icon: UserPlus, value: partnerStats?.totalLeads, href: "/leads" },
+            { title: "Total Customers", icon: Users, value: partnerStats?.totalCustomers, href: "/manage-customer" },
+            { title: "Total Deal Value", icon: Handshake, value: `₹${partnerStats?.totalDealValue?.toLocaleString() || 0}`, href: "/booking-management" },
+            { title: "Reward Points", icon: Star, value: partnerStats?.rewardPoints?.toLocaleString() || 0, href: "/wallet" },
+        ];
+        return (
+            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Partner Dashboard</h1>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                     {partnerCards.map(item => (
+                        <Card key={item.title}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
+                                <item.icon className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{isLoadingStats ? <Loader2 className="animate-spin h-6 w-6" /> : item.value}</div>
+                                <Link href={item.href} className="text-xs text-muted-foreground flex items-center hover:underline">
+                                    View All <ArrowRight className="h-3 w-3 ml-1" />
+                                </Link>
+                            </CardContent>
+                        </Card>
+                     ))}
+                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Recent Leads</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                         <Table>
+                            <TableHeader>
+                                <TableRow><TableHead>Customer</TableHead><TableHead>Property ID</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoadingStats ? <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="animate-spin"/></TableCell></TableRow> : recentLeads.map(lead => (
+                                    <TableRow key={lead.id}>
+                                        <TableCell>{lead.name}</TableCell>
+                                        <TableCell>{lead.propertyId}</TableCell>
+                                        <TableCell><Badge>{lead.status}</Badge></TableCell>
+                                        <TableCell>{format((lead.createdAt as Timestamp).toDate(), 'PPP')}</TableCell>
+                                    </TableRow>
+                                ))}
+                                {recentLeads.length === 0 && !isLoadingStats && <TableRow><TableCell colSpan={4} className="text-center h-24">No recent leads found.</TableCell></TableRow>}
+                            </TableBody>
+                         </Table>
+                    </CardContent>
+                </Card>
+            </div>
+        )
     }
 
     if (user?.role === 'seller') {
