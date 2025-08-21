@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -27,6 +28,7 @@ import { db } from "@/lib/firebase"
 import { doc, updateDoc, getDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import type { User } from "@/types/user"
+import type { Property } from "@/types/property"
 import { Checkbox } from "@/components/ui/checkbox"
 import { uploadFile } from "@/services/file-upload-service"
 
@@ -119,9 +121,29 @@ export default function ManageWebsitePage() {
             businessLogo: defaults.businessProfile?.businessLogo || '',
         });
         slideshowForm.reset({ slides: defaults.slideshow || [] });
-        contactDetailsForm.reset(defaults.contactDetails || {});
-        aboutLegalForm.reset(defaults.aboutLegal || { aboutText: '' });
-        socialLinksForm.reset(defaults.socialLinks || { website: '', instagram: '', facebook: '', youtube: '', twitter: '', linkedin: '' });
+        contactDetailsForm.reset({
+          name: defaults.contactDetails?.name || "",
+          phone: defaults.contactDetails?.phone || "",
+          email: defaults.contactDetails?.email || "",
+          address: defaults.contactDetails?.address || "",
+          city: defaults.contactDetails?.city || "",
+          state: defaults.contactDetails?.state || "",
+          pincode: defaults.contactDetails?.pincode || "",
+        });
+        aboutLegalForm.reset({
+          aboutText: defaults.aboutLegal?.aboutText || "",
+          termsLink: defaults.aboutLegal?.termsLink || "",
+          privacyLink: defaults.aboutLegal?.privacyLink || "",
+          disclaimerLink: defaults.aboutLegal?.disclaimerLink || "",
+        });
+        socialLinksForm.reset({
+          website: defaults.socialLinks?.website || "",
+          instagram: defaults.socialLinks?.instagram || "",
+          facebook: defaults.socialLinks?.facebook || "",
+          youtube: defaults.socialLinks?.youtube || "",
+          twitter: defaults.socialLinks?.twitter || "",
+          linkedin: defaults.socialLinks?.linkedin || "",
+        });
 
     } catch (error) {
         console.error("Error loading website data:", error);
