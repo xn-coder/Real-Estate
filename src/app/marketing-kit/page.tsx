@@ -170,18 +170,23 @@ export default function MarketingKitPage() {
 
   async function onSubmit(values: MarketingKitForm) {
     if (!user) return;
-    if (!values.featureImage) {
+    const featureImageFile = (values.featureImage as FileList)[0];
+    if (!featureImageFile) {
         form.setError("featureImage", { message: "A feature image is required." });
         return;
     }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await uploadFile(values.featureImage);
+        const featureImageFormData = new FormData();
+        featureImageFormData.append('file', featureImageFile);
+        const featureImageUrl = await uploadFile(featureImageFormData);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await uploadFile(file);
+                const formData = new FormData();
+                formData.append('file', file);
+                const fileUrl = await uploadFile(formData);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
@@ -230,7 +235,7 @@ export default function MarketingKitPage() {
     }
 }
 
-  const handleDownload = async (kit: Kit) => {
+  const handleDownload = (kit: Kit) => {
     setIsDownloading(kit.id);
     try {
       const filesToDownload =
@@ -241,7 +246,6 @@ export default function MarketingKitPage() {
               {
                 url: kit.downloadUrl,
                 name: `${kit.title.replace(/\s+/g, '_')}.${kit.downloadUrl.split('?')[0].split('.').pop()}`,
-                type: getFileType(kit.downloadUrl),
               },
             ]
           : [];
@@ -255,27 +259,13 @@ export default function MarketingKitPage() {
         return;
       }
   
-      // This loop attempts to download them one by one. Zipping them would be a better UX.
+      // Open each file in a new tab for the user to download
       for (const file of filesToDownload) {
-        try {
-          const response = await fetch(file.url);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch the file: ${file.name}`);
-          }
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = file.name;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(url);
-        } catch (error) {
-          console.error('Download error for file:', file.name, error);
-          toast({ variant: 'destructive', title: 'Download Failed', description: `Could not download ${file.name}. Please try again.` });
-        }
+        window.open(file.url, '_blank');
       }
+    } catch (error) {
+        console.error('Download error for kit:', kit.title, error);
+        toast({ variant: 'destructive', title: 'Download Failed', description: `Could not initiate download for ${kit.title}. Please try again.` });
     } finally {
       setIsDownloading(null);
     }
@@ -380,7 +370,7 @@ export default function MarketingKitPage() {
                         )}
                     />
 
-                    <FormField control={form.control} name="featureImage" render={({ field: { onChange, value, ...rest }}) => (<FormItem><FormLabel>Feature Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="featureImage" render={({ field: { onChange, value, ...rest }}) => (<FormItem><FormLabel>Feature Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files)} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={form.control} name="files" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Kit Files (PDF, Image, Video)</FormLabel><FormControl><Input type="file" multiple onChange={(e) => onChange(e.target.files)} {...rest} /></FormControl><FormMessage /></FormItem>)} />
                     
                     <DialogFooter>
