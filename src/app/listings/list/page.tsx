@@ -76,7 +76,7 @@ export default function ListingsPage() {
                     }
                 }
 
-                const q = query(collection(db, "properties"), where("status", "!=", "Pending Verification"));
+                const q = query(collection(db, "properties"), where("status", "in", ["For Sale", "Under Contract", "Sold"]));
                 const snapshot = await getDocs(q);
                 const uniqueCities = new Set<string>();
                 const listingsData = snapshot.docs.map((docData) => {
