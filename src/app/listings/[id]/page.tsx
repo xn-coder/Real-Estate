@@ -97,6 +97,11 @@ export default function PropertyDetailsPage() {
     const [isScheduling, setIsScheduling] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
+    // OTP State
+    const [isOtpDialogOpen, setIsOtpDialogOpen] = React.useState(false);
+    const [otpValue, setOtpValue] = React.useState("");
+    const [isVerifyingOtp, setIsVerifyingOtp] = React.useState(false);
+    const [enquiryData, setEnquiryData] = React.useState<EnquiryFormValues | null>(null);
 
     const isOwner = user?.role === 'admin' || (user?.email && user.email === property?.email);
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
@@ -111,10 +116,47 @@ export default function PropertyDetailsPage() {
         defaultValues: { name: "", phone: "", email: "", city: "", state: "", country: "" },
     });
     
+    const onEnquirySubmit = async (values: EnquiryFormValues) => {
+        setIsSubmittingEnquiry(true);
+        try {
+            await sendOtp(values.email, values.name);
+            setEnquiryData(values);
+            setIsOtpDialogOpen(true);
+            toast({
+                title: "OTP Sent",
+                description: `An OTP has been sent to ${values.email}.`,
+            });
+        } catch (error) {
+             console.error("Error sending OTP:", error);
+             toast({ variant: "destructive", title: "Error", description: "Failed to send OTP. Please try again." });
+        } finally {
+            setIsSubmittingEnquiry(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!enquiryData || !otpValue) return;
+        setIsVerifyingOtp(true);
+        try {
+            const isValid = await verifyOtp(enquiryData.email, otpValue);
+            if(isValid) {
+                await createLead(enquiryData);
+                setIsOtpDialogOpen(false);
+                setOtpValue("");
+            } else {
+                 toast({ variant: "destructive", title: "Invalid OTP", description: "The OTP you entered is incorrect." });
+            }
+        } catch (error) {
+            console.error("Error verifying OTP:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to verify OTP." });
+        } finally {
+            setIsVerifyingOtp(false);
+        }
+    }
+
     const createLead = async (values: EnquiryFormValues) => {
         if (!user || !property) return;
 
-        setIsSubmittingEnquiry(true);
         try {
             const usersCollection = collection(db, "users");
             const emailQuery = query(usersCollection, where("email", "==", values.email));
@@ -126,16 +168,10 @@ export default function PropertyDetailsPage() {
             ]);
 
             let customerId: string;
-            let existingUser = false;
             
             if (!emailSnapshot.empty) {
                 customerId = emailSnapshot.docs[0].id;
-                existingUser = true;
             } else if (!phoneSnapshot.empty) {
-                customerId = phoneSnapshot.docs[0].id;
-                existingUser = true;
-            } else {
-                // Create new customer record
                 customerId = generateUserId("CUS");
                 const [firstName, ...lastNameParts] = values.name.split(' ');
                 const lastName = lastNameParts.join(' ');
@@ -162,7 +198,6 @@ export default function PropertyDetailsPage() {
                 });
             }
             
-            // Create lead record
             const leadRef = await addDoc(collection(db, "leads"), {
                 ...values,
                 propertyId: property.id,
@@ -195,8 +230,6 @@ export default function PropertyDetailsPage() {
         } catch (error) {
             console.error("Error submitting enquiry:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry." });
-        } finally {
-            setIsSubmittingEnquiry(false);
         }
     };
 
@@ -489,7 +522,7 @@ export default function PropertyDetailsPage() {
                             </CardHeader>
                             <CardContent>
                                 <Form {...enquiryForm}>
-                                    <form onSubmit={enquiryForm.handleSubmit(createLead)} className="space-y-4">
+                                    <form onSubmit={enquiryForm.handleSubmit(onEnquirySubmit)} className="space-y-4">
                                         <FormField control={enquiryForm.control} name="name" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Full Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Phone</FormLabel> <FormControl><Input type="tel" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Email</FormLabel> <FormControl><Input type="email" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -509,6 +542,33 @@ export default function PropertyDetailsPage() {
                     )}
                 </div>
             </div>
+
+             <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Verify Your Email</DialogTitle>
+                        <DialogDescription>
+                           We've sent a 6-digit code to {enquiryData?.email}. Please enter it below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Input 
+                            value={otpValue}
+                            onChange={(e) => setOtpValue(e.target.value)}
+                            maxLength={6}
+                            placeholder="Enter OTP"
+                            className="text-center text-lg tracking-widest"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsOtpDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleVerifyOtp} disabled={isVerifyingOtp}>
+                            {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Verify & Submit
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             
             <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
                 <DialogContent>
