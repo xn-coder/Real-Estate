@@ -316,49 +316,110 @@ export default function AddPropertyPage() {
         setIsSubmitting(true);
         try {
             const propertyId = propertyCode || generateUserId("PROP");
-    
-            // Create a list of all upload promises
+
             const uploadPromises = [];
-    
-            // Add feature image upload to promises
+
             const featureImageFormData = new FormData();
             featureImageFormData.append('file', values.featureImage);
             uploadPromises.push(uploadFile(featureImageFormData));
-    
-            // Add slideshow images to promises
+
             values.slides.forEach(slide => {
                 const slideImageFormData = new FormData();
                 slideImageFormData.append('file', slide.image);
                 uploadPromises.push(uploadFile(slideImageFormData));
             });
-    
-            // Execute all uploads in parallel
+
             const uploadedUrls = await Promise.all(uploadPromises);
-    
             const featureImageUrl = uploadedUrls[0];
             const slideImageUrls = uploadedUrls.slice(1);
-    
+
             const slidesWithUrls = values.slides.map((slide, index) => ({
                 title: slide.title,
                 image: slideImageUrls[index],
             }));
-    
+            
+            // Construct a clean object with only the data we want to save
             const propertyData = {
-                ...values,
                 id: propertyId,
                 status: 'Pending Verification',
+                // Step 1
+                catalogTitle: values.catalogTitle,
+                catalogMetaDescription: values.catalogMetaDescription,
+                catalogMetaKeyword: values.catalogMetaKeyword,
+                propertyCategory: values.propertyCategory,
+                propertyTypeId: values.propertyTypeId,
+                propertyAge: values.propertyAge,
+                reraApproved: values.reraApproved,
                 featureImage: featureImageUrl,
+                catalogType: values.catalogType,
+                // Step 2
                 slides: slidesWithUrls,
+                // Step 3
+                overview: values.overview,
+                // Step 4
+                builtUpArea: values.isBuiltUpAreaEnabled ? values.builtUpArea : undefined,
+                carpetArea: values.isCarpetAreaEnabled ? values.carpetArea : undefined,
+                superBuiltUpArea: values.isSuperBuiltUpAreaEnabled ? values.superBuiltUpArea : undefined,
+                unitOfMeasurement: values.unitOfMeasurement,
+                totalFloors: values.isTotalFloorsEnabled ? values.totalFloors : undefined,
+                floorNumber: values.isFloorNumberEnabled ? values.floorNumber : undefined,
+                bedrooms: values.isBedroomsEnabled ? values.bedrooms : undefined,
+                bathrooms: values.isBathroomsEnabled ? values.bathrooms : undefined,
+                balconies: values.isBalconiesEnabled ? values.balconies : undefined,
+                servantRoom: values.servantRoom,
+                parkingSpaces: values.isParkingSpacesEnabled ? values.parkingSpaces : undefined,
+                // Step 5
+                amenities: values.amenities,
+                // Step 6
+                furnishingStatus: values.furnishingStatus,
+                flooringType: values.flooringType,
+                kitchenType: values.kitchenType,
+                furnitureIncluded: values.furnitureIncluded,
+                // Step 7
+                locality: values.locality,
+                addressLine: values.addressLine,
+                city: values.city,
+                state: values.state,
+                country: values.country,
+                pincode: values.pincode,
+                landmark: values.landmark,
+                latitude: values.latitude,
+                longitude: values.longitude,
+                // Step 8
+                busStop: values.busStop,
+                metroStation: values.metroStation,
+                hospitalDistance: values.hospitalDistance,
+                mallDistance: values.mallDistance,
+                airportDistance: values.airportDistance,
+                schoolDistance: values.schoolDistance,
+                otherConnectivity: values.otherConnectivity,
+                // Step 9
+                listingPrice: values.listingPrice,
+                priceType: values.priceType,
+                maintenanceCharge: values.maintenanceCharge,
+                securityDeposit: values.securityDeposit,
+                bookingAmount: values.bookingAmount,
+                registrationCharge: values.registrationCharge,
+                loanAvailable: values.loanAvailable,
+                // Step 10
+                listedBy: values.listedBy,
+                name: values.name,
+                phone: values.phone,
+                altPhone: values.altPhone,
+                email: values.email,
+                agencyName: values.agencyName,
+                reraId: values.reraId,
+                contactTime: values.contactTime,
             };
-    
+
             await setDoc(doc(db, "properties", propertyId), propertyData);
-    
+
             toast({
                 title: "Property Submitted",
                 description: "Your property has been submitted for verification.",
             });
             router.push("/listings/list");
-    
+
         } catch (error) {
             console.error("Error adding property:", error);
             toast({
