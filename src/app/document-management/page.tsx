@@ -52,6 +52,7 @@ import { collection, addDoc, getDocs, doc, setDoc, query, where, deleteDoc } fro
 import { generateUserId } from "@/lib/utils"
 import Image from "next/image"
 import type { UserDocument } from "@/types/document"
+import { uploadFile } from "@/services/file-upload-service"
 
 const documentSchema = z.object({
   title: z.string().min(1, "Document title is required."),
@@ -60,18 +61,6 @@ const documentSchema = z.object({
 
 type DocumentFormValues = z.infer<typeof documentSchema>;
 
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 export default function DocumentManagementPage() {
     const { user, isLoading: isUserLoading } = useUser();
@@ -115,7 +104,10 @@ export default function DocumentManagementPage() {
         if (!user) return;
         setIsSubmitting(true);
         try {
-            const fileUrl = await fileToDataUrl(values.file);
+            const formData = new FormData();
+            formData.append('file', values.file);
+            const fileUrl = await uploadFile(formData);
+
             const docId = generateUserId("DOC");
             await setDoc(doc(db, `users/${user.id}/documents`, docId), {
                 id: docId,
