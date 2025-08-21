@@ -261,30 +261,62 @@ export default function DashboardPage() {
                         </Card>
                      ))}
                 </div>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Growth Overview</CardTitle>
-                        <CardDescription>A snapshot of new leads, customers, and partners per month.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                        {isLoadingStats ? <div className="h-[350px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-                            <ChartContainer config={chartConfig} className="min-h-[250px] h-[350px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={monthlyChartData}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                                    <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                                    <ChartTooltip content={<ChartTooltipContent />} />
-                                    <Legend />
-                                    <Bar dataKey="leads" fill="var(--color-leads)" radius={4} />
-                                    <Bar dataKey="customers" fill="var(--color-customers)" radius={4} />
-                                    <Bar dataKey="partners" fill="var(--color-partners)" radius={4} />
-                                </BarChart>
-                                </ResponsiveContainer>
-                            </ChartContainer>
-                        )}
-                    </CardContent>
-                </Card>
+                 <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Monthly Leads Growth</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pl-2">
+                             {isLoadingStats ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+                                <ChartContainer config={chartConfig} className="min-h-[250px] h-[250px] w-full">
+                                    <BarChart data={monthlyChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                                        <ChartTooltip content={<ChartTooltipContent />} />
+                                        <Bar dataKey="leads" fill="var(--color-leads)" radius={4} />
+                                    </BarChart>
+                                </ChartContainer>
+                            )}
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Monthly Customers Growth</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pl-2">
+                             {isLoadingStats ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+                                <ChartContainer config={chartConfig} className="min-h-[250px] h-[250px] w-full">
+                                    <BarChart data={monthlyChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                                        <ChartTooltip content={<ChartTooltipContent />} />
+                                        <Bar dataKey="customers" fill="var(--color-customers)" radius={4} />
+                                    </BarChart>
+                                </ChartContainer>
+                            )}
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Monthly Partners Growth</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pl-2">
+                             {isLoadingStats ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+                                <ChartContainer config={chartConfig} className="min-h-[250px] h-[250px] w-full">
+                                    <BarChart data={monthlyChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                                        <ChartTooltip content={<ChartTooltipContent />} />
+                                        <Bar dataKey="partners" fill="var(--color-partners)" radius={4} />
+                                    </BarChart>
+                                </ChartContainer>
+                            )}
+                        </CardContent>
+                    </Card>
+                 </div>
             </div>
         )
     }
@@ -297,4 +329,3 @@ export default function DashboardPage() {
       </div>
     );
 }
-
