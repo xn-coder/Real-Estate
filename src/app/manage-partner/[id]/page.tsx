@@ -255,14 +255,6 @@ export default function PartnerProfilePage() {
                     <h2 className="text-2xl font-bold">{partner.name}</h2>
                     <p className="text-muted-foreground">Partner ID: {partner.id}</p>
                 </div>
-                <div className="flex gap-2">
-                     <Button variant="outline" size="icon" asChild>
-                        <Link href={`/send-message?recipientId=${partner.id}&type=to_partner`}>
-                            <MessageSquare className="h-4 w-4" />
-                            <span className="sr-only">Send Message</span>
-                        </Link>
-                    </Button>
-                </div>
             </CardContent>
         </Card>
 
@@ -402,6 +394,11 @@ export default function PartnerProfilePage() {
                      <a href={`tel:${partner.phone}`}>
                         <Phone className="mr-2 h-4 w-4" /> Call Now
                     </a>
+                </Button>
+                 <Button variant="outline" asChild>
+                    <Link href={`/send-message?recipientId=${partner.id}&type=to_partner`}>
+                        <Mail className="mr-2 h-4 w-4" /> Send Message
+                    </Link>
                 </Button>
             </div>
              {loggedInUser?.id === partner.id && (
