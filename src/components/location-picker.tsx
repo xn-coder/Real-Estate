@@ -4,9 +4,9 @@
 import React, { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import { LatLngExpression, LatLng, Icon } from 'leaflet'
+import 'leaflet/dist/leaflet.css';
 
 // Leaflet's default icon doesn't work well with bundlers, so we fix it
-import 'leaflet/dist/leaflet.css';
 const markerIcon = new Icon({
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
