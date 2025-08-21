@@ -295,8 +295,8 @@ export default function MarketingKitPage() {
  const handleDownload = async (kit: Kit) => {
     setIsDownloading(kit.id);
     try {
-        const businessName = user?.website?.businessProfile?.businessName || defaultBusinessInfo?.name || "Your Business";
-        const businessPhone = user?.website?.contactDetails?.phone || defaultBusinessInfo?.phone || "Contact Us";
+        const businessName = user?.website?.businessProfile?.businessName || defaultBusinessInfo?.name || "N/A";
+        const businessPhone = user?.website?.contactDetails?.phone || defaultBusinessInfo?.phone || "N/A";
 
         const filesToDownload = kit.files?.length > 0 ? kit.files : [{ url: kit.featureImage, name: `${kit.title}.png`, type: 'image' }];
 
