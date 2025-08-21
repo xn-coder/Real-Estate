@@ -120,7 +120,7 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         profileImage: user.profileImage || '',
-        dob: user.dob ? format(new Date(user.dob), 'yyyy-MM-dd') : '',
+        dob: user.dob ? format(user.dob, 'yyyy-MM-dd') : '',
         gender: user.gender,
         qualification: user.qualification
       });
@@ -469,7 +469,7 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center"><UserIcon className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.name || 'N/A'}</span></div>
-                    <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(new Date(user.dob), 'PPP') : 'N/A'}</span></div>
+                    <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(user.dob, 'PPP') : 'N/A'}</span></div>
                     <div className="flex items-center capitalize"><Info className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.gender || 'N/A'}</span></div>
                     <div className="flex items-center"><GraduationCap className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.qualification || 'N/A'}</span></div>
                 </CardContent>
