@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,7 +25,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { Loader2, ArrowLeft } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, addDoc, Timestamp } from "firebase/firestore"
@@ -141,9 +140,15 @@ export default function RaiseTicketPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-xl font-bold tracking-tight font-headline">Raise a Support Ticket</h1>
+        </div>
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
-          <CardTitle>Raise a Support Ticket</CardTitle>
+          <CardTitle>Submit Your Request</CardTitle>
           <CardDescription>
             Have an issue or a question? Let us know.
           </CardDescription>

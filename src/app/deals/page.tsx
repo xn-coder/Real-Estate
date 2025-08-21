@@ -47,8 +47,31 @@ export default function DealsPage() {
     setIsLoading(true);
     try {
       const leadsCollection = collection(db, "leads");
+      const dealStatuses: Lead['status'][] = ['Deal closed', 'Document Submitted'];
       
-      const q = query(leadsCollection, where("status", "in", ['Deal closed', 'Document Submitted']));
+      let q;
+
+      if (user.role === 'admin') {
+        q = query(leadsCollection, where("status", "in", dealStatuses));
+      } else if (user.role === 'seller') {
+        const propertiesCollection = collection(db, "properties");
+        const sellerPropertiesQuery = query(propertiesCollection, where("email", "==", user.email));
+        const sellerPropertiesSnapshot = await getDocs(sellerPropertiesQuery);
+        const sellerPropertyIds = sellerPropertiesSnapshot.docs.map(doc => doc.id);
+        
+        if (sellerPropertyIds.length === 0) {
+            setDeals([]);
+            setIsLoading(false);
+            return;
+        }
+        
+        q = query(leadsCollection, where("propertyId", "in", sellerPropertyIds), where("status", "in", dealStatuses));
+      } else {
+        // For other roles like partners, show nothing for now, or define their logic.
+        setDeals([]);
+        setIsLoading(false);
+        return;
+      }
 
       const snapshot = await getDocs(q);
       const dealsDataPromises = snapshot.docs.map(async (docData) => {
