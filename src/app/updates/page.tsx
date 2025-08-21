@@ -60,31 +60,22 @@ export default function UpdatesPage() {
         try {
             const messagesCollection = collection(db, "messages");
             
-            const recipientQueries = [];
-            if (isPartner) {
-                recipientQueries.push(where("recipientId", "in", [user.id, "ALL_PARTNERS"]));
-            } else if (isSeller) {
-                 recipientQueries.push(where("recipientId", "in", [user.id, "ALL_SELLERS"]));
-            } else if (isCustomer) {
-                 recipientQueries.push(where("recipientId", "==", user.id)); // Customers only get direct messages
-            }
-             else if (isAdmin) {
-                 recipientQueries.push(where("recipientId", "in", [user.id, "ALL_ADMINS", "ALL_PARTNERS", "ALL_SELLERS"]));
-            }
-
+            const recipientIdClauses: string[] = [user.id];
+            if (isPartner) recipientIdClauses.push("ALL_PARTNERS");
+            if (isSeller) recipientIdClauses.push("ALL_SELLERS");
+            if (isAdmin) recipientIdClauses.push("ALL_ADMINS", "ALL_PARTNERS", "ALL_SELLERS");
+            
             const receivedMessagesList: Message[] = [];
-             if(recipientQueries.length > 0) {
-                const q = query(messagesCollection, ...recipientQueries, orderBy("date", "desc"));
-                const querySnapshot = await getDocs(q);
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    receivedMessagesList.push({
-                        id: doc.id,
-                        ...data,
-                        date: (data.date as Timestamp).toDate(),
-                    } as Message);
-                });
-             }
+            const q = query(messagesCollection, where("recipientId", "in", recipientIdClauses), orderBy("date", "desc"));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                receivedMessagesList.push({
+                    id: doc.id,
+                    ...data,
+                    date: (data.date as Timestamp).toDate(),
+                } as Message);
+            });
             
             const uniqueReceived = Array.from(new Map(receivedMessagesList.map(m => [m.id, m])).values());
             setReceivedMessages(uniqueReceived.sort((a,b) => b.date.getTime() - a.date.getTime()));
@@ -108,7 +99,7 @@ export default function UpdatesPage() {
         } finally {
             setIsLoadingMessages(false);
         }
-    }, [user, isAdmin, isPartner, isSeller, isCustomer]);
+    }, [user, isAdmin, isPartner, isSeller]);
 
     React.useEffect(() => {
         if (user) {
