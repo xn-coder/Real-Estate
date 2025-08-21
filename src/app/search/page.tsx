@@ -39,17 +39,19 @@ export default function SearchPage() {
     }
 
     const searchPromises = []
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
 
     // User Search
     const userQuery = query(
         collection(db, "users"),
-        where('name', '>=', searchTerm),
-        where('name', '<=', searchTerm + '\uf8ff'),
-        limit(10)
+        orderBy('name'),
+        limit(20)
     );
     searchPromises.push(getDocs(userQuery).then(snapshot => 
         snapshot.docs.map(doc => {
             const data = doc.data()
+            if (!data.name || !data.name.toLowerCase().includes(lowerCaseSearchTerm)) return null;
+
             let type: SearchResult['type'] = 'Customer'
             let href = `/manage-customer/${doc.id}`
 
@@ -69,61 +71,40 @@ export default function SearchPage() {
                 href: href,
                 image: data.profileImage,
             } as SearchResult
-        })
+        }).filter(Boolean) as SearchResult[]
     ));
 
-    // Property Search by Title
-    const propertyTitleQuery = query(
+    // Property Search by Title or ID
+    const propertyQuery = query(
         collection(db, "properties"),
-        where('catalogTitle', '>=', searchTerm),
-        where('catalogTitle', '<=', searchTerm + '\uf8ff'),
-        limit(5)
+        limit(20)
     );
-    searchPromises.push(getDocs(propertyTitleQuery).then(snapshot => 
+    searchPromises.push(getDocs(propertyQuery).then(snapshot => 
         snapshot.docs.map(doc => {
             const data = doc.data()
+            const match = data.catalogTitle.toLowerCase().includes(lowerCaseSearchTerm) || doc.id.toLowerCase().includes(lowerCaseSearchTerm);
+            if (!match) return null;
+            
             return {
                 id: doc.id,
                 title: data.catalogTitle,
-                description: `${data.city}, ${data.state}`,
+                description: `ID: ${doc.id}`,
                 type: 'Property',
                 href: `/listings/${doc.id}`,
-                image: '',
+                image: data.featureImage,
             } as SearchResult
-        })
+        }).filter(Boolean) as SearchResult[]
     ));
-
-     // Property Search by ID
-    const propertyIdQuery = query(
-        collection(db, "properties"),
-        where('id', '>=', searchTerm),
-        where('id', '<=', searchTerm + '\uf8ff'),
-        limit(5)
-    );
-     searchPromises.push(getDocs(propertyIdQuery).then(snapshot => 
-        snapshot.docs.map(doc => {
-            const data = doc.data()
-            return {
-                id: doc.id,
-                title: data.catalogTitle,
-                description: `ID: ${data.id}`,
-                type: 'Property',
-                href: `/listings/${doc.id}`,
-                image: '',
-            } as SearchResult
-        })
-    ));
-
+    
     // Lead Search
      const leadQuery = query(
         collection(db, "leads"),
-        where('name', '>=', searchTerm),
-        where('name', '<=', searchTerm + '\uf8ff'),
-        limit(10)
+        limit(20)
     );
      searchPromises.push(getDocs(leadQuery).then(snapshot => 
         snapshot.docs.map(doc => {
             const data = doc.data()
+            if (!data.name || !data.name.toLowerCase().includes(lowerCaseSearchTerm)) return null;
             return {
                 id: doc.id,
                 title: data.name,
@@ -132,19 +113,18 @@ export default function SearchPage() {
                 href: `/manage-customer/${data.customerId}`, // Leads are viewed via customer profile
                 image: '',
             } as SearchResult
-        })
+        }).filter(Boolean) as SearchResult[]
     ));
     
     // Resource Search
     const resourceQuery = query(
         collection(db, "resources"),
-        where('title', '>=', searchTerm),
-        where('title', '<=', searchTerm + '\uf8ff'),
-        limit(10)
+        limit(20)
     );
     searchPromises.push(getDocs(resourceQuery).then(snapshot => 
         snapshot.docs.map(doc => {
             const data = doc.data()
+             if (!data.title || !data.title.toLowerCase().includes(lowerCaseSearchTerm)) return null;
             return {
                 id: doc.id,
                 title: data.title,
@@ -153,19 +133,18 @@ export default function SearchPage() {
                 href: `/support/resource/${doc.id}`,
                 image: data.featureImage,
             } as SearchResult
-        })
+        }).filter(Boolean) as SearchResult[]
     ));
 
     // Marketing Kit Search
     const kitQuery = query(
         collection(db, "marketing_kits"),
-        where('title', '>=', searchTerm),
-        where('title', '<=', searchTerm + '\uf8ff'),
-        limit(10)
+        limit(20)
     );
     searchPromises.push(getDocs(kitQuery).then(snapshot => 
         snapshot.docs.map(doc => {
             const data = doc.data()
+             if (!data.title || !data.title.toLowerCase().includes(lowerCaseSearchTerm)) return null;
             return {
                 id: doc.id,
                 title: data.title,
@@ -174,7 +153,7 @@ export default function SearchPage() {
                 href: `/marketing-kit`,
                 image: data.featureImage,
             } as SearchResult
-        })
+        }).filter(Boolean) as SearchResult[]
     ));
 
 
