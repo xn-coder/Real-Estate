@@ -156,29 +156,46 @@ export default function PropertyDetailsPage() {
 
     const createLead = async (values: EnquiryFormValues) => {
         if (!user || !property) return;
-
+    
         try {
+            const leadsCollection = collection(db, "leads");
+            const existingLeadQuery = query(leadsCollection, where("email", "==", values.email), where("propertyId", "==", property.id));
+            const existingLeadSnapshot = await getDocs(existingLeadQuery);
+    
+            if (!existingLeadSnapshot.empty) {
+                toast({
+                    variant: "default",
+                    title: "Already Enquired",
+                    description: "You have already submitted an enquiry for this property.",
+                });
+                return;
+            }
+    
             const usersCollection = collection(db, "users");
             const emailQuery = query(usersCollection, where("email", "==", values.email));
             const phoneQuery = query(usersCollection, where("phone", "==", values.phone));
-
+    
             const [emailSnapshot, phoneSnapshot] = await Promise.all([
                 getDocs(emailQuery),
                 getDocs(phoneQuery),
             ]);
-
+    
             let customerId: string;
-            
+            let isNewUser = false;
+    
             if (!emailSnapshot.empty) {
                 customerId = emailSnapshot.docs[0].id;
             } else if (!phoneSnapshot.empty) {
+                customerId = phoneSnapshot.docs[0].id;
+            } else {
+                isNewUser = true;
                 customerId = generateUserId("CUS");
                 const [firstName, ...lastNameParts] = values.name.split(' ');
                 const lastName = lastNameParts.join(' ');
                 
                 const salt = await bcrypt.genSalt(10);
                 const hashedPassword = await bcrypt.hash("password", salt);
-
+    
                 await setDoc(doc(db, "users", customerId), {
                     id: customerId,
                     name: values.name,
@@ -217,10 +234,10 @@ export default function PropertyDetailsPage() {
               const newViews = (propertyDoc.data().views || 0) + 1;
               transaction.update(propertyRef, { views: newViews });
             });
-
+    
             setLastLeadId(leadRef.id);
             setEnquiryCount(prev => prev + 1);
-
+    
             toast({
                 title: "Enquiry Submitted",
                 description: "Your enquiry has been sent. We will get back to you shortly.",
@@ -599,5 +616,3 @@ export default function PropertyDetailsPage() {
         </div>
     )
 }
-
-    
