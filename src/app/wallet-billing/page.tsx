@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ChevronRight, Loader2 } from "lucide-react"
+import { ChevronRight, Loader2, DollarSign, Gift } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import { collection, getDocs, query, where } from "firebase/firestore"
@@ -97,6 +97,7 @@ export default function WalletBillingPage() {
     { name: (isAdmin || isSeller) ? "Send Reward Points" : "Claim Reward Points", href: "/wallet-billing/rewards" },
     ...(isAdmin ? [{ name: "Post Reward Offers", href: "/wallet-billing/post-reward" }] : []),
     { name: "Reward Points History", href: "/wallet-billing/rewards/history" },
+    ...(isAdmin ? [{ name: "Claimed Rewards History", href: "/wallet-billing/rewards/claims" }] : []),
     ...(isAdmin || isSeller ? [
       { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
       { name: "Partner Earning", href: "/wallet-billing/payable" },
@@ -107,7 +108,7 @@ export default function WalletBillingPage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
        <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Wallet & Billing</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Wallet &amp; Billing</h1>
       </div>
         
         {(isAdmin || isSeller) && (
