@@ -419,16 +419,16 @@ export default function SettingsPage() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Access
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Add New Admin Access</DialogTitle>
                   <DialogDescription>
                     Create a new admin account with limited access features.
                   </DialogDescription>
                 </DialogHeader>
-                <ScrollArea className="flex-1 -mx-6 px-6">
+                <div className="max-h-[60vh] overflow-y-auto px-1">
                   <Form {...addAccessForm}>
-                    <form onSubmit={addAccessForm.handleSubmit(onAccessSubmit)} className="space-y-4">
+                    <form onSubmit={addAccessForm.handleSubmit(onAccessSubmit)} className="space-y-4 p-1">
                       <div className="grid grid-cols-2 gap-4">
                           <FormField
                               control={addAccessForm.control}
@@ -530,15 +530,15 @@ export default function SettingsPage() {
                           </FormItem>
                         )}
                       />
-                      <DialogFooter className="pt-4">
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Create User
-                        </Button>
-                      </DialogFooter>
                     </form>
                   </Form>
-                </ScrollArea>
+                </div>
+                <DialogFooter className="pt-4">
+                    <Button type="button" onClick={addAccessForm.handleSubmit(onAccessSubmit)} disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create User
+                    </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
         </CardHeader>
