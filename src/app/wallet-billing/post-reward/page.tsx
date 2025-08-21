@@ -24,6 +24,7 @@ import { db } from "@/lib/firebase"
 import { collection, addDoc, doc, setDoc } from "firebase/firestore"
 import { generateUserId } from "@/lib/utils"
 import Image from "next/image"
+import { uploadFile } from "@/services/file-upload-service"
 
 const RichTextEditor = dynamic(() => import('@/components/rich-text-editor'), {
   ssr: false,
@@ -39,18 +40,6 @@ const rewardOfferSchema = z.object({
 
 type RewardOfferFormValues = z.infer<typeof rewardOfferSchema>;
 
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
 
 export default function PostRewardOfferPage() {
     const { toast } = useToast();
@@ -70,15 +59,15 @@ export default function PostRewardOfferPage() {
     const onSubmit = async (values: RewardOfferFormValues) => {
         setIsSubmitting(true);
         try {
-            const imageFileId = generateUserId("FILE");
-            const imageUrl = await fileToDataUrl(values.image);
-            await setDoc(doc(db, "files", imageFileId), { data: imageUrl });
+            const formData = new FormData();
+            formData.append('file', values.image);
+            const imageUrl = await uploadFile(formData);
 
             const offerId = generateUserId("REWARD");
             await setDoc(doc(db, "reward_offers", offerId), {
                 id: offerId,
                 title: values.title,
-                imageId: imageFileId,
+                imageUrl: imageUrl,
                 points: values.points,
                 details: values.details,
             });

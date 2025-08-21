@@ -90,15 +90,12 @@ export default function RewardsPage() {
 
                 // Fetch reward offers
                 const offersSnapshot = await getDocs(collection(db, "reward_offers"));
-                const offersList = await Promise.all(offersSnapshot.docs.map(async (offerDoc) => {
-                    const data = offerDoc.data() as RewardOffer;
-                    const fileDoc = await getDoc(doc(db, "files", data.imageId));
+                const offersList = offersSnapshot.docs.map((offerDoc) => {
                     return {
-                        ...data,
                         id: offerDoc.id,
-                        image: fileDoc.exists() ? fileDoc.data()?.data : 'https://placehold.co/600x400.png',
-                    };
-                }));
+                        ...offerDoc.data(),
+                    } as RewardOffer;
+                });
                 setOffers(offersList);
 
             } catch(e) {
@@ -364,7 +361,7 @@ export default function RewardsPage() {
                             <Card key={offer.id} className="flex flex-col">
                                 <CardHeader className="p-0">
                                     <div className="relative aspect-[16/9]">
-                                         <Image src={offer.image} alt={offer.title} layout="fill" objectFit="cover" className="rounded-t-lg"/>
+                                         <Image src={offer.imageUrl} alt={offer.title} layout="fill" objectFit="cover" className="rounded-t-lg"/>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-4 flex-grow">
