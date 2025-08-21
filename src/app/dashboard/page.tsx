@@ -23,7 +23,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, TooltipProps } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Users, Building, UserPlus, Target, Handshake, ArrowRight, Home } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
@@ -34,6 +34,7 @@ import type { User } from "@/types/user"
 import type { Property } from "@/types/property"
 import Link from "next/link"
 import { format, subMonths, startOfMonth } from "date-fns"
+import { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent"
 
 type SellerStats = {
     totalLeads: number;
@@ -65,6 +66,30 @@ const chartConfig = {
     color: "hsl(var(--secondary-foreground))",
   },
 } satisfies ChartConfig
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-lg border bg-background p-2 shadow-sm">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col">
+            <span className="text-[0.70rem] uppercase text-muted-foreground">
+              Month
+            </span>
+            <span className="font-bold text-muted-foreground">{label}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[0.70rem] uppercase text-muted-foreground">
+              {payload[0].name}
+            </span>
+            <span className="font-bold">{payload[0].value}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
 
 export default function DashboardPage() {
     const { user, isLoading: isUserLoading } = useUser();
@@ -268,15 +293,21 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent className="pl-2">
                              {isLoadingStats ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-                                <ChartContainer config={chartConfig} className="min-h-[250px] h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height={250}>
                                     <BarChart data={monthlyChartData}>
+                                        <defs>
+                                            <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--color-leads)" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="var(--color-leads)" stopOpacity={0.1}/>
+                                            </linearGradient>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
-                                        <Bar dataKey="leads" fill="var(--color-leads)" radius={4} />
+                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `${value}`} />
+                                        <ChartTooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                                        <Bar dataKey="leads" name="Leads" fill="url(#colorLeads)" radius={[4, 4, 0, 0]} />
                                     </BarChart>
-                                </ChartContainer>
+                                </ResponsiveContainer>
                             )}
                         </CardContent>
                     </Card>
@@ -286,15 +317,21 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent className="pl-2">
                              {isLoadingStats ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-                                <ChartContainer config={chartConfig} className="min-h-[250px] h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height={250}>
                                     <BarChart data={monthlyChartData}>
+                                         <defs>
+                                            <linearGradient id="colorCustomers" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--color-customers)" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="var(--color-customers)" stopOpacity={0.1}/>
+                                            </linearGradient>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
-                                        <Bar dataKey="customers" fill="var(--color-customers)" radius={4} />
+                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `${value}`} />
+                                        <ChartTooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                                        <Bar dataKey="customers" name="Customers" fill="url(#colorCustomers)" radius={[4, 4, 0, 0]} />
                                     </BarChart>
-                                </ChartContainer>
+                                </ResponsiveContainer>
                             )}
                         </CardContent>
                     </Card>
@@ -304,15 +341,21 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent className="pl-2">
                              {isLoadingStats ? <div className="h-[250px] w-full flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-                                <ChartContainer config={chartConfig} className="min-h-[250px] h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height={250}>
                                     <BarChart data={monthlyChartData}>
+                                         <defs>
+                                            <linearGradient id="colorPartners" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="var(--color-partners)" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="var(--color-partners)" stopOpacity={0.1}/>
+                                            </linearGradient>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                                        <ChartTooltip content={<ChartTooltipContent />} />
-                                        <Bar dataKey="partners" fill="var(--color-partners)" radius={4} />
+                                        <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `${value}`} />
+                                        <ChartTooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                                        <Bar dataKey="partners" name="Partners" fill="url(#colorPartners)" radius={[4, 4, 0, 0]} />
                                     </BarChart>
-                                </ChartContainer>
+                                </ResponsiveContainer>
                             )}
                         </CardContent>
                     </Card>
