@@ -402,13 +402,12 @@ export default function SchedulePage() {
                         {!isCustomer && <TableHead>Client</TableHead>}
                         <TableHead>Property</TableHead>
                         <TableHead>Status</TableHead>
-                        {!isCustomer && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                      {isLoading ? (
                         <TableRow>
-                            <TableCell colSpan={isCustomer ? 3 : 5} className="h-24 text-center">
+                            <TableCell colSpan={isCustomer ? 3 : 4} className="h-24 text-center">
                                 <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                             </TableCell>
                         </TableRow>
@@ -431,23 +430,11 @@ export default function SchedulePage() {
                                 )}
                             </TableCell>
                             <TableCell>{statusBadge(appointment.status)}</TableCell>
-                            {!isCustomer && (
-                                <TableCell className="text-right">
-                                    {appointment.status === 'Scheduled' ? (
-                                        <Button size="sm" onClick={() => handleConfirmVisitClick(appointment)} disabled={!!isUpdating}>
-                                            {isUpdating === appointment.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                            Confirm Visit
-                                        </Button>
-                                    ) : (
-                                        <span>-</span>
-                                    )}
-                                </TableCell>
-                            )}
                         </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={isCustomer ? 3 : 5} className="text-center h-24 text-muted-foreground">
+                            <TableCell colSpan={isCustomer ? 3 : 4} className="text-center h-24 text-muted-foreground">
                                 No past appointments.
                             </TableCell>
                          </TableRow>
