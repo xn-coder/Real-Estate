@@ -39,7 +39,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
 import { generateUserId } from "@/lib/utils"
 import bcrypt from "bcryptjs"
-import 'leaflet/dist/leaflet.css'; // Explicitly import leaflet css
+import { verifyOtp, sendOtp } from "@/services/otp-service"
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -96,6 +96,11 @@ export default function PropertyDetailsPage() {
     const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
     const [isScheduling, setIsScheduling] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isOtpDialogOpen, setIsOtpDialogOpen] = React.useState(false);
+    const [otp, setOtp] = React.useState('');
+    const [enquiryData, setEnquiryData] = React.useState<EnquiryFormValues | null>(null);
+    const [isVerifyingOtp, setIsVerifyingOtp] = React.useState(false);
+
 
     const isOwner = user?.role === 'admin' || (user?.email && user.email === property?.email);
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
@@ -113,14 +118,40 @@ export default function PropertyDetailsPage() {
     const onEnquirySubmit = async (values: EnquiryFormValues) => {
         setIsSubmittingEnquiry(true);
         try {
-            await createLead(values);
+            await sendOtp(values.email, values.name);
+            setEnquiryData(values);
+            setIsOtpDialogOpen(true);
+            toast({
+                title: "OTP Sent",
+                description: "An OTP has been sent to your email address.",
+            });
         } catch (error) {
-             console.error("Error submitting enquiry:", error);
-             toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry. Please try again." });
+            console.error("Error sending OTP:", error);
+            toast({ variant: "destructive", title: "Error", description: "Failed to send OTP. Please try again." });
         } finally {
             setIsSubmittingEnquiry(false);
         }
     };
+    
+    const handleOtpVerification = async () => {
+        if (!enquiryData || !otp) return;
+        setIsVerifyingOtp(true);
+        try {
+            const isValid = await verifyOtp(enquiryData.email, otp);
+            if(isValid) {
+                setIsOtpDialogOpen(false);
+                setOtp('');
+                await createLead(enquiryData);
+            } else {
+                 toast({ variant: "destructive", title: "Invalid OTP", description: "The OTP you entered is incorrect." });
+            }
+        } catch (error) {
+             toast({ variant: "destructive", title: "Error", description: "Failed to verify OTP." });
+        } finally {
+            setIsVerifyingOtp(false);
+        }
+    }
+
 
     const createLead = async (values: EnquiryFormValues) => {
         if (!user || !property) return;
@@ -148,7 +179,7 @@ export default function PropertyDetailsPage() {
             
             if (!phoneLeadSnapshot.empty) {
                  toast({
-                    variant: "default",
+                    variant: "destructive",
                     title: "Already Enquired",
                     description: "An enquiry for this property with this phone number already exists.",
                 });
@@ -548,6 +579,32 @@ export default function PropertyDetailsPage() {
                 </div>
             </div>
             
+             <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Verify Your Email</DialogTitle>
+                        <DialogDescription>
+                            We've sent a 6-digit code to {enquiryData?.email}. Please enter it below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Input 
+                            placeholder="Enter OTP"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            maxLength={6}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsOtpDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleOtpVerification} disabled={isVerifyingOtp}>
+                            {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Verify & Submit
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
