@@ -238,6 +238,8 @@ export default function ManageWebsitePage() {
     )
   }
 
+  const fullAddress = [displayedData.contactDetails?.address, displayedData.contactDetails?.city, displayedData.contactDetails?.state, displayedData.contactDetails?.pincode].filter(Boolean).join(', ');
+
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
@@ -276,7 +278,7 @@ export default function ManageWebsitePage() {
           </CardHeader>
           <CardContent className="flex items-center gap-4">
             <Avatar className="h-20 w-20"><AvatarImage src={displayedData.businessProfile?.businessLogo} /><AvatarFallback>Logo</AvatarFallback></Avatar>
-            <p className="text-lg font-semibold">{displayedData.businessProfile?.businessName}</p>
+            <p className="text-lg font-semibold">{displayedData.businessProfile?.businessName || 'Not set'}</p>
           </CardContent>
         </Card>
 
@@ -420,7 +422,7 @@ export default function ManageWebsitePage() {
             </div>
             <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Edit Contact Details</DialogTitle></DialogHeader>
                  <Form {...contactDetailsForm}>
                   <form onSubmit={contactDetailsForm.handleSubmit((values) => handleSave('contactDetails', values))} className="space-y-4">
@@ -440,10 +442,10 @@ export default function ManageWebsitePage() {
             </Dialog>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><strong>Name:</strong> {displayedData.contactDetails?.name}</p>
-            <p><strong>Phone:</strong> {displayedData.contactDetails?.phone}</p>
-            <p><strong>Email:</strong> {displayedData.contactDetails?.email}</p>
-            <p><strong>Address:</strong> {`${displayedData.contactDetails?.address}, ${displayedData.contactDetails?.city}, ${displayedData.contactDetails?.state} - ${displayedData.contactDetails?.pincode}`}</p>
+            <p><strong>Name:</strong> {displayedData.contactDetails?.name || 'Not set'}</p>
+            <p><strong>Phone:</strong> {displayedData.contactDetails?.phone || 'Not set'}</p>
+            <p><strong>Email:</strong> {displayedData.contactDetails?.email || 'Not set'}</p>
+            <p><strong>Address:</strong> {fullAddress || 'Not set'}</p>
           </CardContent>
         </Card>
 
@@ -456,7 +458,7 @@ export default function ManageWebsitePage() {
             </div>
              <Dialog>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Pencil className="h-4 w-4" /></Button></DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>Edit About & Legal</DialogTitle></DialogHeader>
                  <Form {...aboutLegalForm}>
                   <form onSubmit={aboutLegalForm.handleSubmit((values) => handleSave('aboutLegal', values))} className="space-y-4">
