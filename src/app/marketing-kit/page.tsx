@@ -288,6 +288,7 @@ export default function MarketingKitPage() {
 
 
                 // Trigger download
+                const link = document.createElement('a');
                 const safeTitle = kit.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                 const safeFileName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
                 link.download = `${safeTitle}_${safeFileName}`;
@@ -500,5 +501,3 @@ export default function MarketingKitPage() {
     </div>
   )
 }
-
-    
