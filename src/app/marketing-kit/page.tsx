@@ -235,34 +235,60 @@ export default function MarketingKitPage() {
     }
 }
 
-  const handleDownload = (kit: Kit) => {
+ const handleDownload = async (kit: Kit) => {
     setIsDownloading(kit.id);
     try {
-      const filesToDownload =
-        kit.files && kit.files.length > 0
-          ? kit.files
-          : kit.downloadUrl
-          ? [
-              {
-                url: kit.downloadUrl,
-                name: `${kit.title.replace(/\s+/g, '_')}.${kit.downloadUrl.split('?')[0].split('.').pop()}`,
-              },
-            ]
-          : [];
-  
-      if (filesToDownload.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'No files',
-          description: 'This kit has no downloadable files.',
-        });
-        return;
-      }
-  
-      // Open each file in a new tab for the user to download
-      for (const file of filesToDownload) {
-        window.open(file.url, '_blank');
-      }
+        const businessName = user?.website?.businessProfile?.businessName || defaultBusinessInfo?.name || "Your Business";
+        const businessPhone = user?.website?.contactDetails?.phone || defaultBusinessInfo?.phone || "Contact Us";
+
+        const filesToDownload = kit.files?.length > 0 ? kit.files : [{ url: kit.featureImage, name: `${kit.title}.png`, type: 'image' }];
+
+        for (const file of filesToDownload) {
+            if (file.type !== 'image') {
+                window.open(file.url, '_blank');
+                continue;
+            }
+
+            const image = new window.Image();
+            image.crossOrigin = 'Anonymous'; // Required for fetching images from different origins
+            image.src = file.url;
+
+            image.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = image.width;
+                canvas.height = image.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                // Draw original image
+                ctx.drawImage(image, 0, 0);
+
+                // Add watermark
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+
+                ctx.fillStyle = 'white';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(businessName, 20, canvas.height - 30);
+                
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(businessPhone, canvas.width - 20, canvas.height - 30);
+
+
+                // Trigger download
+                const link = document.createElement('a');
+                link.download = `watermarked_${file.name}`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+
+            image.onerror = () => {
+                toast({ variant: 'destructive', title: 'Download Failed', description: `Could not load image for ${file.name}.` });
+            }
+        }
     } catch (error) {
         console.error('Download error for kit:', kit.title, error);
         toast({ variant: 'destructive', title: 'Download Failed', description: `Could not initiate download for ${kit.title}. Please try again.` });
