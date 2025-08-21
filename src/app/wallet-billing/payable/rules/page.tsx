@@ -1,21 +1,12 @@
-
 'use client'
 
 import * as React from "react"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle, Pencil } from "lucide-react"
+import { Loader2, ArrowLeft, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
-import { collection, getDocs, query, orderBy, doc, updateDoc, setDoc, getDoc } from "firebase/firestore"
+import { doc, updateDoc, setDoc, getDoc } from "firebase/firestore"
 import type { Property, EarningRuleValue } from "@/types/property"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
@@ -26,7 +17,6 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
 
 const earningRuleValueSchema = z.object({
@@ -67,14 +57,10 @@ const partnerRoles = {
 
 export default function PartnerEarningRulesPage() {
     const { toast } = useToast()
-    const [properties, setProperties] = React.useState<Property[]>([])
     const [defaultRules, setDefaultRules] = React.useState<Property['earningRules']>({});
     const [isLoading, setIsLoading] = React.useState(true)
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
-    const [isDefaultRules, setIsDefaultRules] = React.useState(false);
-
-    const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null);
 
     const form = useForm<EarningRuleFormValues>({
         resolver: zodResolver(earningRuleSchema),
@@ -86,10 +72,6 @@ export default function PartnerEarningRulesPage() {
     const fetchData = React.useCallback(async () => {
         setIsLoading(true);
         try {
-            const propertiesSnapshot = await getDocs(query(collection(db, "properties"), orderBy("catalogTitle")));
-            const propsList = propertiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
-            setProperties(propsList);
-
             const globalDefaultsDocRef = doc(db, 'app_settings', 'default_earning_rules');
             const docSnap = await getDoc(globalDefaultsDocRef);
             if (docSnap.exists()) {
@@ -108,47 +90,30 @@ export default function PartnerEarningRulesPage() {
         fetchData();
     }, [fetchData]);
     
-    const openDialog = (property?: Property) => {
-        if (property) {
-            setSelectedProperty(property);
-            setIsDefaultRules(false);
-            form.reset({
-                propertyId: property.id,
-                earningRules: property.earningRules || {},
-            });
-        } else {
-            setSelectedProperty(null);
-            setIsDefaultRules(true);
-            getDoc(doc(db, 'app_settings', 'default_earning_rules')).then(docSnap => {
-                if (docSnap.exists()) {
-                    form.reset({
-                        propertyId: '',
-                        earningRules: docSnap.data().earningRules || {},
-                    });
-                } else {
-                    form.reset({
-                        propertyId: '',
-                        earningRules: {},
-                    });
-                }
-             });
-        }
+    const openDialog = () => {
+        getDoc(doc(db, 'app_settings', 'default_earning_rules')).then(docSnap => {
+            if (docSnap.exists()) {
+                form.reset({
+                    earningRules: docSnap.data().earningRules || {},
+                });
+            } else {
+                form.reset({
+                    earningRules: {},
+                });
+            }
+        });
         setIsDialogOpen(true);
     }
 
     const onSubmit = async (values: EarningRuleFormValues) => {
         setIsSubmitting(true);
         try {
-            const docRef = isDefaultRules 
-                ? doc(db, "app_settings", "default_earning_rules")
-                : doc(db, "properties", selectedProperty!.id);
-            
+            const docRef = doc(db, "app_settings", "default_earning_rules");
             await setDoc(docRef, { earningRules: values.earningRules }, { merge: true });
 
             toast({ title: "Success", description: "Earning rules have been updated successfully." });
             setIsDialogOpen(false);
             form.reset();
-            setSelectedProperty(null);
             fetchData();
         } catch (error) {
             console.error("Error setting earning rule:", error);
@@ -232,7 +197,7 @@ export default function PartnerEarningRulesPage() {
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Earning Rules</h1>
+                    <h1 className="text-2xl font-bold tracking-tight font-headline">Default Earning Rules</h1>
                 </div>
             </div>
 
@@ -241,7 +206,7 @@ export default function PartnerEarningRulesPage() {
                     <div className="flex justify-between items-center">
                         <div>
                             <CardTitle>Default Earning Rules</CardTitle>
-                            <CardDescription>These rules apply to all properties unless overridden.</CardDescription>
+                            <CardDescription>These rules apply to all properties unless overridden on a per-property basis.</CardDescription>
                         </div>
                         <Button variant="outline" onClick={() => openDialog()}>
                             <Pencil className="mr-2 h-4 w-4" /> Edit Defaults
@@ -261,54 +226,11 @@ export default function PartnerEarningRulesPage() {
                     </div>
                 </CardContent>
             </Card>
-            
-             <Card>
-                <CardHeader>
-                    <CardTitle>Per-Property Earning Rules</CardTitle>
-                    <CardDescription>Override default rules for specific properties. Unset rules will use the defaults.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="border rounded-lg">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Property</TableHead>
-                                    <TableHead>Affiliate</TableHead>
-                                    <TableHead>Super Affiliate</TableHead>
-                                    <TableHead>Associate</TableHead>
-                                    <TableHead>Channel</TableHead>
-                                    <TableHead>Franchisee</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                             <TableBody>
-                                {isLoading ? (
-                                    <TableRow><TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
-                                ) : properties.length === 0 ? (
-                                    <TableRow><TableCell colSpan={8} className="h-24 text-center">No properties found.</TableCell></TableRow>
-                                ) : (
-                                    properties.map(prop => (
-                                        <TableRow key={prop.id}>
-                                            <TableCell className="font-medium">{prop.catalogTitle}</TableCell>
-                                            {(Object.keys(partnerRoles) as Array<keyof typeof partnerRoles>).map(role => (
-                                                <TableCell key={role}>{formatValue(prop.earningRules?.[role])}</TableCell>
-                                            ))}
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="sm" onClick={() => openDialog(prop)}>Edit</Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                             </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
 
-             <Dialog open={isDialogOpen} onOpenChange={open => { if(!open) setSelectedProperty(null); setIsDialogOpen(open); }}>
+             <Dialog open={isDialogOpen} onOpenChange={open => { if(!open) { setIsDialogOpen(open) }}}>
                 <DialogContent className="max-w-4xl max-h-[90vh]">
                     <DialogHeader>
-                        <DialogTitle>{selectedProperty ? `Edit Earning Rules for ${selectedProperty.catalogTitle}` : "Set Default Earning Rules"}</DialogTitle>
+                        <DialogTitle>Set Default Earning Rules</DialogTitle>
                     </DialogHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
