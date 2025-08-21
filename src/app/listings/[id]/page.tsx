@@ -35,7 +35,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { sendOtp, verifyOtp } from "@/services/otp-service"
 import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
 import { generateUserId } from "@/lib/utils"
@@ -97,12 +96,6 @@ export default function PropertyDetailsPage() {
     const [isScheduling, setIsScheduling] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
-    // OTP State
-    const [isOtpDialogOpen, setIsOtpDialogOpen] = React.useState(false);
-    const [otpValue, setOtpValue] = React.useState("");
-    const [isVerifyingOtp, setIsVerifyingOtp] = React.useState(false);
-    const [enquiryData, setEnquiryData] = React.useState<EnquiryFormValues | null>(null);
-
     const isOwner = user?.role === 'admin' || (user?.email && user.email === property?.email);
     const isPartner = user?.role && ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'].includes(user.role);
 
@@ -119,40 +112,14 @@ export default function PropertyDetailsPage() {
     const onEnquirySubmit = async (values: EnquiryFormValues) => {
         setIsSubmittingEnquiry(true);
         try {
-            await sendOtp(values.email, values.name);
-            setEnquiryData(values);
-            setIsOtpDialogOpen(true);
-            toast({
-                title: "OTP Sent",
-                description: `An OTP has been sent to ${values.email}.`,
-            });
+            await createLead(values);
         } catch (error) {
-             console.error("Error sending OTP:", error);
-             toast({ variant: "destructive", title: "Error", description: "Failed to send OTP. Please try again." });
+             console.error("Error creating lead:", error);
+             toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry. Please try again." });
         } finally {
             setIsSubmittingEnquiry(false);
         }
     };
-
-    const handleVerifyOtp = async () => {
-        if (!enquiryData || !otpValue) return;
-        setIsVerifyingOtp(true);
-        try {
-            const isValid = await verifyOtp(enquiryData.email, otpValue);
-            if(isValid) {
-                await createLead(enquiryData);
-                setIsOtpDialogOpen(false);
-                setOtpValue("");
-            } else {
-                 toast({ variant: "destructive", title: "Invalid OTP", description: "The OTP you entered is incorrect." });
-            }
-        } catch (error) {
-            console.error("Error verifying OTP:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to verify OTP." });
-        } finally {
-            setIsVerifyingOtp(false);
-        }
-    }
 
     const createLead = async (values: EnquiryFormValues) => {
         if (!user || !property) return;
@@ -171,32 +138,32 @@ export default function PropertyDetailsPage() {
                 return;
             }
     
+            // Step 1: Find or Create Customer
             const usersCollection = collection(db, "users");
             const emailQuery = query(usersCollection, where("email", "==", values.email));
             const phoneQuery = query(usersCollection, where("phone", "==", values.phone));
-    
+            
             const [emailSnapshot, phoneSnapshot] = await Promise.all([
                 getDocs(emailQuery),
                 getDocs(phoneQuery),
             ]);
     
             let customerId: string;
-            let isNewUser = false;
     
             if (!emailSnapshot.empty) {
                 customerId = emailSnapshot.docs[0].id;
             } else if (!phoneSnapshot.empty) {
                 customerId = phoneSnapshot.docs[0].id;
             } else {
-                isNewUser = true;
+                // Create a new customer
                 customerId = generateUserId("CUS");
                 const [firstName, ...lastNameParts] = values.name.split(' ');
                 const lastName = lastNameParts.join(' ');
                 
                 const salt = await bcrypt.genSalt(10);
-                const hashedPassword = await bcrypt.hash("password", salt);
+                const hashedPassword = await bcrypt.hash("password", salt); // Default password
     
-                await setDoc(doc(db, "users", customerId), {
+                const newUserData = {
                     id: customerId,
                     name: values.name,
                     firstName: firstName,
@@ -212,19 +179,24 @@ export default function PropertyDetailsPage() {
                     pincode: '',
                     country: values.country,
                     createdAt: Timestamp.now(),
-                });
+                };
+                await setDoc(doc(db, "users", customerId), newUserData);
             }
-            
-            const leadRef = await addDoc(collection(db, "leads"), {
+    
+            // Step 2: Create the Lead with the customerId
+            const leadData = {
                 ...values,
                 propertyId: property.id,
-                partnerId: user.id,
+                partnerId: user.id, // The partner who submitted the enquiry
                 customerId: customerId,
                 status: "New lead",
                 dealStatus: "New lead",
                 createdAt: Timestamp.now(),
-            });
-            
+            };
+    
+            const leadRef = await addDoc(collection(db, "leads"), leadData);
+    
+            // Step 3: Update property views
             await runTransaction(db, async (transaction) => {
               const propertyRef = doc(db, 'properties', propertyId);
               const propertyDoc = await transaction.get(propertyRef);
@@ -249,6 +221,7 @@ export default function PropertyDetailsPage() {
             toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry." });
         }
     };
+
 
      const handleScheduleVisit = async () => {
         if (!visitDate || !lastLeadId || !user || !property) return;
@@ -559,33 +532,6 @@ export default function PropertyDetailsPage() {
                     )}
                 </div>
             </div>
-
-             <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Verify Your Email</DialogTitle>
-                        <DialogDescription>
-                           We've sent a 6-digit code to {enquiryData?.email}. Please enter it below.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Input 
-                            value={otpValue}
-                            onChange={(e) => setOtpValue(e.target.value)}
-                            maxLength={6}
-                            placeholder="Enter OTP"
-                            className="text-center text-lg tracking-widest"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsOtpDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleVerifyOtp} disabled={isVerifyingOtp}>
-                            {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Verify & Submit
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
             
             <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
                 <DialogContent>
