@@ -316,23 +316,33 @@ export default function AddPropertyPage() {
         setIsSubmitting(true);
         try {
             const propertyId = propertyCode || generateUserId("PROP");
-
+    
+            // Create a list of all upload promises
+            const uploadPromises = [];
+    
+            // Add feature image upload to promises
             const featureImageFormData = new FormData();
             featureImageFormData.append('file', values.featureImage);
-            const featureImageUrl = await uploadFile(featureImageFormData);
-            
-            const slidesWithUrls = await Promise.all(
-                values.slides.map(async (slide) => {
-                    const slideImageFormData = new FormData();
-                    slideImageFormData.append('file', slide.image);
-                    const slideImageUrl = await uploadFile(slideImageFormData);
-                    return {
-                        title: slide.title,
-                        image: slideImageUrl,
-                    };
-                })
-            );
-
+            uploadPromises.push(uploadFile(featureImageFormData));
+    
+            // Add slideshow images to promises
+            values.slides.forEach(slide => {
+                const slideImageFormData = new FormData();
+                slideImageFormData.append('file', slide.image);
+                uploadPromises.push(uploadFile(slideImageFormData));
+            });
+    
+            // Execute all uploads in parallel
+            const uploadedUrls = await Promise.all(uploadPromises);
+    
+            const featureImageUrl = uploadedUrls[0];
+            const slideImageUrls = uploadedUrls.slice(1);
+    
+            const slidesWithUrls = values.slides.map((slide, index) => ({
+                title: slide.title,
+                image: slideImageUrls[index],
+            }));
+    
             const propertyData = {
                 ...values,
                 id: propertyId,
@@ -340,15 +350,15 @@ export default function AddPropertyPage() {
                 featureImage: featureImageUrl,
                 slides: slidesWithUrls,
             };
-
+    
             await setDoc(doc(db, "properties", propertyId), propertyData);
-
+    
             toast({
                 title: "Property Submitted",
                 description: "Your property has been submitted for verification.",
             });
             router.push("/listings/list");
-
+    
         } catch (error) {
             console.error("Error adding property:", error);
             toast({
