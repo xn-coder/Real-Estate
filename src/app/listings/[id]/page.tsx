@@ -75,7 +75,6 @@ const enquiryFormSchema = z.object({
   city: z.string().min(1, "City is required."),
   state: z.string().min(1, "State is required."),
   country: z.string().min(1, "Country is required."),
-  otp: z.string().length(6, "OTP must be 6 digits.").optional(),
 });
 type EnquiryFormValues = z.infer<typeof enquiryFormSchema>;
 
@@ -92,8 +91,6 @@ export default function PropertyDetailsPage() {
     const [enquiryCount, setEnquiryCount] = React.useState(0);
     const [isLoading, setIsLoading] = React.useState(true)
     const [isSubmittingEnquiry, setIsSubmittingEnquiry] = React.useState(false);
-    const [isOtpSending, setIsOtpSending] = React.useState(false);
-    const [isOtpDialogOpen, setIsOtpDialogOpen] = React.useState(false);
     const [isScheduleDialogOpen, setIsScheduleDialogOpen] = React.useState(false);
     const [lastLeadId, setLastLeadId] = React.useState<string | null>(null);
     const [visitDate, setVisitDate] = React.useState<Date | undefined>(new Date());
@@ -111,7 +108,7 @@ export default function PropertyDetailsPage() {
     
     const enquiryForm = useForm<EnquiryFormValues>({
         resolver: zodResolver(enquiryFormSchema),
-        defaultValues: { name: "", phone: "", email: "", city: "", state: "", country: "", otp: "" },
+        defaultValues: { name: "", phone: "", email: "", city: "", state: "", country: "" },
     });
     
     const createLead = async (values: EnquiryFormValues) => {
@@ -119,8 +116,6 @@ export default function PropertyDetailsPage() {
 
         setIsSubmittingEnquiry(true);
         try {
-            const { otp, ...leadData } = values;
-
             const usersCollection = collection(db, "users");
             const emailQuery = query(usersCollection, where("email", "==", values.email));
             const phoneQuery = query(usersCollection, where("phone", "==", values.phone));
@@ -169,7 +164,7 @@ export default function PropertyDetailsPage() {
             
             // Create lead record
             const leadRef = await addDoc(collection(db, "leads"), {
-                ...leadData,
+                ...values,
                 propertyId: property.id,
                 partnerId: user.id,
                 customerId: customerId,
@@ -196,58 +191,12 @@ export default function PropertyDetailsPage() {
                 description: "Your enquiry has been sent. We will get back to you shortly.",
             });
             enquiryForm.reset();
-            setIsOtpDialogOpen(false);
             setIsScheduleDialogOpen(true);
         } catch (error) {
             console.error("Error submitting enquiry:", error);
             toast({ variant: "destructive", title: "Error", description: "Failed to submit enquiry." });
         } finally {
             setIsSubmittingEnquiry(false);
-        }
-    };
-    
-    const handleInitiateEnquiry = async () => {
-        if (!user) return;
-        
-        const isFormValid = await enquiryForm.trigger(["name", "phone", "email", "city", "state", "country"]);
-
-        if (!isFormValid) {
-            return;
-        }
-
-        setIsOtpSending(true);
-        try {
-            const email = enquiryForm.getValues("email");
-            await sendOtp(email);
-            setIsOtpDialogOpen(true);
-            toast({ title: "OTP Sent", description: `An OTP has been sent to ${email}.` });
-        } catch (error) {
-            console.error("Error sending OTP:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to send OTP." });
-        } finally {
-            setIsOtpSending(false);
-        }
-    }
-
-    const handleVerifyOtpAndSubmit = async () => {
-        const otp = enquiryForm.getValues("otp");
-        const email = enquiryForm.getValues("email");
-        if (!otp || otp.length !== 6) {
-            enquiryForm.setError("otp", { message: "Please enter a valid 6-digit OTP."});
-            return;
-        }
-
-        try {
-            const isValid = await verifyOtp(email, otp);
-            if (isValid) {
-                toast({ title: "OTP Verified", description: "Submitting your enquiry..." });
-                await createLead(enquiryForm.getValues());
-            } else {
-                enquiryForm.setError("otp", { message: "Invalid OTP. Please try again." });
-            }
-        } catch (error) {
-            console.error("Error verifying OTP:", error);
-            toast({ variant: "destructive", title: "Error", description: "Failed to verify OTP." });
         }
     };
 
@@ -540,7 +489,7 @@ export default function PropertyDetailsPage() {
                             </CardHeader>
                             <CardContent>
                                 <Form {...enquiryForm}>
-                                    <form onSubmit={(e) => { e.preventDefault(); handleInitiateEnquiry(); }} className="space-y-4">
+                                    <form onSubmit={enquiryForm.handleSubmit(createLead)} className="space-y-4">
                                         <FormField control={enquiryForm.control} name="name" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Full Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         <FormField control={enquiryForm.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Phone</FormLabel> <FormControl><Input type="tel" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         <FormField control={enquiryForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel className="text-xs">Email</FormLabel> <FormControl><Input type="email" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -549,8 +498,8 @@ export default function PropertyDetailsPage() {
                                             <FormField control={enquiryForm.control} name="state" render={({ field }) => ( <FormItem className="col-span-1"> <FormLabel className="text-xs">State</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                             <FormField control={enquiryForm.control} name="country" render={({ field }) => ( <FormItem className="col-span-1"> <FormLabel className="text-xs">Country</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                         </div>
-                                        <Button type="submit" className="w-full" disabled={isSubmittingEnquiry || isOtpSending}>
-                                            {(isSubmittingEnquiry || isOtpSending) && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                        <Button type="submit" className="w-full" disabled={isSubmittingEnquiry}>
+                                            {isSubmittingEnquiry && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                             Submit Enquiry
                                         </Button>
                                     </form>
@@ -560,46 +509,6 @@ export default function PropertyDetailsPage() {
                     )}
                 </div>
             </div>
-
-            <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
-                 <Form {...enquiryForm}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Verify Your Email</DialogTitle>
-                            <DialogDescription>
-                                We've sent a 6-digit OTP to {enquiryForm.getValues("email")}. 
-                                Please enter it below to submit your enquiry.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-2 py-4">
-                            <FormField 
-                                control={enquiryForm.control} 
-                                name="otp" 
-                                render={({ field }) => ( 
-                                    <FormItem>
-                                        <FormLabel>Enter OTP</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                placeholder="_ _ _ _ _ _" 
-                                                {...field}
-                                                disabled={isSubmittingEnquiry}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} 
-                            />
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setIsOtpDialogOpen(false)} disabled={isSubmittingEnquiry}>Cancel</Button>
-                            <Button type="button" onClick={handleVerifyOtpAndSubmit} disabled={isSubmittingEnquiry}>
-                                {isSubmittingEnquiry && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                Verify & Submit
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                 </Form>
-            </Dialog>
             
             <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
                 <DialogContent>
@@ -630,3 +539,5 @@ export default function PropertyDetailsPage() {
         </div>
     )
 }
+
+    
