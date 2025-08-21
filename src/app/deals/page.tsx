@@ -43,7 +43,7 @@ export default function DealsPage() {
     try {
       const leadsCollection = collection(db, "leads");
       
-      const q = query(leadsCollection, where("status", "==", 'Completed'));
+      const q = query(leadsCollection, where("status", "==", 'Deal closed'));
 
       const snapshot = await getDocs(q);
       const dealsDataPromises = snapshot.docs.map(async (docData) => {
@@ -168,4 +168,3 @@ export default function DealsPage() {
     </div>
   )
 }
-

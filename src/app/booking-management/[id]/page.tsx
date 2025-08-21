@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
 import { generateUserId } from "@/lib/utils"
 import { uploadFile } from "@/services/file-upload-service"
+import { Label } from "@/components/ui/label"
 
 // Data types
 type BookingDetails = {
@@ -38,6 +39,7 @@ export default function BookingDetailsPage() {
     const [isCompleting, setIsCompleting] = React.useState(false)
     const [filesToUpload, setFilesToUpload] = React.useState<File[]>([]);
     const [isUploading, setIsUploading] = React.useState(false);
+    const [closingAmount, setClosingAmount] = React.useState<number | string>("");
 
 
     React.useEffect(() => {
@@ -54,6 +56,10 @@ export default function BookingDetailsPage() {
                     return;
                 }
                 const leadData = { id: leadDoc.id, ...leadDoc.data() } as Lead;
+                
+                if (leadData.closingAmount) {
+                    setClosingAmount(leadData.closingAmount);
+                }
 
                 const [propertyDoc, customerDoc, partnerDoc] = await Promise.all([
                     leadData.propertyId ? getDoc(doc(db, "properties", leadData.propertyId)) : null,
@@ -88,6 +94,12 @@ export default function BookingDetailsPage() {
             toast({ variant: "destructive", title: "Error", description: "Missing booking details to complete the deal." });
             return;
         }
+
+        const finalAmount = parseFloat(closingAmount as string);
+        if (isNaN(finalAmount) || finalAmount <= 0) {
+            toast({ variant: "destructive", title: "Error", description: "Please enter a valid closing deal amount." });
+            return;
+        }
         
         if (filesToUpload.length === 0) {
             toast({ variant: "destructive", title: "Error", description: "Please upload at least one document to close the deal." });
@@ -112,7 +124,7 @@ export default function BookingDetailsPage() {
             await runTransaction(db, async (transaction) => {
                 const customerId = details.customer!.id;
                 
-                // Find seller by property email to prepare for wallet update.
+                // READ FIRST: Find seller by property email to prepare for wallet update.
                 const sellersQuery = query(collection(db, "users"), where("email", "==", details.property!.email));
                 const sellersSnapshot = await getDocs(sellersQuery);
                 
@@ -121,7 +133,6 @@ export default function BookingDetailsPage() {
                 if (!sellersSnapshot.empty) {
                     const seller = sellersSnapshot.docs[0];
                     sellerWalletRef = doc(db, "wallets", seller.id);
-                    // READ FIRST
                     sellerWalletDoc = await transaction.get(sellerWalletRef);
                 }
 
@@ -132,7 +143,7 @@ export default function BookingDetailsPage() {
                 });
                 
                 const leadRef = doc(db, "leads", details.lead.id);
-                transaction.update(leadRef, { status: 'Completed' });
+                transaction.update(leadRef, { status: 'Document Submitted', closingAmount: finalAmount });
     
                 const customerRef = doc(db, "users", customerId);
                 transaction.update(customerRef, { status: 'active' });
@@ -143,13 +154,13 @@ export default function BookingDetailsPage() {
                 // Update seller's wallet if they were found
                 if (sellerWalletRef && sellerWalletDoc) {
                     const currentRevenue = sellerWalletDoc.exists() ? sellerWalletDoc.data().revenue || 0 : 0;
-                    const newRevenue = currentRevenue + details.property!.listingPrice;
+                    const newRevenue = currentRevenue + finalAmount;
                     
                     transaction.set(sellerWalletRef, { revenue: newRevenue }, { merge: true });
                 }
             });
             
-            toast({ title: "Deal Completed", description: "Documents uploaded and booking marked as completed." });
+            toast({ title: "Documents Submitted", description: "Documents uploaded and booking status updated for admin approval." });
             router.push('/booking-management');
 
         } catch (error) {
@@ -276,21 +287,35 @@ export default function BookingDetailsPage() {
                             <CardDescription>Upload client documents and finalize the booking.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            <Input
-                                id="documents"
-                                type="file"
-                                multiple
-                                onChange={handleFileSelect}
-                                disabled={isCompleting || lead.status === 'Completed'}
-                            />
+                             <div>
+                                <Label htmlFor="closingAmount">Closing Deal Amount</Label>
+                                <Input
+                                    id="closingAmount"
+                                    type="number"
+                                    placeholder="Enter final deal amount"
+                                    value={closingAmount}
+                                    onChange={(e) => setClosingAmount(e.target.value)}
+                                    disabled={isCompleting || lead.status === 'Completed' || lead.status === 'Document Submitted'}
+                                />
+                            </div>
+                             <div>
+                                <Label htmlFor="documents">Client Documents</Label>
+                                <Input
+                                    id="documents"
+                                    type="file"
+                                    multiple
+                                    onChange={handleFileSelect}
+                                    disabled={isCompleting || lead.status === 'Completed' || lead.status === 'Document Submitted'}
+                                />
+                            </div>
                              {filesToUpload.length > 0 && (
                                 <div className="text-xs text-muted-foreground">
                                     {filesToUpload.length} file(s) selected.
                                 </div>
                             )}
-                           <Button className="w-full" onClick={handleUploadAndComplete} disabled={isCompleting || lead.status === 'Completed'}>
+                           <Button className="w-full" onClick={handleUploadAndComplete} disabled={isCompleting || lead.status === 'Completed' || lead.status === 'Document Submitted'}>
                                 {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                                {lead.status === 'Completed' ? "Deal Completed" : (isUploading ? "Uploading..." : "Complete Deal")}
+                                {lead.status === 'Completed' ? "Deal Completed" : (lead.status === 'Document Submitted' ? 'Documents Submitted' : (isUploading ? "Uploading..." : "Submit Documents"))}
                             </Button>
                         </CardContent>
                     </Card>

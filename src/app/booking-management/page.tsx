@@ -33,9 +33,10 @@ const statusColors: { [key: string]: "default" | "secondary" | "outline" | "dest
   'Qualified': 'secondary',
   'Processing': 'outline',
   'Under Contract': 'default',
+  'Document Submitted': 'secondary',
 }
 
-const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'New', 'Qualified', 'Processing', 'Under Contract'];
+const filterStatuses: (Lead['status'] | 'All')[] = ['All', 'New', 'Qualified', 'Processing', 'Under Contract', 'Document Submitted'];
 
 export default function BookingManagementPage() {
   const { user } = useUser();
@@ -51,7 +52,7 @@ export default function BookingManagementPage() {
     setIsLoading(true);
     try {
       const leadsCollection = collection(db, "leads");
-      const activeLeadStatuses: Lead['status'][] = ['New', 'Qualified', 'Processing', 'Under Contract'];
+      const activeLeadStatuses: Lead['status'][] = ['New', 'Qualified', 'Processing', 'Under Contract', 'Document Submitted'];
 
       let q;
       if (user.role === 'admin' || user.role === 'seller') {
