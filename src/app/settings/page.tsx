@@ -41,6 +41,8 @@ import { generateUserId } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/hooks/use-user"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
 
 const permissions = [
   { id: "manageLeads", label: "Manage Leads" },
@@ -417,125 +419,126 @@ export default function SettingsPage() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Access
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>Add New Admin Access</DialogTitle>
                   <DialogDescription>
                     Create a new admin account with limited access features.
                   </DialogDescription>
                 </DialogHeader>
-                <Form {...addAccessForm}>
-                  <form onSubmit={addAccessForm.handleSubmit(onAccessSubmit)} className="space-y-4">
-                     <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                            control={addAccessForm.control}
-                            name="firstName"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="John" {...field} disabled={isSubmitting} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={addAccessForm.control}
-                            name="lastName"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Last Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Doe" {...field} disabled={isSubmitting} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <FormField
-                      control={addAccessForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="admin@example.com" {...field} disabled={isSubmitting} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={addAccessForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} disabled={isSubmitting} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={addAccessForm.control}
-                      name="permissions"
-                      render={() => (
-                        <FormItem>
-                          <div className="mb-4">
-                            <FormLabel className="text-base">Permissions</FormLabel>
-                          </div>
-                          <div className="space-y-2">
-                            {permissions.map((item) => (
-                              <FormField
-                                key={item.id}
-                                control={addAccessForm.control}
-                                name="permissions"
-                                render={({ field }) => {
-                                  return (
-                                    <FormItem
-                                      key={item.id}
-                                      className="flex flex-row items-center space-x-3 space-y-0"
-                                    >
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value?.includes(item.id)}
-                                          onCheckedChange={(checked) => {
-                                            return checked
-                                              ? field.onChange([...field.value, item.id])
-                                              : field.onChange(
-                                                  field.value?.filter(
-                                                    (value) => value !== item.id
+                <ScrollArea className="flex-1 -mx-6 px-6">
+                  <Form {...addAccessForm}>
+                    <form onSubmit={addAccessForm.handleSubmit(onAccessSubmit)} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                              control={addAccessForm.control}
+                              name="firstName"
+                              render={({ field }) => (
+                                  <FormItem>
+                                  <FormLabel>First Name</FormLabel>
+                                  <FormControl>
+                                      <Input placeholder="John" {...field} disabled={isSubmitting} />
+                                  </FormControl>
+                                  <FormMessage />
+                                  </FormItem>
+                              )}
+                          />
+                          <FormField
+                              control={addAccessForm.control}
+                              name="lastName"
+                              render={({ field }) => (
+                                  <FormItem>
+                                  <FormLabel>Last Name</FormLabel>
+                                  <FormControl>
+                                      <Input placeholder="Doe" {...field} disabled={isSubmitting} />
+                                  </FormControl>
+                                  <FormMessage />
+                                  </FormItem>
+                              )}
+                          />
+                      </div>
+                      <FormField
+                        control={addAccessForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input placeholder="admin@example.com" {...field} disabled={isSubmitting} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={addAccessForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" {...field} disabled={isSubmitting} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={addAccessForm.control}
+                        name="permissions"
+                        render={() => (
+                          <FormItem>
+                            <div className="mb-4">
+                              <FormLabel className="text-base">Permissions</FormLabel>
+                            </div>
+                            <div className="space-y-2">
+                              {permissions.map((item) => (
+                                <FormField
+                                  key={item.id}
+                                  control={addAccessForm.control}
+                                  name="permissions"
+                                  render={({ field }) => {
+                                    return (
+                                      <FormItem
+                                        key={item.id}
+                                        className="flex flex-row items-center space-x-3 space-y-0"
+                                      >
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={field.value?.includes(item.id)}
+                                            onCheckedChange={(checked) => {
+                                              return checked
+                                                ? field.onChange([...field.value, item.id])
+                                                : field.onChange(
+                                                    field.value?.filter(
+                                                      (value) => value !== item.id
+                                                    )
                                                   )
-                                                )
-                                          }}
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="font-normal">
-                                        {item.label}
-                                      </FormLabel>
-                                    </FormItem>
-                                  )
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <DialogFooter>
-                      <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create User
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
+                                            }}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="font-normal">
+                                          {item.label}
+                                        </FormLabel>
+                                      </FormItem>
+                                    )
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <DialogFooter className="pt-4">
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Create User
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </Form>
+                </ScrollArea>
               </DialogContent>
             </Dialog>
         </CardHeader>
