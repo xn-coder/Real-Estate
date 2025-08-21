@@ -88,6 +88,22 @@ export default function ListingsPage() {
                         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
                     };
                 });
+                
+                const statusOrder = {
+                  'For Sale': 1,
+                  'Under Contract': 2,
+                  'Sold': 3,
+                };
+                
+                listingsData.sort((a, b) => {
+                    const statusA = statusOrder[a.status as keyof typeof statusOrder] || 99;
+                    const statusB = statusOrder[b.status as keyof typeof statusOrder] || 99;
+                    if (statusA !== statusB) {
+                        return statusA - statusB;
+                    }
+                    return (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime();
+                });
+
                 setAllListings(listingsData);
                 setCities(Array.from(uniqueCities));
             } catch (error) {
