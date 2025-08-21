@@ -67,7 +67,7 @@ const AdminSellerDashboard = () => {
           try {
             // Stats
             const propertiesQuery = query(collection(db, "properties"));
-            const newLeadsQuery = query(collection(db, "leads"), where("status", "==", "New"));
+            const newLeadsQuery = query(collection(db, "leads"), where("status", "==", "New lead"));
             const partnersQuery = query(collection(db, "users"), where("role", "in", partnerRoles));
             const customersQuery = query(collection(db, "users"), where("role", "==", "customer"));
     
@@ -285,7 +285,7 @@ const PartnerDashboard = () => {
                     getDoc(walletRef)
                 ]);
 
-                const newLeads = leadsSnap.docs.filter(d => d.data().status === 'New').length;
+                const newLeads = leadsSnap.docs.filter(d => d.data().status === 'New lead').length;
                 const customers = new Set(leadsSnap.docs.map(d => d.data().customerId)).size;
                 const rewardPoints = walletSnap.exists() ? walletSnap.data().rewardBalance || 0 : 0;
                 setStats({ newLeads, totalVisits: visitsSnap.size, customers, rewardPoints });
