@@ -39,6 +39,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { createAppointment } from "@/services/appointment-service"
 import { generateUserId } from "@/lib/utils"
 import bcrypt from "bcryptjs"
+import 'leaflet/dist/leaflet.css'; // Explicitly import leaflet css
 
 const LocationPicker = dynamic(() => import('@/components/location-picker'), {
     ssr: false,
@@ -123,14 +124,19 @@ export default function PropertyDetailsPage() {
 
     const createLead = async (values: EnquiryFormValues) => {
         if (!user || !property) return;
-
+    
         try {
             const leadsCollection = collection(db, "leads");
-            
-            // Check for existing lead for the same property from the same email
+    
+            // Check for existing lead with same email OR phone for THIS property
             const emailLeadQuery = query(leadsCollection, where("email", "==", values.email), where("propertyId", "==", property.id));
-            const emailLeadSnapshot = await getDocs(emailLeadQuery);
-
+            const phoneLeadQuery = query(leadsCollection, where("phone", "==", values.phone), where("propertyId", "==", property.id));
+            
+            const [emailLeadSnapshot, phoneLeadSnapshot] = await Promise.all([
+                getDocs(emailLeadQuery),
+                getDocs(phoneLeadQuery)
+            ]);
+    
             if (!emailLeadSnapshot.empty) {
                 toast({
                     variant: "default",
@@ -139,42 +145,40 @@ export default function PropertyDetailsPage() {
                 });
                 return;
             }
-
-            // Check for existing lead for the same property from the same phone number
-            const phoneLeadQuery = query(leadsCollection, where("phone", "==", values.phone), where("propertyId", "==", property.id));
-            const phoneLeadSnapshot = await getDocs(phoneLeadQuery);
-
+            
             if (!phoneLeadSnapshot.empty) {
-                toast({
+                 toast({
                     variant: "default",
                     title: "Already Enquired",
                     description: "An enquiry for this property with this phone number already exists.",
                 });
                 return;
             }
-
+    
+            // Determine customerId
+            let customerId: string;
             const usersCollection = collection(db, "users");
             const emailQuery = query(usersCollection, where("email", "==", values.email));
-            const phoneQuery = query(usersCollection, where("phone", "==", values.phone));
-
-            const [emailSnapshot, phoneSnapshot] = await Promise.all([
+            const phoneUserQuery = query(usersCollection, where("phone", "==", values.phone));
+            
+            const [emailUserSnapshot, phoneUserSnapshot] = await Promise.all([
                 getDocs(emailQuery),
-                getDocs(phoneQuery),
+                getDocs(phoneUserQuery)
             ]);
-
-            let customerId: string;
-
-            if (!emailSnapshot.empty) {
-                customerId = emailSnapshot.docs[0].id;
-            } else if (!phoneSnapshot.empty) {
-                customerId = phoneSnapshot.docs[0].id;
+    
+            if (!emailUserSnapshot.empty) {
+                customerId = emailUserSnapshot.docs[0].id;
+            } else if (!phoneUserSnapshot.empty) {
+                customerId = phoneUserSnapshot.docs[0].id;
             } else {
+                // Create a new customer if none found
                 customerId = generateUserId("CUS");
                 const [firstName, ...lastNameParts] = values.name.split(' ');
                 const lastName = lastNameParts.join(' ');
                 const salt = await bcrypt.genSalt(10);
+                // A secure default password should be used, or a password-less flow
                 const hashedPassword = await bcrypt.hash("password", salt);
-
+    
                 const newUserData = {
                     id: customerId,
                     name: values.name,
@@ -194,19 +198,21 @@ export default function PropertyDetailsPage() {
                 };
                 await setDoc(doc(db, "users", customerId), newUserData);
             }
-
+    
+            // Create the lead record
             const leadData = {
                 ...values,
                 propertyId: property.id,
                 partnerId: user.id,
-                customerId: customerId,
+                customerId: customerId, // Now guaranteed to be set
                 status: "New lead",
                 dealStatus: "New lead",
                 createdAt: Timestamp.now(),
             };
-
+    
             const leadRef = await addDoc(leadsCollection, leadData);
-
+    
+            // Increment property views
             await runTransaction(db, async (transaction) => {
               const propertyRef = doc(db, 'properties', propertyId);
               const propertyDoc = await transaction.get(propertyRef);
@@ -216,20 +222,18 @@ export default function PropertyDetailsPage() {
               const newViews = (propertyDoc.data().views || 0) + 1;
               transaction.update(propertyRef, { views: newViews });
             });
-
+    
             setLastLeadId(leadRef.id);
             setEnquiryCount(prev => prev + 1);
-
+    
             toast({
                 title: "Enquiry Submitted",
                 description: "Your enquiry has been sent. We will get back to you shortly.",
             });
             enquiryForm.reset();
-            // OTP Dialog removed. Scheduling dialog can be triggered if needed.
-            // setIsScheduleDialogOpen(true); 
         } catch (error) {
             console.error("Error creating lead:", error);
-            throw error;
+            throw error; // Re-throw to be caught by onEnquirySubmit
         }
     };
 
