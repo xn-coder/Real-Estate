@@ -276,20 +276,18 @@ const PartnerDashboard = () => {
             try {
                 // Fetch stats
                 const allLeadsQuery = query(collection(db, "leads"), where("partnerId", "==", user.id));
-                const newLeadsQuery = query(collection(db, "leads"), where("partnerId", "==", user.id), where("status", "==", "New lead"));
                 const visitsQuery = query(collection(db, "appointments"), where("partnerId", "==", user.id));
                 const walletRef = doc(db, 'wallets', user.id);
                 
-                const [allLeadsSnap, newLeadsSnap, visitsSnap, walletSnap] = await Promise.all([
+                const [allLeadsSnap, visitsSnap, walletSnap] = await Promise.all([
                     getDocs(allLeadsQuery),
-                    getDocs(newLeadsQuery),
                     getDocs(visitsQuery),
                     getDoc(walletRef)
                 ]);
 
                 const customers = new Set(allLeadsSnap.docs.map(d => d.data().customerId)).size;
                 const rewardPoints = walletSnap.exists() ? walletSnap.data().rewardBalance || 0 : 0;
-                setStats({ newLeads: newLeadsSnap.size, totalVisits: visitsSnap.size, customers, rewardPoints });
+                setStats({ newLeads: allLeadsSnap.size, totalVisits: visitsSnap.size, customers, rewardPoints });
 
                 // Fetch website defaults
                 const defaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
