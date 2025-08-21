@@ -175,9 +175,33 @@ const step10Schema = z.object({
     contactTime: z.enum(["Morning", "Afternoon", "Evening"]),
 });
 
+const earningRuleValueSchema = z.object({
+  type: z.enum(["reward_points", "commission_percentage", "flat_amount", "per_sq_ft"]),
+  value: z.coerce.number().min(0, "Value must be a positive number."),
+  totalSqFt: z.coerce.number().optional(),
+}).refine(data => {
+    if (data.type === 'per_sq_ft' && (!data.totalSqFt || data.totalSqFt <= 0)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Total Sq. Ft. is required for this earning type.",
+    path: ["totalSqFt"],
+});
+
+const step11Schema = z.object({
+    earningRules: z.object({
+      affiliate: earningRuleValueSchema.optional(),
+      super_affiliate: earningRuleValueSchema.optional(),
+      associate: earningRuleValueSchema.optional(),
+      channel: earningRuleValueSchema.optional(),
+      franchisee: earningRuleValueSchema.optional(),
+    }).optional(),
+});
+
 const allSteps = [
     step1Schema, step2Schema, step3Schema, step4Schema, step5Schema,
-    step6Schema, step7Schema, step8Schema, step9Schema, step10Schema
+    step6Schema, step7Schema, step8Schema, step9Schema, step10Schema, step11Schema
 ];
 
 const fullSchema = allSteps.reduce((acc, schema) => acc.merge(schema), z.object({}));
@@ -205,6 +229,15 @@ const amenitiesList = [
     { id: "pets_allowed", label: "Pets Allowed" },
     { id: "wheelchair_access", label: "Wheelchair Access" },
 ];
+
+const partnerRoles = {
+    affiliate: 'Affiliate Partner',
+    super_affiliate: 'Super Affiliate Partner',
+    associate: 'Associate Partner',
+    channel: 'Channel Partner',
+    franchisee: 'Franchisee',
+} as const;
+
 
 export default function EditPropertyPage() {
     const { toast } = useToast()
@@ -335,7 +368,7 @@ export default function EditPropertyPage() {
     const steps = [
         "Property Classification", "Add Slideshow", "Write Overview",
         "Property Size & Structure", "Features & Amenities", "Interior & Furnishing",
-        "Location Details", "Nearby Connectivity", "Pricing & Financials", "Contact & Listing Agent"
+        "Location Details", "Nearby Connectivity", "Pricing & Financials", "Contact & Listing Agent", "Earning Rules"
     ];
     
     const lat = form.watch('latitude');
@@ -344,6 +377,60 @@ export default function EditPropertyPage() {
      if (isLoadingData) {
         return <div className="flex-1 flex items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
     }
+    
+    const EarningRuleFormFields = ({ role }: { role: keyof typeof partnerRoles }) => {
+        const type = form.watch(`earningRules.${role}.type`);
+        return (
+            <div className="space-y-4 p-4 border rounded-md">
+                <h4 className="font-semibold text-center">{partnerRoles[role]}</h4>
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name={`earningRules.${role}.type`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Type</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="reward_points">Reward Points</SelectItem>
+                                        <SelectItem value="commission_percentage">Commission (%)</SelectItem>
+                                        <SelectItem value="flat_amount">Flat Amount (₹)</SelectItem>
+                                        <SelectItem value="per_sq_ft">Per Sq. Ft. (₹)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name={`earningRules.${role}.value`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Value</FormLabel>
+                                <FormControl><Input type="number" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                 {type === 'per_sq_ft' && (
+                    <FormField
+                        control={form.control}
+                        name={`earningRules.${role}.totalSqFt`}
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Total Sq. Ft.</FormLabel>
+                                <FormControl><Input type="number" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -510,6 +597,14 @@ export default function EditPropertyPage() {
                             {currentStep === 8 && ( <div className="grid md:grid-cols-2 gap-4"> <FormField control={form.control} name="listingPrice" render={({ field }) => ( <FormItem><FormLabel>Listing Price/Rent</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="priceType" render={({ field }) => ( <FormItem><FormLabel>Price Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="negotiable">Negotiable</SelectItem><SelectItem value="auction">Auction</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} /> <FormField control={form.control} name="maintenanceCharge" render={({ field }) => ( <FormItem><FormLabel>Maintenance Charge</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="securityDeposit" render={({ field }) => ( <FormItem><FormLabel>Security Deposit (Rent)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="bookingAmount" render={({ field }) => ( <FormItem><FormLabel>Booking Amount</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="registrationCharge" render={({ field }) => ( <FormItem><FormLabel>Registration Charge</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="loanAvailable" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm md:col-span-2"><div className="space-y-0.5"><FormLabel>Loan Facility Available</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange}/></FormControl></FormItem> )} /> </div> )}
 
                             {currentStep === 9 && ( <div className="grid md:grid-cols-2 gap-4"> <FormField control={form.control} name="listedBy" render={({ field }) => ( <FormItem><FormLabel>Listed By</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Owner">Owner</SelectItem><SelectItem value="Agent">Agent</SelectItem><SelectItem value="Builder">Builder</SelectItem><SelectItem value="Team">Team</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} /> <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="altPhone" render={({ field }) => ( <FormItem><FormLabel>Alternative Number</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email ID</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="agencyName" render={({ field }) => ( <FormItem><FormLabel>Agency Name</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="reraId" render={({ field }) => ( <FormItem><FormLabel>RERA ID</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} /> <FormField control={form.control} name="contactTime" render={({ field }) => ( <FormItem><FormLabel>Preferred Contact Time</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Morning">Morning</SelectItem><SelectItem value="Afternoon">Afternoon</SelectItem><SelectItem value="Evening">Evening</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} /> </div> )}
+
+                             {currentStep === 10 && (
+                                <div className="space-y-4">
+                                    {(Object.keys(partnerRoles) as Array<keyof typeof partnerRoles>).map(role => (
+                                        <EarningRuleFormFields key={role} role={role} />
+                                    ))}
+                                </div>
+                            )}
 
                             <div className="flex justify-between pt-4">
                                 {currentStep > 0 ? ( <Button type="button" variant="outline" onClick={handlePrevStep} disabled={isSubmitting}>Previous</Button> ) : ( <div></div> )}
