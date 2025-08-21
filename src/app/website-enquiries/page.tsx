@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, Mail, MessageSquare, Search } from "lucide-react"
+import { Loader2, Mail, MessageSquare, Search, Eye } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, Timestamp } from "firebase/firestore"
@@ -20,6 +20,15 @@ import { useUser } from "@/hooks/use-user"
 import { Badge } from "@/components/ui/badge"
 import { formatDistanceToNow } from "date-fns"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export default function WebsiteEnquiriesPage() {
   const { toast } = useToast()
@@ -27,6 +36,9 @@ export default function WebsiteEnquiriesPage() {
   const [inquiries, setInquiries] = React.useState<Inquiry[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
+  const [selectedInquiry, setSelectedInquiry] = React.useState<Inquiry | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
 
   const fetchInquiries = React.useCallback(async () => {
     if (!user) return
@@ -68,6 +80,11 @@ export default function WebsiteEnquiriesPage() {
       inquiry.message.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [inquiries, searchTerm])
+  
+  const handleViewClick = (inquiry: Inquiry) => {
+      setSelectedInquiry(inquiry);
+      setIsDialogOpen(true);
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -122,6 +139,10 @@ export default function WebsiteEnquiriesPage() {
                     <Badge variant="outline">{formatDistanceToNow(inquiry.createdAt, { addSuffix: true })}</Badge>
                 </TableCell>
                 <TableCell>
+                  <Button variant="ghost" size="icon" onClick={() => handleViewClick(inquiry)}>
+                    <Eye className="h-4 w-4" />
+                    <span className="sr-only">View Inquiry</span>
+                  </Button>
                   <Button variant="ghost" size="icon" asChild>
                     <a href={`mailto:${inquiry.email}?subject=RE: Inquiry from your website`}>
                         <Mail className="h-4 w-4" />
@@ -140,6 +161,25 @@ export default function WebsiteEnquiriesPage() {
           </TableBody>
         </Table>
       </div>
+
+       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Enquiry from {selectedInquiry?.name}</DialogTitle>
+                    <DialogDescription>
+                        {selectedInquiry?.email} &bull; {selectedInquiry?.phone}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <p className="text-sm text-muted-foreground bg-muted p-4 rounded-md whitespace-pre-wrap">
+                        {selectedInquiry?.message}
+                    </p>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   )
 }
