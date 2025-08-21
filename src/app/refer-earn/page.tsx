@@ -4,11 +4,12 @@
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Gift, Copy, Share2, Twitter, Facebook, Linkedin } from "lucide-react"
+import { Gift, Copy, Share2, Twitter, Facebook, Linkedin, ArrowRight } from "lucide-react"
 import Image from "next/image"
 import { useUser } from "@/hooks/use-user"
 import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
+import Link from "next/link"
 
 export default function ReferAndEarnPage() {
     const { user } = useUser();
@@ -100,6 +101,20 @@ export default function ReferAndEarnPage() {
                 </div>
             </div>
         </CardContent>
+      </Card>
+
+      <Card>
+          <CardHeader>
+              <CardTitle>Ready for More?</CardTitle>
+              <CardDescription>Upgrade your account to a Partner to unlock exclusive benefits, advanced tools, and higher earning potential.</CardDescription>
+          </CardHeader>
+          <CardFooter>
+              <Button asChild>
+                  <Link href="/upgrade">
+                    Explore Partner Benefits <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+              </Button>
+          </CardFooter>
       </Card>
     </div>
   )

@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Loader2, CheckCircle, XCircle, ArrowLeft, Search } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, ArrowLeft, Search, User } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore"
@@ -27,6 +27,7 @@ const roleNameMapping: Record<string, string> = {
   associate: 'Associate Partner',
   channel: 'Channel Partner',
   franchisee: 'Franchisee',
+  customer: 'Customer',
 };
 
 export default function UpgradeRequestPage() {
@@ -102,7 +103,7 @@ export default function UpgradeRequestPage() {
     setIsUpdating(partnerId);
      try {
         await updateDoc(doc(db, "users", partnerId), {
-            status: 'active',
+            status: 'active', // Revert to active status
             upgradeRequest: null,
         });
         toast({
@@ -150,7 +151,7 @@ export default function UpgradeRequestPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Partner Name</TableHead>
+              <TableHead>User Name</TableHead>
               <TableHead>Current Role</TableHead>
               <TableHead>Requested Role</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -171,7 +172,12 @@ export default function UpgradeRequestPage() {
                 </TableRow>
             ) : filteredRequests.map((partner) => (
               <TableRow key={partner.id}>
-                <TableCell className="font-medium">{partner.name}</TableCell>
+                <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground"/>
+                        {partner.name}
+                    </div>
+                </TableCell>
                 <TableCell>
                   <Badge variant="outline">{roleNameMapping[partner.role] || partner.role}</Badge>
                 </TableCell>

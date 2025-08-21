@@ -7,6 +7,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Loader2, CheckCircle, ArrowRight, Star, Handshake } from "lucide-react"
 import Link from "next/link"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/hooks/use-toast"
+import { doc, updateDoc, Timestamp } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+
 
 const roleNameMapping: Record<string, string> = {
   affiliate: 'Affiliate Partner',
@@ -33,8 +44,50 @@ const planFeatures: Record<string, string[]> = {
     franchisee: ["Full business model", "Brand usage rights", "Comprehensive training & support"],
 }
 
+const customerUpgradeSchema = z.object({
+  businessName: z.string().min(1, "Business name is required."),
+  reason: z.string().min(10, "Please tell us why you want to be a partner."),
+});
+
+type CustomerUpgradeFormValues = z.infer<typeof customerUpgradeSchema>;
+
 export default function UpgradePage() {
-  const { user, isLoading } = useUser()
+  const { user, isLoading, fetchUser } = useUser();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const form = useForm<CustomerUpgradeFormValues>({
+    resolver: zodResolver(customerUpgradeSchema),
+    defaultValues: {
+      businessName: user?.businessName || "",
+      reason: "",
+    },
+  });
+
+  const handleUpgradeRequest = async (values: CustomerUpgradeFormValues) => {
+      if (!user) return;
+      setIsSubmitting(true);
+      try {
+          const userRef = doc(db, "users", user.id);
+          await updateDoc(userRef, {
+              status: "pending_upgrade",
+              businessName: values.businessName,
+              upgradeRequest: {
+                  newRole: 'affiliate',
+                  reason: values.reason,
+                  requestedAt: Timestamp.now(),
+              }
+          });
+          toast({ title: "Request Submitted", description: "Your upgrade request has been sent for approval." });
+          await fetchUser(); // Refresh user data
+          form.reset();
+      } catch (error) {
+          console.error("Error submitting upgrade request:", error);
+          toast({ variant: 'destructive', title: "Error", description: "Could not submit your request."});
+      } finally {
+          setIsSubmitting(false);
+      }
+  }
 
   if (isLoading) {
     return (
@@ -57,6 +110,23 @@ export default function UpgradePage() {
   const availableUpgrades = upgradePaths[currentRole] || [];
 
   if (isCustomer) {
+    if (user.status === 'pending_upgrade') {
+         return (
+            <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 flex items-center justify-center">
+                 <Card className="text-center max-w-lg">
+                    <CardHeader>
+                        <div className="mx-auto bg-green-100 text-green-700 rounded-full h-16 w-16 flex items-center justify-center">
+                            <CheckCircle className="h-8 w-8"/>
+                        </div>
+                        <CardTitle className="pt-4">Request Submitted</CardTitle>
+                        <CardDescription className="max-w-md mx-auto">
+                            Your request to become an Affiliate Partner is under review. We will notify you once it's approved.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+            </div>
+        )
+    }
     return (
       <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between">
@@ -69,19 +139,60 @@ export default function UpgradePage() {
                 </div>
                 <CardTitle className="pt-4">Join Our Partner Network</CardTitle>
                 <CardDescription className="max-w-md mx-auto">
-                    Unlock new opportunities by becoming a partner. Gain access to exclusive tools, resources, and earning potential to grow with us.
+                    Unlock new opportunities by becoming an Affiliate Partner. Gain access to exclusive tools, resources, and earning potential to grow with us.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">You are currently on a customer account.</p>
-            </CardContent>
             <CardFooter className="justify-center">
-                 <Button asChild size="lg">
-                    <Link href="/manage-partner/add">
-                        Start Your Partner Application
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                         <Button size="lg">
+                            Upgrade to Partner
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Become an Affiliate Partner</DialogTitle>
+                            <DialogDescription>Please provide a few more details to start your application.</DialogDescription>
+                        </DialogHeader>
+                         <Form {...form}>
+                            <form onSubmit={form.handleSubmit(handleUpgradeRequest)} className="space-y-4">
+                               <FormField
+                                    control={form.control}
+                                    name="businessName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Business/Trading Name</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., John Doe Properties" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="reason"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Why do you want to be a partner?</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="Tell us a bit about your interest in real estate..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <DialogFooter>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                        Submit Request
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                         </Form>
+                    </DialogContent>
+                 </Dialog>
             </CardFooter>
         </Card>
       </div>
