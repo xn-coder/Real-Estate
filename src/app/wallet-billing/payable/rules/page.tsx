@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle } from "lucide-react"
+import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, orderBy, doc, updateDoc, setDoc, getDoc } from "firebase/firestore"
@@ -72,6 +72,7 @@ export default function PartnerEarningRulesPage() {
     const [isLoading, setIsLoading] = React.useState(true)
     const [isDialogOpen, setIsDialogOpen] = React.useState(false)
     const [isSubmitting, setIsSubmitting] = React.useState(false)
+    const [isDefaultRules, setIsDefaultRules] = React.useState(false);
 
     const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null);
 
@@ -110,12 +111,14 @@ export default function PartnerEarningRulesPage() {
     const openDialog = (property?: Property) => {
         if (property) {
             setSelectedProperty(property);
+            setIsDefaultRules(false);
             form.reset({
                 propertyId: property.id,
                 earningRules: property.earningRules || {},
             });
         } else {
             setSelectedProperty(null);
+            setIsDefaultRules(true);
             getDoc(doc(db, 'app_settings', 'default_earning_rules')).then(docSnap => {
                 if (docSnap.exists()) {
                     form.reset({
@@ -136,9 +139,9 @@ export default function PartnerEarningRulesPage() {
     const onSubmit = async (values: EarningRuleFormValues) => {
         setIsSubmitting(true);
         try {
-            const docRef = selectedProperty 
-                ? doc(db, "properties", selectedProperty.id)
-                : doc(db, "app_settings", "default_earning_rules");
+            const docRef = isDefaultRules 
+                ? doc(db, "app_settings", "default_earning_rules")
+                : doc(db, "properties", selectedProperty!.id);
             
             await setDoc(docRef, { earningRules: values.earningRules }, { merge: true });
 
@@ -231,69 +234,100 @@ export default function PartnerEarningRulesPage() {
                     </Button>
                     <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Earning Rules</h1>
                 </div>
-                 <Dialog open={isDialogOpen} onOpenChange={open => { if(!open) setSelectedProperty(null); setIsDialogOpen(open); }}>
-                    <DialogTrigger asChild>
-                        <Button onClick={() => openDialog()}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Set Default Earning
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh]">
-                        <DialogHeader>
-                            <DialogTitle>{selectedProperty ? `Edit Earning Rules for ${selectedProperty.catalogTitle}` : "Set Default Earning Rules"}</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                               <div className="max-h-[55vh] overflow-y-auto space-y-4 p-2">
-                                {(Object.keys(partnerRoles) as Array<keyof typeof partnerRoles>).map(role => (
-                                    <EarningRuleFormFields key={role} role={role} />
-                                ))}
-                               </div>
-                                <DialogFooter>
-                                    <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Save Rules
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Default Earning Rules</CardTitle>
+                            <CardDescription>These rules apply to all properties unless overridden.</CardDescription>
+                        </div>
+                        <Button variant="outline" onClick={() => openDialog()}>
+                            <Pencil className="mr-2 h-4 w-4" /> Edit Defaults
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        {isLoading ? <Loader2 className="animate-spin" /> : (
+                            (Object.keys(partnerRoles) as Array<keyof typeof partnerRoles>).map(role => (
+                                <div key={role} className="p-4 border rounded-lg">
+                                    <p className="font-semibold text-sm">{partnerRoles[role]}</p>
+                                    <p className="text-xs text-muted-foreground">{formatValue(defaultRules?.[role])}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
             
              <Card>
                 <CardHeader>
                     <CardTitle>Per-Property Earning Rules</CardTitle>
-                    <CardDescription>Earning rules set for each property. Rules not set here will use the global defaults.</CardDescription>
+                    <CardDescription>Override default rules for specific properties. Unset rules will use the defaults.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isLoading ? (
-                        <div className="flex justify-center p-8"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div>
-                    ) : (
-                        <Accordion type="single" collapsible className="w-full">
-                          {properties.map(property => (
-                            <AccordionItem value={property.id} key={property.id}>
-                                <div className="flex items-center w-full">
-                                    <AccordionTrigger className="flex-1">
-                                        <span>{property.catalogTitle}</span>
-                                    </AccordionTrigger>
-                                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDialog(property); }} className="mr-2">Edit</Button>
-                                </div>
-                              <AccordionContent>
-                                <div className="grid grid-cols-2 gap-4 p-4">
-                                {Object.keys(partnerRoles).map(role => (
-                                    <div key={role} className="text-sm">
-                                        <p className="font-semibold">{partnerRoles[role as keyof typeof partnerRoles]}</p>
-                                        <p className="text-muted-foreground">{formatValue(property.earningRules?.[role as keyof typeof property.earningRules] || defaultRules?.[role as keyof typeof defaultRules])}</p>
-                                    </div>
-                                ))}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          ))}
-                        </Accordion>
-                    )}
+                    <div className="border rounded-lg">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Property</TableHead>
+                                    <TableHead>Affiliate</TableHead>
+                                    <TableHead>Super Affiliate</TableHead>
+                                    <TableHead>Associate</TableHead>
+                                    <TableHead>Channel</TableHead>
+                                    <TableHead>Franchisee</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                             <TableBody>
+                                {isLoading ? (
+                                    <TableRow><TableCell colSpan={8} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                                ) : properties.length === 0 ? (
+                                    <TableRow><TableCell colSpan={8} className="h-24 text-center">No properties found.</TableCell></TableRow>
+                                ) : (
+                                    properties.map(prop => (
+                                        <TableRow key={prop.id}>
+                                            <TableCell className="font-medium">{prop.catalogTitle}</TableCell>
+                                            {(Object.keys(partnerRoles) as Array<keyof typeof partnerRoles>).map(role => (
+                                                <TableCell key={role}>{formatValue(prop.earningRules?.[role])}</TableCell>
+                                            ))}
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="sm" onClick={() => openDialog(prop)}>Edit</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                             </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
+
+             <Dialog open={isDialogOpen} onOpenChange={open => { if(!open) setSelectedProperty(null); setIsDialogOpen(open); }}>
+                <DialogContent className="max-w-4xl max-h-[90vh]">
+                    <DialogHeader>
+                        <DialogTitle>{selectedProperty ? `Edit Earning Rules for ${selectedProperty.catalogTitle}` : "Set Default Earning Rules"}</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            <div className="max-h-[65vh] overflow-y-auto space-y-4 p-2">
+                            {(Object.keys(partnerRoles) as Array<keyof typeof partnerRoles>).map(role => (
+                                <EarningRuleFormFields key={role} role={role} />
+                            ))}
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Rules
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
