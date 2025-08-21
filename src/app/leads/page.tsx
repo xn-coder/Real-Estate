@@ -480,7 +480,13 @@ export default function ManageBookingPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => router.push(`/manage-customer/${lead.customerId}`)}>
+                            <DropdownMenuItem 
+                                onSelect={() => {
+                                    if(lead.customerId) router.push(`/manage-customer/${lead.customerId}`)
+                                    else toast({ variant: "destructive", title: "Error", description: "Customer ID not found for this lead." })
+                                }}
+                                disabled={!lead.customerId}
+                            >
                                 <UserIcon className="mr-2 h-4 w-4" />
                                 View Customer
                             </DropdownMenuItem>
@@ -659,3 +665,6 @@ export default function ManageBookingPage() {
     </div>
   )
 }
+
+
+    
