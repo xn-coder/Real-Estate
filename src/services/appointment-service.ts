@@ -49,9 +49,7 @@ export async function createAppointment(data: AppointmentData): Promise<void> {
 
         if (!existingAppointmentsSnapshot.empty) {
             // An appointment for this customer, property, and day already exists.
-            // Instead of throwing an error, we can just log it and return.
-            console.warn("Attempted to create a duplicate appointment. Operation was ignored.");
-            return;
+            throw new Error("A visit for this property is already scheduled for this day.");
         }
 
         // 3. Create the new appointment if no duplicates are found
