@@ -43,6 +43,7 @@ import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Property } from "@/types/property"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { uploadFile } from "@/services/file-upload-service"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure", "video"], {
@@ -83,63 +84,13 @@ const getFileType = (fileName: string): KitFile['type'] => {
     return 'other';
 };
 
-const compressAndConvertToBase64 = (file: File): Promise<string> => {
+const fileToDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         if (!file) {
             return reject(new Error("No file provided"));
         }
-        if (file.size < 1024 * 1024) { // If less than 1MB, just convert
-             const reader = new FileReader();
-             reader.onloadend = () => resolve(reader.result as string);
-             reader.onerror = reject;
-             reader.readAsDataURL(file);
-             return;
-        }
-
         const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = new window.Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return reject(new Error("Could not get canvas context"));
-
-                let { width, height } = img;
-                const MAX_WIDTH = 1920;
-                const MAX_HEIGHT = 1080;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-                
-                canvas.width = width;
-                canvas.height = height;
-
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Start with high quality
-                let quality = 0.9;
-                let dataUrl = canvas.toDataURL(file.type, quality);
-
-                // Iteratively reduce quality until size is under 1MB
-                while (dataUrl.length > 1024 * 1024 && quality > 0.1) {
-                    quality -= 0.1;
-                    dataUrl = canvas.toDataURL(file.type, quality);
-                }
-                
-                resolve(dataUrl);
-            };
-            img.onerror = reject;
-            img.src = event.target?.result as string;
-        };
+        reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
@@ -163,6 +114,7 @@ export default function MarketingKitPage() {
   
   const isSeller = user?.role === 'seller';
   const canAddKits = user?.role === 'admin' || isSeller;
+  const isAdmin = user?.role === 'admin';
 
   const form = useForm<MarketingKitForm>({
     resolver: zodResolver(marketingKitSchema),
@@ -194,7 +146,7 @@ export default function MarketingKitPage() {
         if(websiteDefaultsDoc.exists()){
             const defaults = websiteDefaultsDoc.data();
             setDefaultBusinessInfo({
-                name: defaults.contactDetails?.name || 'DealFlow',
+                name: defaults.businessProfile?.businessName || 'DealFlow',
                 phone: defaults.contactDetails?.phone || 'N/A'
             });
         }
@@ -238,12 +190,12 @@ export default function MarketingKitPage() {
     }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await compressAndConvertToBase64(featureImageFile);
+        const featureImageUrl = await fileToDataUrl(featureImageFile);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await compressAndConvertToBase64(file);
+                const fileUrl = await fileToDataUrl(file);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
@@ -295,8 +247,8 @@ export default function MarketingKitPage() {
  const handleDownload = async (kit: Kit) => {
     setIsDownloading(kit.id);
     try {
-        const businessName = user?.website?.businessProfile?.businessName || defaultBusinessInfo?.name || "N/A";
-        const businessPhone = user?.website?.contactDetails?.phone || defaultBusinessInfo?.phone || "N/A";
+        const businessName = isAdmin ? defaultBusinessInfo?.name : (user?.website?.businessProfile?.businessName || defaultBusinessInfo?.name || "N/A");
+        const businessPhone = isAdmin ? defaultBusinessInfo?.phone : (user?.website?.contactDetails?.phone || defaultBusinessInfo?.phone || "N/A");
 
         const filesToDownload = kit.files?.length > 0 ? kit.files : [{ url: kit.featureImage, name: `${kit.title}.png`, type: 'image' }];
 
@@ -328,15 +280,14 @@ export default function MarketingKitPage() {
                 ctx.font = '24px Arial';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(businessName, 20, canvas.height - 30);
+                ctx.fillText(businessName || "N/A", 20, canvas.height - 30);
                 
                 ctx.font = '20px Arial';
                 ctx.textAlign = 'right';
-                ctx.fillText(businessPhone, canvas.width - 20, canvas.height - 30);
+                ctx.fillText(businessPhone || "N/A", canvas.width - 20, canvas.height - 30);
 
 
                 // Trigger download
-                const link = document.createElement('a');
                 const safeTitle = kit.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
                 const safeFileName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
                 link.download = `${safeTitle}_${safeFileName}`;
@@ -455,7 +406,7 @@ export default function MarketingKitPage() {
                         )}
                     />
 
-                    <FormField control={form.control} name="featureImage" render={({ field: { onChange, value, ...rest }}) => (<FormItem><FormLabel>Feature Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files)} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
+                    <FormField control={form.control} name="featureImage" render={({ field: { onChange, value, ...rest }}) => (<FormItem><FormLabel>Feature Image</FormLabel><FormControl><Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files?.[0])} {...rest} /></FormControl><FormMessage /></FormItem>)}/>
                     <FormField control={form.control} name="files" render={({ field: { onChange, value, ...rest } }) => (<FormItem><FormLabel>Kit Files (PDF, Image, Video)</FormLabel><FormControl><Input type="file" multiple onChange={(e) => onChange(e.target.files)} {...rest} /></FormControl><FormMessage /></FormItem>)} />
                     
                     <DialogFooter>
@@ -549,3 +500,5 @@ export default function MarketingKitPage() {
     </div>
   )
 }
+
+    
