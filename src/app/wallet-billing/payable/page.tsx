@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle } from "lucide-react"
+import { Loader2, ArrowLeft, PlusCircle, Search, CheckCircle, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, orderBy, doc, updateDoc, setDoc, getDoc, where, Timestamp } from "firebase/firestore"
@@ -195,7 +195,13 @@ export default function PartnerEarningPage() {
                                             <TableCell>
                                                 <Badge>{item.status}</Badge>
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="text-right space-x-2">
+                                                 <Button variant="outline" size="sm" asChild>
+                                                    <Link href={`/listings/edit/${item.property.id}`}>
+                                                        <Pencil className="mr-2 h-4 w-4"/>
+                                                        Edit Rule
+                                                    </Link>
+                                                </Button>
                                                 <Button variant="outline" size="sm" disabled={item.status === 'Paid'}>
                                                     <CheckCircle className="mr-2 h-4 w-4"/>
                                                     Mark as Paid
