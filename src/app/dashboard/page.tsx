@@ -40,6 +40,7 @@ type AdminStats = {
     totalProperties: number;
     totalPartners: number;
     totalUsers: number;
+    totalLeads: number;
 }
 
 const partnerRoles = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
@@ -96,16 +97,18 @@ export default function DashboardPage() {
         try {
             const propertiesSnapshot = await getDocs(collection(db, "properties"));
             const usersSnapshot = await getDocs(collection(db, "users"));
+            const leadsSnapshot = await getDocs(collection(db, "leads"));
             
             const totalProperties = propertiesSnapshot.size;
             const totalUsers = usersSnapshot.size;
+            const totalLeads = leadsSnapshot.size;
             const totalPartners = usersSnapshot.docs.filter(doc => partnerRoles.includes(doc.data().role)).length;
             
-            setStats({ totalProperties, totalPartners, totalUsers });
+            setStats({ totalProperties, totalPartners, totalUsers, totalLeads });
 
-            const leadsQuery = query(collection(db, "leads"), orderBy("createdAt", "desc"), limit(5));
-            const leadsSnapshot = await getDocs(leadsQuery);
-            const leads = leadsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Lead));
+            const recentLeadsQuery = query(collection(db, "leads"), orderBy("createdAt", "desc"), limit(5));
+            const recentLeadsSnapshot = await getDocs(recentLeadsQuery);
+            const leads = recentLeadsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Lead));
             setRecentLeads(leads);
 
         } catch (error) {
@@ -175,7 +178,7 @@ export default function DashboardPage() {
             { title: "Total Properties", icon: Building, value: adminStats?.totalProperties, href: "/listings" },
             { title: "Total Partners", icon: Handshake, value: adminStats?.totalPartners, href: "/manage-partner" },
             { title: "Total Users", icon: Users, value: adminStats?.totalUsers, href: "/contact-book" },
-            { title: "Closed Deals", icon: Target, value: recentLeads.filter(l => l.status === 'Deal closed').length, href: "/deals" },
+            { title: "Total Leads", icon: Target, value: adminStats?.totalLeads, href: "/leads" },
         ];
 
          return (
