@@ -141,11 +141,14 @@ export default function WithdrawalRequestPage() {
   }, [user, isAdmin, isSeller, toast]);
   
   const fetchSellers = React.useCallback(async () => {
+    if (!user) return;
     setIsLoadingSellers(true);
     try {
-        const sellersQuery = query(collection(db, "users"), where("role", "==", "seller"), where("status", "==", "active"));
+        const sellersQuery = query(collection(db, "users"), where("role", "in", ["seller", "admin"]), where("status", "==", "active"));
         const sellersSnapshot = await getDocs(sellersQuery);
-        const sellersList = sellersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        const sellersList = sellersSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as User))
+            .filter(seller => seller.id !== user.id); // Exclude the current user from the list
         setSellers(sellersList);
     } catch (error) {
         console.error("Error fetching sellers:", error);
@@ -153,7 +156,8 @@ export default function WithdrawalRequestPage() {
     } finally {
         setIsLoadingSellers(false);
     }
-  }, [toast]);
+  }, [user, toast]);
+
 
   React.useEffect(() => {
     if(user) {
