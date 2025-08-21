@@ -42,7 +42,7 @@ export default function PartnerProfilePage() {
   const { toast } = useToast()
   const params = useParams()
   const router = useRouter()
-  const { user: adminUser } = useUser();
+  const { user: loggedInUser } = useUser();
   const partnerId = params.id as string;
 
   const [partner, setPartner] = React.useState<User | null>(null)
@@ -80,7 +80,7 @@ export default function PartnerProfilePage() {
       }
 
       // Fetch partner documents if admin
-      if(adminUser?.role === 'admin') {
+      if(loggedInUser?.role === 'admin') {
           const docsRef = collection(db, `users/${partnerId}/documents`);
           const q = query(docsRef);
           const snapshot = await getDocs(q);
@@ -99,7 +99,7 @@ export default function PartnerProfilePage() {
       setIsLoading(false)
       setIsLoadingDocs(false)
     }
-  }, [partnerId, toast, router, adminUser?.role])
+  }, [partnerId, toast, router, loggedInUser?.role])
   
   const fetchSalesStats = React.useCallback(async () => {
     if (!partnerId) return;
@@ -137,11 +137,11 @@ export default function PartnerProfilePage() {
 
 
   React.useEffect(() => {
-    if(adminUser) { // ensure adminUser is loaded before fetching
+    if(loggedInUser) { // ensure loggedInUser is loaded before fetching
         fetchPartnerData()
         fetchSalesStats()
     }
-  }, [fetchPartnerData, fetchSalesStats, adminUser])
+  }, [fetchPartnerData, fetchSalesStats, loggedInUser])
   
   const handleApprove = async () => {
     if (!partnerId) return;
@@ -231,7 +231,7 @@ export default function PartnerProfilePage() {
                 </Button>
                 <h1 className="text-2xl font-bold tracking-tight font-headline">Partner Profile</h1>
             </div>
-            {adminUser?.role === 'admin' && partner.status === 'pending_approval' && (
+            {loggedInUser?.role === 'admin' && partner.status === 'pending_approval' && (
                  <div className="flex justify-end gap-2">
                     <Button variant="outline" onClick={handleApprove} disabled={isUpdating}>
                         {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
@@ -256,9 +256,11 @@ export default function PartnerProfilePage() {
                     <p className="text-muted-foreground">Partner ID: {partner.id}</p>
                 </div>
                 <div className="flex gap-2">
-                     <Button variant="outline" size="icon">
-                        <MessageSquare className="h-4 w-4" />
-                        <span className="sr-only">Send Message</span>
+                     <Button variant="outline" size="icon" asChild>
+                        <Link href={`/send-message?recipientId=${partner.id}&type=to_partner`}>
+                            <MessageSquare className="h-4 w-4" />
+                            <span className="sr-only">Send Message</span>
+                        </Link>
                     </Button>
                 </div>
             </CardContent>
@@ -326,7 +328,7 @@ export default function PartnerProfilePage() {
             </CardContent>
         </Card>
 
-        {adminUser?.role === 'admin' && (
+        {loggedInUser?.role === 'admin' && (
             <>
                 <Card>
                     <CardHeader><CardTitle>KYC Documents</CardTitle></CardHeader>
@@ -391,42 +393,36 @@ export default function PartnerProfilePage() {
 
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="hover:bg-muted transition-colors cursor-pointer">
-                    <CardContent className="p-4 flex justify-between items-center">
-                        <span className="font-medium">Send Message</span>
-                        <Mail className="h-5 w-5 text-muted-foreground" />
-                    </CardContent>
-                </Card>
-                 <Card className="hover:bg-muted transition-colors cursor-pointer">
-                    <CardContent className="p-4 flex justify-between items-center">
-                        <span className="font-medium">WhatsApp</span>
-                        <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                    </CardContent>
-                </Card>
-                 <Card className="hover:bg-muted transition-colors cursor-pointer">
-                    <CardContent className="p-4 flex justify-between items-center">
-                        <span className="font-medium">Call Now</span>
-                        <Phone className="h-5 w-5 text-muted-foreground" />
-                    </CardContent>
-                </Card>
+                 <Button asChild variant="outline">
+                    <a href={`https://wa.me/${partner.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                        <MessageSquare className="mr-2 h-4 w-4" /> WhatsApp
+                    </a>
+                 </Button>
+                <Button asChild variant="outline">
+                     <a href={`tel:${partner.phone}`}>
+                        <Phone className="mr-2 h-4 w-4" /> Call Now
+                    </a>
+                </Button>
             </div>
-             <Card>
-                <CardContent className="p-0">
-                    <Link href={`/leads?partnerId=${partner.id}`} className="block">
-                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
-                            <span className="font-medium">View Enquiry</span>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                    </Link>
-                    <Separator />
-                    <Link href={`/manage-customer?partnerId=${partner.id}`} className="block">
-                        <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
-                            <span className="font-medium">Manage Customer</span>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                    </Link>
-                </CardContent>
-            </Card>
+             {loggedInUser?.id === partner.id && (
+                <Card>
+                    <CardContent className="p-0">
+                        <Link href={`/leads?partnerId=${partner.id}`} className="block">
+                            <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
+                                <span className="font-medium">View Enquiry</span>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        </Link>
+                        <Separator />
+                        <Link href={`/manage-customer?partnerId=${partner.id}`} className="block">
+                            <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted transition-colors">
+                                <span className="font-medium">Manage Customer</span>
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        </Link>
+                    </CardContent>
+                </Card>
+             )}
         </div>
     </div>
   )
