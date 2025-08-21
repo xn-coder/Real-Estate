@@ -444,7 +444,12 @@ export default function WithdrawalRequestPage() {
                         ) : (
                             filteredRequests.map((request) => (
                                 <TableRow key={request.id}>
-                                    {canManage && <TableCell>{request.userName}</TableCell>}
+                                    {canManage && 
+                                        <TableCell>
+                                            <div className="font-medium">{request.userName}</div>
+                                            <div className="text-xs text-muted-foreground font-mono">{request.userId}</div>
+                                        </TableCell>
+                                    }
                                     <TableCell className="font-medium">₹{request.amount.toLocaleString()}</TableCell>
                                     <TableCell>{format(request.requestedAt, 'PPP')}</TableCell>
                                     <TableCell><Badge variant={statusColors[request.status]}>{request.status}</Badge></TableCell>
