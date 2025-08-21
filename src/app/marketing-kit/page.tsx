@@ -43,7 +43,6 @@ import { useUser } from "@/hooks/use-user"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Property } from "@/types/property"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { uploadFile } from "@/services/file-upload-service"
 
 const marketingKitSchema = z.object({
   kitType: z.enum(["poster", "brochure", "video"], {
@@ -82,6 +81,19 @@ const getFileType = (fileName: string): KitFile['type'] => {
     if (extension === 'pdf') return 'pdf';
     if (['mp4', 'webm', 'mov'].includes(extension || '')) return 'video';
     return 'other';
+};
+
+const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error("No file provided"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 };
 
 
@@ -177,16 +189,12 @@ export default function MarketingKitPage() {
     }
     setIsSubmitting(true);
     try {
-        const featureImageFormData = new FormData();
-        featureImageFormData.append('file', featureImageFile);
-        const featureImageUrl = await uploadFile(featureImageFormData);
+        const featureImageUrl = await fileToDataUrl(featureImageFile);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const formData = new FormData();
-                formData.append('file', file);
-                const fileUrl = await uploadFile(formData);
+                const fileUrl = await fileToDataUrl(file);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
