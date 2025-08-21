@@ -49,7 +49,7 @@ const receivableSchema = z.object({
 type ReceivableFormValues = z.infer<typeof receivableSchema>;
 
 export default function ReceivableCashPage() {
-    const { user } = useUser();
+    const { user: currentUser } = useUser();
     const { toast } = useToast()
     const router = useRouter()
     const [receivables, setReceivables] = React.useState<Receivable[]>([])
@@ -77,17 +77,17 @@ export default function ReceivableCashPage() {
     });
 
     const fetchReceivables = React.useCallback(async () => {
-        if (!user) return;
+        if (!currentUser) return;
         setIsLoading(true);
         try {
             const receivablesRef = collection(db, "receivables");
             let q;
-            if (user.role === 'admin') {
+            if (currentUser.role === 'admin') {
                 q = query(receivablesRef, orderBy("date", "desc"));
-            } else if (user.role === 'seller') {
-                q = query(receivablesRef, where("sellerId", "==", user.id), orderBy("date", "desc"));
+            } else if (currentUser.role === 'seller') {
+                q = query(receivablesRef, where("sellerId", "==", currentUser.id), orderBy("date", "desc"));
             } else {
-                q = query(receivablesRef, where("userId", "==", user.id), orderBy("date", "desc"));
+                q = query(receivablesRef, where("userId", "==", currentUser.id), orderBy("date", "desc"));
             }
 
             const snapshot = await getDocs(q);
@@ -103,7 +103,7 @@ export default function ReceivableCashPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [toast, user]);
+    }, [toast, currentUser]);
     
     const fetchUsers = React.useCallback(async () => {
         setIsLoadingUsers(true);
@@ -120,18 +120,21 @@ export default function ReceivableCashPage() {
 
 
     React.useEffect(() => {
-        fetchReceivables();
-        fetchUsers();
-    }, [fetchReceivables, fetchUsers]);
+        if (currentUser) {
+            fetchReceivables();
+            fetchUsers();
+        }
+    }, [currentUser, fetchReceivables, fetchUsers]);
 
     const filteredUsers = React.useMemo(() => {
         if (!userSearchTerm) return [];
         return users.filter(user => 
-            user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+            user.id !== currentUser?.id &&
+            (user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
             user.id.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-            user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+            user.email.toLowerCase().includes(userSearchTerm.toLowerCase()))
         );
-    }, [users, userSearchTerm]);
+    }, [users, userSearchTerm, currentUser]);
 
     const filteredReceivables = React.useMemo(() => {
         return receivables.filter(item => {
@@ -151,7 +154,7 @@ export default function ReceivableCashPage() {
     }
 
     const onSubmit = async (values: ReceivableFormValues) => {
-        if (!selectedUser || !user) {
+        if (!selectedUser || !currentUser) {
             toast({ variant: "destructive", title: "Error", description: "Please select a user."});
             return;
         }
@@ -160,7 +163,7 @@ export default function ReceivableCashPage() {
             await addDoc(collection(db, "receivables"), {
                 userId: selectedUser.id,
                 userName: selectedUser.name,
-                sellerId: user.id, // The logged-in seller is creating this
+                sellerId: currentUser.id, // The logged-in seller is creating this
                 amount: values.amount,
                 notes: values.notes,
                 date: Timestamp.now(),
