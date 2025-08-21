@@ -129,12 +129,15 @@ export default function SettingsPage() {
 
 
   const fetchUsers = React.useCallback(async () => {
+    if (!currentUser) return;
     setIsLoading(true)
     try {
       const usersCollection = collection(db, "users");
       const q = query(usersCollection, where("role", "==", "admin"));
       const userSnapshot = await getDocs(q);
-      const userList = userSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User))
+      const userList = userSnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as User))
+        .filter(user => user.id !== currentUser.id); // Filter out the current user
       setUsers(userList)
     } catch (error) {
       console.error("Error fetching users:", error)
@@ -146,7 +149,7 @@ export default function SettingsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [toast])
+  }, [toast, currentUser])
 
   const fetchFees = React.useCallback(async () => {
     try {
@@ -181,9 +184,11 @@ export default function SettingsPage() {
   }, [toast, feesForm]);
 
   React.useEffect(() => {
-    fetchUsers()
+    if(currentUser) {
+        fetchUsers()
+    }
     fetchFees()
-  }, [fetchUsers, fetchFees])
+  }, [fetchUsers, fetchFees, currentUser])
 
   async function onAccessSubmit(values: AddAccessForm) {
     setIsSubmitting(true)
