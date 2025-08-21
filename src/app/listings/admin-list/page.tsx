@@ -12,14 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, ArrowLeft, Loader2 } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { collection, getDocs, query, Timestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -87,22 +80,18 @@ export default function AdminListingsPage() {
                             <TableHead>Listing Date</TableHead>
                             <TableHead>Expiry Date</TableHead>
                             <TableHead>Views</TableHead>
-                            <TableHead>Notes</TableHead>
-                            <TableHead>
-                                <span className="sr-only">Actions</span>
-                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                                 </TableCell>
                             </TableRow>
                         ) : listings.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     No properties found.
                                 </TableCell>
                             </TableRow>
@@ -115,22 +104,6 @@ export default function AdminListingsPage() {
                                     <TableCell>{listing.createdAt ? format(new Date(listing.createdAt), 'PPP') : 'N/A'}</TableCell>
                                     <TableCell>{format(expiryDate, 'PPP')}</TableCell>
                                     <TableCell>{listing.views || 0}</TableCell>
-                                    <TableCell className="max-w-[200px] truncate">{listing.modificationNotes || '-'}</TableCell>
-                                    <TableCell>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                            <span className="sr-only">Toggle menu</span>
-                                        </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                                        <DropdownMenuItem>Delete</DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    </TableCell>
                                 </TableRow>
                             )
                         })}
