@@ -123,12 +123,12 @@ export default function PropertyDetailsPage() {
 
     const createLead = async (values: EnquiryFormValues) => {
         if (!user || !property) return;
-    
+
         try {
             const leadsCollection = collection(db, "leads");
             const existingLeadQuery = query(leadsCollection, where("email", "==", values.email), where("propertyId", "==", property.id));
             const existingLeadSnapshot = await getDocs(existingLeadQuery);
-    
+
             if (!existingLeadSnapshot.empty) {
                 toast({
                     variant: "default",
@@ -137,34 +137,31 @@ export default function PropertyDetailsPage() {
                 });
                 return;
             }
-    
-            // Step 1: Find or Create Customer
+
             const usersCollection = collection(db, "users");
             const emailQuery = query(usersCollection, where("email", "==", values.email));
             const phoneQuery = query(usersCollection, where("phone", "==", values.phone));
-            
+
             const [emailSnapshot, phoneSnapshot] = await Promise.all([
                 getDocs(emailQuery),
                 getDocs(phoneQuery),
             ]);
-    
+
             let customerId: string;
             let existingCustomer = true;
-    
+
             if (!emailSnapshot.empty) {
                 customerId = emailSnapshot.docs[0].id;
             } else if (!phoneSnapshot.empty) {
                 customerId = phoneSnapshot.docs[0].id;
             } else {
-                // Create a new customer if none found
                 existingCustomer = false;
                 customerId = generateUserId("CUS");
                 const [firstName, ...lastNameParts] = values.name.split(' ');
                 const lastName = lastNameParts.join(' ');
-                
                 const salt = await bcrypt.genSalt(10);
-                const hashedPassword = await bcrypt.hash("password", salt); // Default password
-    
+                const hashedPassword = await bcrypt.hash("password", salt);
+
                 const newUserData = {
                     id: customerId,
                     name: values.name,
@@ -175,7 +172,7 @@ export default function PropertyDetailsPage() {
                     password: hashedPassword,
                     role: 'customer',
                     status: 'New lead',
-                    address: '', 
+                    address: '',
                     city: values.city,
                     state: values.state,
                     pincode: '',
@@ -184,21 +181,19 @@ export default function PropertyDetailsPage() {
                 };
                 await setDoc(doc(db, "users", customerId), newUserData);
             }
-    
-            // Step 2: Create the Lead with the customerId
+
             const leadData = {
                 ...values,
                 propertyId: property.id,
-                partnerId: user.id, // The partner who submitted the enquiry
+                partnerId: user.id,
                 customerId: customerId,
                 status: "New lead",
                 dealStatus: "New lead",
                 createdAt: Timestamp.now(),
             };
-    
-            const leadRef = await addDoc(collection(db, "leads"), leadData);
-    
-            // Step 3: Update property views
+
+            const leadRef = await addDoc(leadsCollection, leadData);
+
             await runTransaction(db, async (transaction) => {
               const propertyRef = doc(db, 'properties', propertyId);
               const propertyDoc = await transaction.get(propertyRef);
@@ -208,10 +203,10 @@ export default function PropertyDetailsPage() {
               const newViews = (propertyDoc.data().views || 0) + 1;
               transaction.update(propertyRef, { views: newViews });
             });
-    
+
             setLastLeadId(leadRef.id);
             setEnquiryCount(prev => prev + 1);
-    
+
             toast({
                 title: "Enquiry Submitted",
                 description: "Your enquiry has been sent. We will get back to you shortly.",
@@ -219,8 +214,8 @@ export default function PropertyDetailsPage() {
             enquiryForm.reset();
             setIsScheduleDialogOpen(true);
         } catch (error) {
-            console.error("Error submitting enquiry:", error);
-            throw error; // re-throw to be caught by the caller
+            console.error("Error creating lead:", error);
+            throw error;
         }
     };
 
