@@ -83,14 +83,63 @@ const getFileType = (fileName: string): KitFile['type'] => {
     return 'other';
 };
 
-const fileToDataUrl = (file: File): Promise<string> => {
+const compressAndConvertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         if (!file) {
-            reject(new Error("No file provided"));
-            return;
+            return reject(new Error("No file provided"));
         }
+        if (file.size < 1024 * 1024) { // If less than 1MB, just convert
+             const reader = new FileReader();
+             reader.onloadend = () => resolve(reader.result as string);
+             reader.onerror = reject;
+             reader.readAsDataURL(file);
+             return;
+        }
+
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onload = (event) => {
+            const img = new window.Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject(new Error("Could not get canvas context"));
+
+                let { width, height } = img;
+                const MAX_WIDTH = 1920;
+                const MAX_HEIGHT = 1080;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Start with high quality
+                let quality = 0.9;
+                let dataUrl = canvas.toDataURL(file.type, quality);
+
+                // Iteratively reduce quality until size is under 1MB
+                while (dataUrl.length > 1024 * 1024 && quality > 0.1) {
+                    quality -= 0.1;
+                    dataUrl = canvas.toDataURL(file.type, quality);
+                }
+                
+                resolve(dataUrl);
+            };
+            img.onerror = reject;
+            img.src = event.target?.result as string;
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
@@ -189,12 +238,12 @@ export default function MarketingKitPage() {
     }
     setIsSubmitting(true);
     try {
-        const featureImageUrl = await fileToDataUrl(featureImageFile);
+        const featureImageUrl = await compressAndConvertToBase64(featureImageFile);
 
         const filesData: KitFile[] = [];
         if (values.files && values.files.length > 0) {
             for (const file of Array.from(values.files as FileList)) {
-                const fileUrl = await fileToDataUrl(file);
+                const fileUrl = await compressAndConvertToBase64(file);
                 filesData.push({
                     name: file.name,
                     url: fileUrl,
