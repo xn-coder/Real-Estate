@@ -337,7 +337,9 @@ export default function MarketingKitPage() {
 
                 // Trigger download
                 const link = document.createElement('a');
-                link.download = `watermarked_${file.name}`;
+                const safeTitle = kit.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                const safeFileName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+                link.download = `${safeTitle}_${safeFileName}`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             };
