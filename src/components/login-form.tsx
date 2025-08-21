@@ -51,45 +51,6 @@ export function LoginForm() {
     },
   })
 
-  React.useEffect(() => {
-    const setupAdmin = async () => {
-      const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL
-      if (!adminEmail) {
-        console.warn("Admin email is not configured in environment variables.")
-        return
-      }
-
-      try {
-        const usersRef = collection(db, "users")
-        const q = query(usersRef, where("email", "==", adminEmail))
-        const querySnapshot = await getDocs(q)
-
-        if (querySnapshot.empty) {
-          console.log("Admin user not found, creating one...")
-          const salt = await bcrypt.genSalt(10)
-          const hashedPassword = await bcrypt.hash("password", salt)
-          const adminId = generateUserId("SEL")
-          const adminUserDocRef = doc(db, "users", adminId);
-          await setDoc(adminUserDocRef, { 
-            id: adminId,
-            name: 'Admin User',
-            firstName: 'Admin',
-            lastName: 'User',
-            email: adminEmail, 
-            phone: '123-456-7890',
-            password: hashedPassword,
-            role: 'admin' 
-          })
-          console.log("Admin user created successfully.")
-        }
-      } catch (error) {
-        console.error("Error setting up admin user:", error)
-      }
-    }
-
-    setupAdmin()
-  }, [])
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true)
     try {
@@ -103,6 +64,7 @@ export function LoginForm() {
           title: "Login Failed",
           description: "Invalid email or password.",
         })
+        setIsLoading(false);
         return;
       } 
       
@@ -115,6 +77,7 @@ export function LoginForm() {
             title: "Login Failed",
             description: "This account does not have a password set.",
         });
+        setIsLoading(false);
         return;
       }
 
