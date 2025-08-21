@@ -98,7 +98,6 @@ export default function BookingDetailsPage() {
         setIsUploading(true);
 
         try {
-            // Document uploads are not part of the transaction for atomicity, but we prepare them.
             const fileUploadPromises = filesToUpload.map(async (file) => {
                 const formData = new FormData();
                 formData.append('file', file);
@@ -113,7 +112,20 @@ export default function BookingDetailsPage() {
             await runTransaction(db, async (transaction) => {
                 const customerId = details.customer!.id;
                 
-                // Now, start the transactional writes for the uploaded file references
+                // Find seller by property email to prepare for wallet update.
+                const sellersQuery = query(collection(db, "users"), where("email", "==", details.property!.email));
+                const sellersSnapshot = await getDocs(sellersQuery);
+                
+                let sellerWalletRef;
+                let sellerWalletDoc;
+                if (!sellersSnapshot.empty) {
+                    const seller = sellersSnapshot.docs[0];
+                    sellerWalletRef = doc(db, "wallets", seller.id);
+                    // READ FIRST
+                    sellerWalletDoc = await transaction.get(sellerWalletRef);
+                }
+
+                // NOW PERFORM ALL WRITES
                 uploadedFilesData.forEach(fileData => {
                     const newDocRef = doc(db, `users/${customerId}/documents`, fileData.id);
                     transaction.set(newDocRef, fileData);
@@ -128,14 +140,8 @@ export default function BookingDetailsPage() {
                 const propertyRef = doc(db, "properties", details.property!.id);
                 transaction.update(propertyRef, { status: 'Sold' });
                 
-                // Find seller by property email and update their wallet
-                const sellersQuery = query(collection(db, "users"), where("email", "==", details.property!.email));
-                const sellersSnapshot = await getDocs(sellersQuery);
-                if (!sellersSnapshot.empty) {
-                    const seller = sellersSnapshot.docs[0];
-                    const sellerWalletRef = doc(db, "wallets", seller.id);
-                    const sellerWalletDoc = await transaction.get(sellerWalletRef);
-
+                // Update seller's wallet if they were found
+                if (sellerWalletRef && sellerWalletDoc) {
                     const currentRevenue = sellerWalletDoc.exists() ? sellerWalletDoc.data().revenue || 0 : 0;
                     const newRevenue = currentRevenue + details.property!.listingPrice;
                     
