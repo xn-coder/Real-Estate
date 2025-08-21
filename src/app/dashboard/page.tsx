@@ -275,20 +275,21 @@ const PartnerDashboard = () => {
             setIsLoading(true);
             try {
                 // Fetch stats
-                const leadsQuery = query(collection(db, "leads"), where("partnerId", "==", user.id));
+                const allLeadsQuery = query(collection(db, "leads"), where("partnerId", "==", user.id));
+                const newLeadsQuery = query(collection(db, "leads"), where("partnerId", "==", user.id), where("status", "==", "New lead"));
                 const visitsQuery = query(collection(db, "appointments"), where("partnerId", "==", user.id));
                 const walletRef = doc(db, 'wallets', user.id);
                 
-                const [leadsSnap, visitsSnap, walletSnap] = await Promise.all([
-                    getDocs(leadsQuery),
+                const [allLeadsSnap, newLeadsSnap, visitsSnap, walletSnap] = await Promise.all([
+                    getDocs(allLeadsQuery),
+                    getDocs(newLeadsQuery),
                     getDocs(visitsQuery),
                     getDoc(walletRef)
                 ]);
 
-                const newLeads = leadsSnap.docs.filter(d => d.data().status === 'New lead').length;
-                const customers = new Set(leadsSnap.docs.map(d => d.data().customerId)).size;
+                const customers = new Set(allLeadsSnap.docs.map(d => d.data().customerId)).size;
                 const rewardPoints = walletSnap.exists() ? walletSnap.data().rewardBalance || 0 : 0;
-                setStats({ newLeads, totalVisits: visitsSnap.size, customers, rewardPoints });
+                setStats({ newLeads: newLeadsSnap.size, totalVisits: visitsSnap.size, customers, rewardPoints });
 
                 // Fetch website defaults
                 const defaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
@@ -450,3 +451,5 @@ export default function Dashboard() {
 
   return <AdminSellerDashboard />;
 }
+
+    
