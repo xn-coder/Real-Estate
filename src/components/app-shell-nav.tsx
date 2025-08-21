@@ -145,8 +145,7 @@ const customerNavItems: NavItem[] = [
     { href: '/manage-requirements', icon: History, label: 'My Requirements History' },
     { href: '/resource-center', icon: BookOpen, label: 'Resource Center' },
     { href: '/document-management', icon: FileText, label: 'Manage Documents' },
-    { href: '/refer-earn', icon: Gift, label: 'Refer & Earn' },
-    { href: '/upgrade', icon: Award, label: 'Upgrade' },
+    { href: '/refer-earn', icon: Gift, label: 'Become a Partner' },
 ];
 
 const userNavItems: NavItem[] = [
