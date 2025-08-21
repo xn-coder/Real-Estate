@@ -156,7 +156,15 @@ const userNavItems: NavItem[] = [
 const NavList = ({ items, role }: { items: NavItem[], role: string }) => {
     const pathname = usePathname();
     
-    const filteredItems = items.filter(item => !item.allowedRoles || item.allowedRoles.includes(role));
+    const filteredItems = items.filter(item => {
+        if (item.label === 'Upgrade' && ['franchisee', 'channel'].includes(role)) {
+            return false;
+        }
+        if (item.allowedRoles && !item.allowedRoles.includes(role)) {
+            return false;
+        }
+        return true;
+    });
     
     return (
         <SidebarMenu>
