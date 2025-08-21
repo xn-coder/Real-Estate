@@ -23,6 +23,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import Autoplay from "embla-carousel-autoplay"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, TooltipProps } from "recharts"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Users, Building, UserPlus, Target, Handshake, ArrowRight, Home, Star } from "lucide-react"
@@ -32,7 +34,9 @@ import { collection, getDocs, query, where, Timestamp, orderBy, limit, doc, getD
 import type { Lead } from "@/types/lead"
 import type { User } from "@/types/user"
 import type { Property } from "@/types/property"
+import type { PropertyType } from "@/types/resource"
 import Link from "next/link"
+import Image from "next/image"
 import { format, subMonths, startOfMonth } from "date-fns"
 import { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent"
 
@@ -98,18 +102,28 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameT
   return null
 }
 
+type PartnerDashboardData = {
+    stats: PartnerStats;
+    slideshow: any[];
+    featuredProperties: Property[];
+    recommendedProperties: Property[];
+    propertyTypes: PropertyType[];
+}
+
 export default function DashboardPage() {
     const { user, isLoading: isUserLoading } = useUser();
     const [stats, setStats] = React.useState<SellerStats | AdminStats | PartnerStats | null>(null);
     const [recentLeads, setRecentLeads] = React.useState<Lead[]>([]);
     const [monthlyChartData, setMonthlyChartData] = React.useState<{ month: string, leads: number, customers: number, partners: number }[]>([])
     const [isLoadingStats, setIsLoadingStats] = React.useState(true);
+    const [partnerDashboardData, setPartnerDashboardData] = React.useState<PartnerDashboardData | null>(null);
+    const autoplay = React.useRef(Autoplay({ delay: 5000, stopOnInteraction: false }));
+
 
     const fetchSellerData = React.useCallback(async () => {
         if (!user || user.role !== 'seller') return;
         setIsLoadingStats(true);
         try {
-            // 1. Find properties by seller email
             const propertiesQuery = query(collection(db, "properties"), where("email", "==", user.email));
             const propertiesSnapshot = await getDocs(propertiesQuery);
             const propertyIds = propertiesSnapshot.docs.map(doc => doc.id);
@@ -121,12 +135,10 @@ export default function DashboardPage() {
                 return;
             }
 
-            // 2. Fetch leads for those properties
             const leadsQuery = query(collection(db, "leads"), where("propertyId", "in", propertyIds));
             const leadsSnapshot = await getDocs(leadsQuery);
             const leads = leadsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Lead));
 
-            // 3. Calculate stats
             const totalLeads = leads.length;
             const newLeads = leads.filter(l => l.status === 'New lead').length;
             const closedLeads = leads.filter(l => l.status === 'Completed' || l.status === 'Deal closed');
@@ -135,7 +147,6 @@ export default function DashboardPage() {
 
             setStats({ totalLeads, newLeads, propertiesSold, totalRevenue });
 
-            // 4. Get recent leads
             const sortedLeads = leads.sort((a,b) => (b.createdAt as Timestamp).toMillis() - (a.createdAt as Timestamp).toMillis());
             setRecentLeads(sortedLeads.slice(0, 5));
 
@@ -150,23 +161,43 @@ export default function DashboardPage() {
         if (!user || !partnerRoles.includes(user.role)) return;
         setIsLoadingStats(true);
         try {
+            // Stats
             const leadsQuery = query(collection(db, "leads"), where("partnerId", "==", user.id));
             const leadsSnapshot = await getDocs(leadsQuery);
             const leads = leadsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Lead));
-
             const totalLeads = leads.length;
             const totalCustomers = new Set(leads.map(lead => lead.customerId)).size;
-            
             const completedLeads = leads.filter(l => l.status === 'Completed' || l.status === 'Deal closed');
             const totalDealValue = completedLeads.reduce((acc, lead) => acc + (lead.closingAmount || 0), 0);
-
             const walletDoc = await getDoc(doc(db, "wallets", user.id));
             const rewardPoints = walletDoc.exists() ? walletDoc.data().rewardBalance || 0 : 0;
+            const partnerStats = { totalLeads, totalCustomers, totalDealValue, rewardPoints };
             
-            setStats({ totalLeads, totalCustomers, totalDealValue, rewardPoints });
+            // Website Defaults
+            const defaultsDoc = await getDoc(doc(db, "app_settings", "website_defaults"));
+            const defaults = defaultsDoc.exists() ? defaultsDoc.data() : {};
+            const slideshow = (defaults.slideshow || []).filter((s: any) => s.showOnPartnerDashboard);
+            const featuredIds = defaults.partnerFeaturedCatalog || [];
+            const recommendedIds = defaults.recommendedCatalog || [];
 
-            const sortedLeads = leads.sort((a,b) => (b.createdAt as Timestamp).toMillis() - (a.createdAt as Timestamp).toMillis());
-            setRecentLeads(sortedLeads.slice(0, 5));
+            // Properties
+            const allPropsQuery = query(collection(db, "properties"), where("status", "==", "For Sale"));
+            const allPropsSnapshot = await getDocs(allPropsQuery);
+            const allProps = allPropsSnapshot.docs.map(d => ({...d.data(), id: d.id } as Property));
+            const featuredProperties = allProps.filter(p => featuredIds.includes(p.id));
+            const recommendedProperties = allProps.filter(p => recommendedIds.includes(p.id));
+
+            // Property Types
+            const typesSnapshot = await getDocs(collection(db, "property_types"));
+            const propertyTypes = typesSnapshot.docs.map(d => ({id: d.id, ...d.data() } as PropertyType));
+
+            setPartnerDashboardData({
+                stats: partnerStats,
+                slideshow,
+                featuredProperties,
+                recommendedProperties,
+                propertyTypes
+            })
 
         } catch (error) {
             console.error("Error fetching partner dashboard data:", error);
@@ -193,17 +224,14 @@ export default function DashboardPage() {
             
             setStats({ totalProperties, totalPartners, totalLeads, totalCustomers });
 
-            // Prepare chart data (last 6 months)
             const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
             const monthlyData: { [key: string]: { leads: number, customers: number, partners: number } } = {};
 
-            // Initialize months
             for (let i = 0; i < 6; i++) {
                 const monthKey = format(subMonths(new Date(), 5 - i), 'MMM');
                 monthlyData[monthKey] = { leads: 0, customers: 0, partners: 0 };
             }
 
-            // Process leads
             leadsSnapshot.docs.forEach(doc => {
                 const lead = doc.data() as Lead;
                 const createdAt = (lead.createdAt as Timestamp).toDate();
@@ -213,7 +241,6 @@ export default function DashboardPage() {
                 }
             });
             
-            // Process users (customers and partners)
             allUsers.forEach(u => {
                 if (u.createdAt) {
                     const createdAt = (u.createdAt as Timestamp).toDate();
@@ -261,7 +288,10 @@ export default function DashboardPage() {
     }
     
     if (user && partnerRoles.includes(user.role)) {
-        const partnerStats = stats as PartnerStats;
+        if(isLoadingStats || !partnerDashboardData) {
+            return <div className="flex-1 p-8 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+        }
+        const partnerStats = partnerDashboardData.stats;
         const partnerCards = [
             { title: "Total Leads", icon: UserPlus, value: partnerStats?.totalLeads, href: "/leads" },
             { title: "Total Customers", icon: Users, value: partnerStats?.totalCustomers, href: "/manage-customer" },
@@ -269,8 +299,23 @@ export default function DashboardPage() {
             { title: "Reward Points", icon: Star, value: partnerStats?.rewardPoints?.toLocaleString() || 0, href: "/wallet" },
         ];
         return (
-            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-                <h1 className="text-3xl font-bold tracking-tight font-headline">Partner Dashboard</h1>
+            <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+                 {partnerDashboardData.slideshow.length > 0 && (
+                    <Carousel className="w-full" plugins={[autoplay.current]} onMouseEnter={autoplay.current.stop} onMouseLeave={autoplay.current.reset}>
+                        <CarouselContent>
+                            {partnerDashboardData.slideshow.map((slide, index) => (
+                                <CarouselItem key={index}>
+                                    <a href={slide.linkUrl || '#'} target={slide.linkUrl ? '_blank' : '_self'}>
+                                        <div className="aspect-[16/6] relative rounded-lg overflow-hidden">
+                                            <Image src={slide.bannerImage} alt={slide.title} layout="fill" objectFit="cover" />
+                                        </div>
+                                    </a>
+                                </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                    </Carousel>
+                )}
+
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                      {partnerCards.map(item => (
                         <Card key={item.title}>
@@ -279,7 +324,7 @@ export default function DashboardPage() {
                                 <item.icon className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{isLoadingStats ? <Loader2 className="animate-spin h-6 w-6" /> : item.value}</div>
+                                <div className="text-2xl font-bold">{item.value}</div>
                                 <Link href={item.href} className="text-xs text-muted-foreground flex items-center hover:underline">
                                     View All <ArrowRight className="h-3 w-3 ml-1" />
                                 </Link>
@@ -287,29 +332,54 @@ export default function DashboardPage() {
                         </Card>
                      ))}
                 </div>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Recent Leads</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                         <Table>
-                            <TableHeader>
-                                <TableRow><TableHead>Customer</TableHead><TableHead>Property ID</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {isLoadingStats ? <TableRow><TableCell colSpan={4} className="text-center"><Loader2 className="animate-spin"/></TableCell></TableRow> : recentLeads.map(lead => (
-                                    <TableRow key={lead.id}>
-                                        <TableCell>{lead.name}</TableCell>
-                                        <TableCell>{lead.propertyId}</TableCell>
-                                        <TableCell><Badge>{lead.status}</Badge></TableCell>
-                                        <TableCell>{format((lead.createdAt as Timestamp).toDate(), 'PPP')}</TableCell>
-                                    </TableRow>
-                                ))}
-                                {recentLeads.length === 0 && !isLoadingStats && <TableRow><TableCell colSpan={4} className="text-center h-24">No recent leads found.</TableCell></TableRow>}
-                            </TableBody>
-                         </Table>
-                    </CardContent>
-                </Card>
+
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight mb-4 font-headline">Featured Properties</h2>
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {partnerDashboardData.featuredProperties.map(prop => (
+                                <Link href={`/listings/${prop.id}`} key={prop.id} className="block group">
+                                <Card className="overflow-hidden">
+                                    <div className="aspect-video relative overflow-hidden"><Image src={prop.featureImage} alt={prop.catalogTitle} layout="fill" objectFit="cover" className="group-hover:scale-105 transition-transform duration-300"/></div>
+                                    <CardContent className="p-4">
+                                        <h3 className="font-semibold truncate">{prop.catalogTitle}</h3>
+                                        <p className="text-sm text-muted-foreground">{prop.city}</p>
+                                    </CardContent>
+                                </Card>
+                                </Link>
+                            ))}
+                         </div>
+                    </div>
+                     <div>
+                        <h2 className="text-2xl font-bold tracking-tight mb-4 font-headline">Recommended Properties</h2>
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {partnerDashboardData.recommendedProperties.map(prop => (
+                                <Link href={`/listings/${prop.id}`} key={prop.id} className="block group">
+                                <Card className="overflow-hidden">
+                                    <div className="aspect-video relative overflow-hidden"><Image src={prop.featureImage} alt={prop.catalogTitle} layout="fill" objectFit="cover" className="group-hover:scale-105 transition-transform duration-300"/></div>
+                                    <CardContent className="p-4">
+                                        <h3 className="font-semibold truncate">{prop.catalogTitle}</h3>
+                                        <p className="text-sm text-muted-foreground">{prop.city}</p>
+                                    </CardContent>
+                                </Card>
+                                </Link>
+                            ))}
+                         </div>
+                    </div>
+                     <div>
+                        <h2 className="text-2xl font-bold tracking-tight mb-4 font-headline">Browse by Type</h2>
+                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                           {partnerDashboardData.propertyTypes.map(type => (
+                                <Link href={`/listings/list?type=${type.id}`} key={type.id} className="block group">
+                                    <Card className="text-center p-4 hover:shadow-lg transition-shadow">
+                                         <Image src={type.featureImage || 'https://placehold.co/100x100.png'} alt={type.name} width={60} height={60} className="mx-auto rounded-full aspect-square object-cover" />
+                                        <h3 className="font-semibold mt-2 text-sm">{type.name}</h3>
+                                    </Card>
+                                </Link>
+                           ))}
+                         </div>
+                    </div>
+                </div>
             </div>
         )
     }
