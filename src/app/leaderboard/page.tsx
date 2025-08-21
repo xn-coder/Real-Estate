@@ -6,21 +6,22 @@ import { collection, query, getDocs, doc, getDoc, where } from "firebase/firesto
 import { db } from "@/lib/firebase"
 import type { Lead } from "@/types/lead"
 import type { User } from "@/types/user"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Loader2, Trophy, Medal, Award } from "lucide-react"
+import { Loader2, Trophy, Medal, Award, Crown } from "lucide-react"
 
 type PartnerLeaderboard = {
   partnerId: string;
   dealCount: number;
+  totalDealValue: number;
   partnerDetails?: User;
 }
 
 const rankIcons = [
-    { icon: Trophy, color: "text-yellow-500", shadow: "shadow-yellow-500/50" },
+    { icon: Trophy, color: "text-yellow-400", shadow: "shadow-yellow-500/50" },
     { icon: Medal, color: "text-gray-400", shadow: "shadow-gray-400/50" },
-    { icon: Award, color: "text-orange-600", shadow: "shadow-orange-600/50" }
+    { icon: Award, color: "text-orange-500", shadow: "shadow-orange-600/50" }
 ];
 
 export default function LeaderboardPage() {
@@ -31,22 +32,27 @@ export default function LeaderboardPage() {
     const fetchLeaderboard = async () => {
       setIsLoading(true);
       try {
-        const leadsQuery = query(collection(db, "leads"), where("status", "==", "Completed"));
+        const leadsQuery = query(collection(db, "leads"), where("status", "in", ["Completed", "Deal closed"]));
         const leadsSnapshot = await getDocs(leadsQuery);
         const leads = leadsSnapshot.docs.map(doc => doc.data() as Lead);
 
-        const dealCounts: { [key: string]: number } = {};
+        const partnerStats: { [key: string]: { dealCount: number; totalDealValue: number } } = {};
+
         for (const lead of leads) {
           if (lead.partnerId) {
-            dealCounts[lead.partnerId] = (dealCounts[lead.partnerId] || 0) + 1;
+            if (!partnerStats[lead.partnerId]) {
+              partnerStats[lead.partnerId] = { dealCount: 0, totalDealValue: 0 };
+            }
+            partnerStats[lead.partnerId].dealCount++;
+            partnerStats[lead.partnerId].totalDealValue += lead.closingAmount || 0;
           }
         }
 
-        const leaderboardDataPromises = Object.entries(dealCounts).map(async ([partnerId, dealCount]) => {
+        const leaderboardDataPromises = Object.entries(partnerStats).map(async ([partnerId, stats]) => {
           const partnerDoc = await getDoc(doc(db, "users", partnerId));
           return {
             partnerId,
-            dealCount,
+            ...stats,
             partnerDetails: partnerDoc.exists() ? partnerDoc.data() as User : undefined,
           };
         });
@@ -55,7 +61,7 @@ export default function LeaderboardPage() {
         
         const sortedLeaderboard = leaderboardData
           .filter(item => item.partnerDetails) // Ensure partner details were fetched
-          .sort((a, b) => b.dealCount - a.dealCount);
+          .sort((a, b) => b.dealCount - a.dealCount || b.totalDealValue - a.totalDealValue);
         
         setLeaderboard(sortedLeaderboard);
 
@@ -82,55 +88,65 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Leaderboard</h1>
+    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold tracking-tight font-headline">Partner Leaderboard</h1>
+        <p className="text-muted-foreground mt-2">See who's leading the pack this season.</p>
       </div>
       
       {/* Top 3 Podium */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
         {/* 2nd Place */}
         <div className="order-2 md:order-1">
           {topThree[1] && (
-             <Card className="text-center p-6 relative border-2 border-gray-400/50 shadow-lg">
+             <Card className="text-center p-6 relative border-2 border-gray-400/50 shadow-lg bg-card transform hover:scale-105 transition-transform duration-300">
                 <Medal className="h-12 w-12 mx-auto text-gray-400 mb-4"/>
                 <Avatar className="h-24 w-24 mx-auto mb-2 border-4 border-gray-400">
                     <AvatarImage src={topThree[1].partnerDetails?.profileImage} />
                     <AvatarFallback>{getInitials(topThree[1].partnerDetails?.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-xl font-bold">{topThree[1].partnerDetails?.name}</h3>
-                <p className="text-2xl font-black text-gray-500">{topThree[1].dealCount} Deals</p>
-                <div className="absolute top-2 right-2 text-3xl font-extrabold text-gray-400">#2</div>
+                <p className="text-muted-foreground text-sm">#2 Rank</p>
+                <div className="mt-4 flex justify-around divide-x">
+                    <div className="px-2"><p className="text-2xl font-black text-gray-500">{topThree[1].dealCount}</p><p className="text-xs text-muted-foreground">Deals</p></div>
+                    <div className="px-2"><p className="text-2xl font-black text-gray-500">₹{topThree[1].totalDealValue.toLocaleString()}</p><p className="text-xs text-muted-foreground">Value</p></div>
+                </div>
             </Card>
           )}
         </div>
          {/* 1st Place */}
          <div className="order-1 md:order-2">
            {topThree[0] && (
-            <Card className="text-center p-8 relative border-2 border-yellow-500/50 shadow-2xl scale-105">
+            <Card className="text-center p-8 relative border-2 border-yellow-500/50 shadow-2xl scale-105 bg-card transform hover:scale-110 transition-transform duration-300">
                 <Trophy className="h-16 w-16 mx-auto text-yellow-500 mb-4"/>
                  <Avatar className="h-32 w-32 mx-auto mb-2 border-4 border-yellow-500">
                     <AvatarImage src={topThree[0].partnerDetails?.profileImage} />
                     <AvatarFallback className="text-4xl">{getInitials(topThree[0].partnerDetails?.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-2xl font-bold">{topThree[0].partnerDetails?.name}</h3>
-                <p className="text-3xl font-black text-yellow-600">{topThree[0].dealCount} Deals</p>
-                <div className="absolute top-2 right-2 text-4xl font-extrabold text-yellow-500">#1</div>
+                <p className="text-muted-foreground text-sm">#1 Rank</p>
+                <div className="mt-4 flex justify-around divide-x">
+                    <div className="px-2"><p className="text-3xl font-black text-yellow-600">{topThree[0].dealCount}</p><p className="text-xs text-muted-foreground">Deals</p></div>
+                    <div className="px-2"><p className="text-3xl font-black text-yellow-600">₹{topThree[0].totalDealValue.toLocaleString()}</p><p className="text-xs text-muted-foreground">Value</p></div>
+                </div>
             </Card>
            )}
         </div>
          {/* 3rd Place */}
         <div className="order-3 md:order-3">
           {topThree[2] && (
-            <Card className="text-center p-6 relative border-2 border-orange-600/50 shadow-lg">
+            <Card className="text-center p-6 relative border-2 border-orange-600/50 shadow-lg bg-card transform hover:scale-105 transition-transform duration-300">
                 <Award className="h-12 w-12 mx-auto text-orange-600 mb-4"/>
                  <Avatar className="h-24 w-24 mx-auto mb-2 border-4 border-orange-600">
                     <AvatarImage src={topThree[2].partnerDetails?.profileImage} />
                     <AvatarFallback>{getInitials(topThree[2].partnerDetails?.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-xl font-bold">{topThree[2].partnerDetails?.name}</h3>
-                <p className="text-2xl font-black text-orange-700">{topThree[2].dealCount} Deals</p>
-                <div className="absolute top-2 right-2 text-3xl font-extrabold text-orange-600">#3</div>
+                <p className="text-muted-foreground text-sm">#3 Rank</p>
+                <div className="mt-4 flex justify-around divide-x">
+                    <div className="px-2"><p className="text-2xl font-black text-orange-700">{topThree[2].dealCount}</p><p className="text-xs text-muted-foreground">Deals</p></div>
+                    <div className="px-2"><p className="text-2xl font-black text-orange-700">₹{topThree[2].totalDealValue.toLocaleString()}</p><p className="text-xs text-muted-foreground">Value</p></div>
+                </div>
             </Card>
           )}
         </div>
@@ -140,6 +156,7 @@ export default function LeaderboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Partner Rankings</CardTitle>
+          <CardDescription>Full list of all partner rankings.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="border rounded-lg">
@@ -149,26 +166,31 @@ export default function LeaderboardPage() {
                   <TableHead className="w-[80px]">Rank</TableHead>
                   <TableHead>Partner</TableHead>
                   <TableHead className="text-right">Deals Closed</TableHead>
+                  <TableHead className="text-right">Total Deal Value</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rest.length > 0 ? rest.map((item, index) => (
                   <TableRow key={item.partnerId}>
-                    <TableCell className="font-bold text-lg text-muted-foreground">{index + 4}</TableCell>
+                    <TableCell className="font-bold text-lg text-muted-foreground text-center">{index + 4}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
                           <AvatarImage src={item.partnerDetails?.profileImage} />
                           <AvatarFallback>{getInitials(item.partnerDetails?.name)}</AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{item.partnerDetails?.name}</span>
+                        <div>
+                           <p className="font-medium">{item.partnerDetails?.name}</p>
+                           <p className="text-xs text-muted-foreground font-mono">{item.partnerDetails?.id}</p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold">{item.dealCount}</TableCell>
+                    <TableCell className="text-right font-semibold">₹{item.totalDealValue.toLocaleString()}</TableCell>
                   </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center">
+                        <TableCell colSpan={4} className="h-24 text-center">
                             No other partners found in the leaderboard.
                         </TableCell>
                     </TableRow>
