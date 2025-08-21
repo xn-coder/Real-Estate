@@ -22,6 +22,7 @@ import { collection, getDocs, query, where, Timestamp, doc, getDoc } from "fireb
 import type { Lead } from "@/types/lead"
 import type { Property } from "@/types/property"
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns"
+import { formatIndianCurrency } from "@/lib/utils"
 
 const chartConfig = {
   leads: {
@@ -73,6 +74,9 @@ export default function ReportsAnalyticsPage() {
         const conversionRate = totalLeads > 0 ? (dealsClosed / totalLeads) * 100 : 0;
         
         const dealValuePromises = completedLeads.map(async (lead) => {
+            if (lead.closingAmount) {
+                return lead.closingAmount;
+            }
             if (lead.propertyId) {
                 const propDoc = await getDoc(doc(db, "properties", lead.propertyId));
                 if (propDoc.exists()) {
@@ -116,7 +120,8 @@ export default function ReportsAnalyticsPage() {
                     monthlyCustomers[monthKey].add(lead.customerId);
                 }
                  if ((lead.status === 'Completed' || lead.status === 'Deal closed') && monthlyEarnings[monthKey] !== undefined) {
-                    const dealValue = completedLeads.find(cl => cl.id === lead.id) ? (await getDoc(doc(db, "properties", lead.propertyId))).data()?.listingPrice || 0 : 0;
+                    const dealValue = completedLeads.find(cl => cl.id === lead.id) ? 
+                        (lead.closingAmount || (await getDoc(doc(db, "properties", lead.propertyId))).data()?.listingPrice || 0) : 0;
                     monthlyEarnings[monthKey] += dealValue;
                 }
             }
@@ -193,7 +198,7 @@ export default function ReportsAnalyticsPage() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                 {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : <div className="text-2xl font-bold">₹{stats.totalDealValue.toLocaleString()}</div>}
+                 {isLoading ? <Loader2 className="h-6 w-6 animate-spin"/> : <div className="text-2xl font-bold">₹{formatIndianCurrency(stats.totalDealValue)}</div>}
             </CardContent>
         </Card>
       </div>
@@ -253,7 +258,7 @@ export default function ReportsAnalyticsPage() {
                         <BarChart data={earningsByMonth}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
-                            <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `₹${Number(value) / 1000}k`} />
+                            <YAxis tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `₹${formatIndianCurrency(Number(value))}`} />
                             <ChartTooltip content={<ChartTooltipContent formatter={(value) => `₹${Number(value).toLocaleString()}`} />} />
                             <Bar dataKey="earnings" fill="var(--color-earnings)" radius={4} />
                         </BarChart>
