@@ -57,7 +57,7 @@ export default function MyListingsPage() {
                         createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
                     };
                 });
-                setListings(listingsData);
+                setListings(listingsData.sort((a,b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime()));
             } catch (error) {
                 console.error("Error fetching listings:", error);
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch your properties.' });
@@ -123,7 +123,7 @@ export default function MyListingsPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem>Edit</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => router.push(`/listings/edit/${listing.id}`)}>Edit</DropdownMenuItem>
                                 <DropdownMenuItem>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -131,12 +131,12 @@ export default function MyListingsPage() {
                     </CardHeader>
                     <CardContent className="p-4 flex-grow">
                         <Badge variant={statusColors[listing.status] || 'default'} className="mb-2">{listing.status}</Badge>
-                        <h3 className="font-semibold text-lg leading-tight truncate" title={listing.addressLine}>{listing.addressLine}</h3>
+                        <h3 className="font-semibold text-lg leading-tight truncate" title={listing.addressLine}>{listing.catalogTitle}</h3>
                         <p className="text-muted-foreground text-sm">{listing.city}, {listing.state}</p>
                     </CardContent>
                     <CardFooter className="p-4 pt-0 border-t mt-auto bg-muted/50">
                         <div className="flex justify-between items-center w-full text-sm">
-                            <span className="font-bold text-lg text-primary">${listing.listingPrice.toLocaleString()}</span>
+                            <span className="font-bold text-lg text-primary">₹{listing.listingPrice.toLocaleString()}</span>
                             <span className="text-muted-foreground">{listing.bedrooms}bd / {listing.bathrooms}ba</span>
                         </div>
                     </CardFooter>
