@@ -177,7 +177,7 @@ export default function SendMessagePage() {
         form.reset({
             messageType: "announcement",
             subject: "",
-            details: "",
+            details: "<p></p>", // Reset rich text editor correctly
             recipientId: "",
             announcementType: undefined,
         });
