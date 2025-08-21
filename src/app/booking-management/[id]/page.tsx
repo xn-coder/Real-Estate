@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
 import { generateUserId } from "@/lib/utils"
+import { uploadFile } from "@/services/file-upload-service"
 
 // Data types
 type BookingDetails = {
@@ -25,20 +26,6 @@ type BookingDetails = {
     customer?: User;
     partner?: User;
 }
-
-const fileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        if (!file) {
-            reject(new Error("No file provided"));
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
 
 export default function BookingDetailsPage() {
     const params = useParams()
@@ -111,23 +98,26 @@ export default function BookingDetailsPage() {
         setIsUploading(true);
 
         try {
+            // Document uploads are not part of the transaction for atomicity, but we prepare them.
+            const fileUploadPromises = filesToUpload.map(async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                const fileUrl = await uploadFile(formData);
+                const docId = generateUserId("DOC");
+                return { id: docId, title: file.name, fileUrl, fileName: file.name, fileType: file.type };
+            });
+            
+            const uploadedFilesData = await Promise.all(fileUploadPromises);
+            setIsUploading(false);
+
             await runTransaction(db, async (transaction) => {
                 const customerId = details.customer!.id;
-                const customerDocsRef = collection(db, `users/${customerId}/documents`);
-
-                // Document uploads are not part of the transaction for atomicity, but we prepare them.
-                const fileUploadPromises = filesToUpload.map(async (file) => {
-                    const fileUrl = await fileToDataUrl(file);
-                    const docId = generateUserId("DOC");
-                    const newDocRef = doc(customerDocsRef, docId);
-                    return { ref: newDocRef, data: { id: docId, title: file.name, fileUrl, fileName: file.name, fileType: file.type }};
-                });
                 
-                const uploadedFiles = await Promise.all(fileUploadPromises);
-                setIsUploading(false);
-
-                // Now, start the transactional writes
-                uploadedFiles.forEach(file => transaction.set(file.ref, file.data));
+                // Now, start the transactional writes for the uploaded file references
+                uploadedFilesData.forEach(fileData => {
+                    const newDocRef = doc(db, `users/${customerId}/documents`, fileData.id);
+                    transaction.set(newDocRef, fileData);
+                });
                 
                 const leadRef = doc(db, "leads", details.lead.id);
                 transaction.update(leadRef, { status: 'Completed' });
