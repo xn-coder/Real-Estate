@@ -2,7 +2,7 @@
 'use client'
 
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Gift, Copy, Share2, Twitter, Facebook, Linkedin, ArrowRight } from "lucide-react"
 import Image from "next/image"
