@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { UserCheck, UserPlus, UserX, Ban, Loader2, ChevronRight } from "lucide-react"
+import { UserCheck, UserPlus, UserX, Ban, Loader2, ChevronRight, ArrowUpCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { db } from "@/lib/firebase"
 import { collection, getDocs, query, where } from "firebase/firestore"
@@ -29,6 +29,7 @@ export default function ManagePartnerDashboardPage() {
     activation: 0,
     suspended: 0,
     deactivated: 0,
+    upgrade: 0,
   })
   const [isLoading, setIsLoading] = React.useState(true)
 
@@ -48,12 +49,15 @@ export default function ManagePartnerDashboardPage() {
       const activationQuery = query(usersCollection, where("role", "in", partnerRoles), where("status", "==", "pending_approval"))
       const suspendedQuery = query(usersCollection, where("role", "in", partnerRoles), where("status", "==", "suspended"))
       const deactivatedQuery = query(usersCollection, where("role", "in", partnerRoles), where("status", "==", "inactive"))
+      const upgradeQuery = query(usersCollection, where("status", "==", "pending_upgrade"));
 
-      const [activeSnapshot, activationSnapshot, suspendedSnapshot, deactivatedSnapshot] = await Promise.all([
+
+      const [activeSnapshot, activationSnapshot, suspendedSnapshot, deactivatedSnapshot, upgradeSnapshot] = await Promise.all([
         getDocs(activeQuery),
         getDocs(activationQuery),
         getDocs(suspendedQuery),
         getDocs(deactivatedQuery),
+        getDocs(upgradeQuery),
       ]);
 
       setCounts({
@@ -61,6 +65,7 @@ export default function ManagePartnerDashboardPage() {
         activation: activationSnapshot.size,
         suspended: suspendedSnapshot.size,
         deactivated: deactivatedSnapshot.size,
+        upgrade: upgradeSnapshot.size,
       })
 
     } catch (error) {
@@ -86,6 +91,7 @@ export default function ManagePartnerDashboardPage() {
   const dashboardItems = [
     { name: "Active Partners", href: "/manage-partner/list", count: counts.active },
     { name: "Partner Activation", href: "/manage-partner/activation", count: counts.activation, adminOnly: true },
+    { name: "Upgrade Requests", href: "/manage-partner/upgrade-requests", count: counts.upgrade, adminOnly: true },
     { name: "Suspended Partners", href: "/manage-partner/suspended", count: counts.suspended, adminOnly: true },
     { name: "Deactivated Partners", href: "/manage-partner/deactivated", count: counts.deactivated, adminOnly: true },
   ].filter(item => isSeller ? !item.adminOnly : true);
@@ -93,6 +99,7 @@ export default function ManagePartnerDashboardPage() {
   const statCards = [
     { title: "Active Partners", count: counts.active, icon: UserCheck, color: "text-green-500" },
     { title: "Pending Activation", count: counts.activation, icon: UserPlus, color: "text-yellow-500", adminOnly: true },
+    { title: "Upgrade Requests", count: counts.upgrade, icon: ArrowUpCircle, color: "text-blue-500", adminOnly: true },
     { title: "Suspended", count: counts.suspended, icon: Ban, color: "text-orange-500", adminOnly: true },
     { title: "Deactivated", count: counts.deactivated, icon: UserX, color: "text-red-500", adminOnly: true },
   ].filter(item => isSeller ? !item.adminOnly : true);
@@ -110,7 +117,7 @@ export default function ManagePartnerDashboardPage() {
          )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {statCards.map((stat) => (
             <Card key={stat.title}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

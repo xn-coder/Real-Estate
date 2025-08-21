@@ -12,7 +12,7 @@ export type User = {
   password?: string
   whatsappNumber?: string;
   role: string
-  status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended' | 'pending_verification' | DealStatus;
+  status?: 'active' | 'inactive' | 'pending' | 'pending_approval' | 'rejected' | 'suspended' | 'pending_verification' | 'pending_upgrade' | DealStatus;
   profileImageId?: string;
   profileImage?: string; // For display only
   dob?: Date;
@@ -47,6 +47,10 @@ export type User = {
   kycStatus?: 'verified' | 'pending' | 'rejected';
   teamLeadId?: string | null;
   createdAt?: Timestamp;
+  upgradeRequest?: {
+    newRole: string;
+    requestedAt: Timestamp;
+  } | null;
   website?: {
     businessProfile?: {
         businessName: string;
