@@ -72,7 +72,6 @@ export default function WalletBillingPage() {
                       totalReceivable += doc.data().amount || 0;
                   });
                   
-                   // Calculate Payables dynamically
                   const leadsQuery = query(collection(db, "leads"), where("status", "in", ["Deal closed", "Completed"]));
                   const leadsSnapshot = await getDocs(leadsQuery);
 
@@ -105,18 +104,19 @@ export default function WalletBillingPage() {
                   const payableAmounts = await Promise.all(payablesPromises);
                   totalPayable = payableAmounts.reduce((sum, amount) => sum + amount, 0);
 
-
               } else if (isSeller) {
-                  const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("sellerId", "==", user.id)));
+                  const walletDoc = await getDoc(doc(db, "wallets", user.id));
+                  if(walletDoc.exists()) {
+                      totalBalance = walletDoc.data().balance || 0;
+                      totalRevenue = walletDoc.data().revenue || 0;
+                  }
+
+                  const receivablesSnapshot = await getDocs(query(collection(db, "receivables"), where("sellerId", "==", user.id), where("status", "==", "Pending")));
                   receivablesSnapshot.forEach(doc => {
-                      if (doc.data().status === 'Pending') {
-                        totalReceivable += doc.data().amount || 0;
-                      }
+                      totalReceivable += doc.data().amount || 0;
                   });
                   
-                  // In a real app, seller-specific payables might need calculation too.
-                  // For now, it's 0 as per existing logic.
-                  totalPayable = 0;
+                  totalPayable = 0; // Sellers do not have payables in this logic
               }
               
               setStats({ totalBalance, totalRevenue, totalReceivable, totalPayable });
@@ -129,12 +129,20 @@ export default function WalletBillingPage() {
       fetchStats();
   }, [isAdmin, isSeller, user]);
 
-  const walletStats = [
+  const adminWalletStats = [
     { title: "Total Balance", amount: stats.totalBalance.toLocaleString(), description: "Across all wallets" },
     { title: "Total Revenue", amount: stats.totalRevenue.toLocaleString(), description: "Total income generated" },
     { title: "Total Receivable", amount: stats.totalReceivable.toLocaleString(), description: "Total pending receivables" },
     { title: "Total Payable", amount: stats.totalPayable.toLocaleString(), description: "Total pending payables" },
   ]
+  
+  const sellerWalletStats = [
+    { title: "Wallet Balance", amount: stats.totalBalance.toLocaleString(), description: "Your current balance" },
+    { title: "Total Revenue", amount: stats.totalRevenue.toLocaleString(), description: "Your total generated revenue" },
+    { title: "Total Receivable", amount: stats.totalReceivable.toLocaleString(), description: "Your pending receivables" },
+  ]
+
+  const walletStats = isAdmin ? adminWalletStats : sellerWalletStats;
 
   const walletOptions = [
     ...(isAdmin || isSeller ? [{ name: "Manage Wallet", href: "/wallet-billing/manage" }] : []),
@@ -145,8 +153,8 @@ export default function WalletBillingPage() {
     ...(isAdmin ? [{ name: "Claimed Rewards History", href: "/wallet-billing/rewards/claims" }] : []),
     ...(isAdmin || isSeller ? [
       { name: "Receivable Cash List", href: "/wallet-billing/receivable" },
-      { name: "Partner Earning", href: "/wallet-billing/payable" },
     ] : []),
+    ...(isAdmin ? [{ name: "Partner Earning", href: "/wallet-billing/payable" }] : []),
     { name: "Payment History", href: "/wallet-billing/history" },
   ]
 
@@ -157,7 +165,7 @@ export default function WalletBillingPage() {
       </div>
         
         {(isAdmin || isSeller) && (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className={`grid gap-4 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
                 {walletStats.map((stat) => (
                     <Card key={stat.title}>
                         <CardHeader>
