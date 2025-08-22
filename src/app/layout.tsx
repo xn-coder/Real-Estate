@@ -7,6 +7,7 @@ import { AppShell } from '@/components/app-shell';
 import { Toaster } from "@/components/ui/toaster"
 import { usePathname } from 'next/navigation';
 import { UserProvider } from '@/hooks/use-user';
+import { MaintenanceWrapper } from '@/components/maintenance-wrapper';
 
 export default function RootLayout({
   children,
@@ -30,16 +31,18 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <UserProvider>
-            <div className="flex min-h-screen flex-col">
-                {isPublicPage ? (
-                  children
-                ) : (
-                  <AppShell>
-                      {children}
-                  </AppShell>
-                )}
-                <Toaster />
-            </div>
+            <MaintenanceWrapper>
+                <div className="flex min-h-screen flex-col">
+                    {isPublicPage ? (
+                      children
+                    ) : (
+                      <AppShell>
+                          {children}
+                      </AppShell>
+                    )}
+                    <Toaster />
+                </div>
+            </MaintenanceWrapper>
         </UserProvider>
       </body>
     </html>
