@@ -72,8 +72,8 @@ export default function ManageConsultantPage() {
   const [isLoadingConsultants, setIsLoadingConsultants] = React.useState(true)
 
   const [consultantSearchTerm, setConsultantSearchTerm] = React.useState("");
-  
   const [customerSearchTerm, setCustomerSearchTerm] = React.useState("")
+  const [partnerSearchTerm, setPartnerSearchTerm] = React.useState("")
   
 
   const fetchConsultantData = React.useCallback(async () => {
@@ -88,7 +88,7 @@ export default function ManageConsultantPage() {
         const allPartnersQuery = query(usersCollection, where("role", "in", partnerRoles));
         const allPartnersSnapshot = await getDocs(allPartnersQuery);
         const partnersList = await Promise.all(
-            allPartnersSnapshot.docs.map(async pDoc => {
+            allPartnersSnapshot.docs.map(async (pDoc) => {
                 const partnerData = {id: pDoc.id, ...pDoc.data()} as PartnerUser;
                 let seller: SellerUser | undefined;
                 if(partnerData.teamLeadId) { 
@@ -203,6 +203,13 @@ export default function ManageConsultantPage() {
         (c.seller && c.seller.name.toLowerCase().includes(customerSearchTerm.toLowerCase()))
     );
   }, [customers, customerSearchTerm]);
+
+  const filteredPartners = React.useMemo(() => {
+    return partners.filter(p =>
+        p.partner.name.toLowerCase().includes(partnerSearchTerm.toLowerCase()) ||
+        p.partner.id.toLowerCase().includes(partnerSearchTerm.toLowerCase())
+    );
+  }, [partners, partnerSearchTerm]);
   
 
   const handleModifyCustomerClick = (customerData: CustomerWithConsultants) => {
@@ -410,9 +417,18 @@ export default function ManageConsultantPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Partner-Consultant Assignments</CardTitle>
-                    <CardDescription>
-                        View all partners and their assigned sellers.
-                    </CardDescription>
+                     <div className="flex items-center justify-between gap-4 pt-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Search by partner name or ID..."
+                                className="pl-8 sm:w-full md:w-1/2 lg:w-1/3"
+                                value={partnerSearchTerm}
+                                onChange={(e) => setPartnerSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="border rounded-lg overflow-x-auto">
@@ -428,10 +444,10 @@ export default function ManageConsultantPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-                            ) : partners.length === 0 ? (
+                            ) : filteredPartners.length === 0 ? (
                                 <TableRow><TableCell colSpan={4} className="h-24 text-center">No partners found.</TableCell></TableRow>
                             ) : (
-                                partners.map(p => (
+                                filteredPartners.map(p => (
                                     <TableRow key={p.partner.id}>
                                         <TableCell>
                                             <div className="font-medium">{p.partner.name}</div>
