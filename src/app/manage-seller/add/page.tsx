@@ -135,11 +135,18 @@ export default function AddSellerPage() {
       const [firstName, ...lastNameParts] = values.fullName.split(' ');
       const lastName = lastNameParts.join(' ');
       
+      const uploadAndGetURL = async (file: File | undefined) => {
+        if (!file) return null;
+        const formData = new FormData();
+        formData.append('file', file);
+        return uploadFile(formData);
+      };
+      
       const [businessLogoUrl, aadharFileUrl, panFileUrl, reraCertificateUrl] = await Promise.all([
-          values.businessLogo ? uploadFile(values.businessLogo, `users/${userId}/businessLogo.jpg`) : Promise.resolve(null),
-          uploadFile(values.aadharFile, `users/${userId}/aadharFile.pdf`),
-          uploadFile(values.panFile, `users/${userId}/panFile.pdf`),
-          values.reraCertificate ? uploadFile(values.reraCertificate, `users/${userId}/reraCertificate.pdf`) : Promise.resolve(null),
+          uploadAndGetURL(values.businessLogo),
+          uploadAndGetURL(values.aadharFile),
+          uploadAndGetURL(values.panFile),
+          uploadAndGetURL(values.reraCertificate),
       ]);
 
 

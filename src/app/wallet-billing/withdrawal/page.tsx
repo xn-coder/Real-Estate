@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -32,6 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { uploadFile } from "@/services/file-upload-service"
 
 const requestFormSchema = z.object({
   amount: z.coerce.number().min(100, "Withdrawal amount must be at least ₹100."),
@@ -220,7 +222,12 @@ export default function WithdrawalRequestPage() {
         const isApproved = !values.rejectionReason;
         const newStatus = isApproved ? 'Approved' : 'Rejected';
 
-        const proofOfPaymentUrl = values.proofOfPayment ? await fileToDataUrl(values.proofOfPayment) : null;
+        let proofOfPaymentUrl = null;
+        if (values.proofOfPayment instanceof File) {
+            const formData = new FormData();
+            formData.append('file', values.proofOfPayment);
+            proofOfPaymentUrl = await uploadFile(formData);
+        }
         
         await updateDoc(doc(db, "withdrawal_requests", selectedRequest.id), {
             status: newStatus,

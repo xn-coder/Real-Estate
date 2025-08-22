@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -30,6 +31,7 @@ import { Loader2, ArrowLeft, Wallet, Paperclip } from "lucide-react"
 import Link from "next/link"
 import { useUser } from "@/hooks/use-user"
 import bcrypt from "bcryptjs"
+import { uploadFile } from "@/services/file-upload-service"
 
 
 const fileToDataUrl = (file: File): Promise<string> => {
@@ -129,7 +131,9 @@ export default function ManageWalletPage() {
             const transactionsCollection = collection(db, "wallet_transactions");
             let proofUrl = "";
             if (values.proof) {
-                proofUrl = await fileToDataUrl(values.proof);
+                const formData = new FormData();
+                formData.append('file', values.proof);
+                proofUrl = await uploadFile(formData);
             }
             const transactionData = {
                 type: values.transactionType,
