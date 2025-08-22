@@ -120,7 +120,7 @@ export default function ProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         profileImage: user.profileImage || '',
-        dob: user.dob ? format(user.dob, 'yyyy-MM-dd') : '',
+        dob: user.dob && user.dob instanceof Date ? format(user.dob, 'yyyy-MM-dd') : '',
         gender: user.gender,
         qualification: user.qualification
       });
