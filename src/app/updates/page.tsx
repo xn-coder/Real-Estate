@@ -80,7 +80,7 @@ export default function UpdatesPage() {
             const uniqueReceived = Array.from(new Map(receivedMessagesList.map(m => [m.id, m])).values());
             setReceivedMessages(uniqueReceived.sort((a,b) => b.date.getTime() - a.date.getTime()));
 
-            if (isAdmin) {
+            if (isAdmin || isSeller) {
                 const sentQuery = query(messagesCollection, where("senderId", "==", user.id), orderBy("date", "desc"));
                 const sentSnapshot = await getDocs(sentQuery);
                 const sentList = sentSnapshot.docs.map(doc => {
@@ -166,7 +166,7 @@ export default function UpdatesPage() {
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold tracking-tight font-headline">Updates</h1>
-                {isAdmin && (
+                {(isAdmin || isSeller) && (
                     <Button asChild>
                         <Link href="/send-message">
                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -176,7 +176,7 @@ export default function UpdatesPage() {
                 )}
             </div>
         
-        {isPartner || isSeller || isCustomer ? (
+        {isPartner || isCustomer ? (
             <Card>
                 <CardHeader>
                 <CardTitle>Inbox</CardTitle>
