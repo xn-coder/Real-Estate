@@ -148,7 +148,9 @@ export default function ProfilePage() {
       
       let profileImageUrl = user.profileImage;
       if (values.profileImage && values.profileImage instanceof File) {
-          profileImageUrl = await uploadFile(values.profileImage, `users/${user.id}/profileImage`);
+          const formData = new FormData();
+          formData.append('file', values.profileImage);
+          profileImageUrl = await uploadFile(formData);
       }
 
       const updateData: Record<string, any> = {
@@ -196,7 +198,9 @@ export default function ProfilePage() {
 
         let businessLogoUrl = user.businessLogo;
         if (values.businessLogo && values.businessLogo instanceof File) {
-            businessLogoUrl = await uploadFile(values.businessLogo, `users/${user.id}/businessLogo`);
+            const formData = new FormData();
+            formData.append('file', values.businessLogo);
+            businessLogoUrl = await uploadFile(formData);
         }
 
         await updateDoc(userDocRef, {
@@ -469,7 +473,7 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center"><UserIcon className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.name || 'N/A'}</span></div>
-                    <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob ? format(user.dob, 'PPP') : 'N/A'}</span></div>
+                    <div className="flex items-center"><Calendar className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.dob && user.dob instanceof Date ? format(user.dob, 'PPP') : 'N/A'}</span></div>
                     <div className="flex items-center capitalize"><Info className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.gender || 'N/A'}</span></div>
                     <div className="flex items-center"><GraduationCap className="h-5 w-5 mr-3 text-muted-foreground" /> <span>{user?.qualification || 'N/A'}</span></div>
                 </CardContent>
