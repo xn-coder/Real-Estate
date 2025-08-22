@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import * as React from "react"
@@ -82,6 +83,8 @@ const partnerRoles = {
   'franchisee': 'Franchisee',
 } as const;
 type PartnerRole = keyof typeof partnerRoles;
+
+const partnerRoleOrder: PartnerRole[] = ['affiliate', 'super_affiliate', 'associate', 'channel', 'franchisee'];
 
 const feesFormSchema = z.object({
   affiliate: z.coerce.number().min(0, { message: "Fee must be a positive number." }),
@@ -347,14 +350,14 @@ export default function SettingsPage() {
                                 <DialogDescription>Update the registration fee for each partner type.</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
-                                {Object.keys(partnerRoles).map((role) => (
+                                {partnerRoleOrder.map((role) => (
                                      <FormField
                                         key={role}
                                         control={feesForm.control}
-                                        name={role as PartnerRole}
+                                        name={role}
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>{partnerRoles[role as PartnerRole]}</FormLabel>
+                                                <FormLabel>{partnerRoles[role]}</FormLabel>
                                                 <FormControl>
                                                     <Input type="number" {...field} disabled={isUpdatingFees} />
                                                 </FormControl>
@@ -386,10 +389,10 @@ export default function SettingsPage() {
                     </TableHeader>
                     <TableBody>
                        {fees ? (
-                            Object.entries(fees).map(([role, fee]) => (
+                            partnerRoleOrder.map((role) => (
                                 <TableRow key={role}>
-                                    <TableCell className="font-medium">{partnerRoles[role as PartnerRole]}</TableCell>
-                                    <TableCell className="text-right">{fee.toLocaleString()}</TableCell>
+                                    <TableCell className="font-medium">{partnerRoles[role]}</TableCell>
+                                    <TableCell className="text-right">{(fees[role] || 0).toLocaleString()}</TableCell>
                                 </TableRow>
                             ))
                         ) : (
